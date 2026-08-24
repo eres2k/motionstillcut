@@ -1,0 +1,139 @@
+/* ============================================================
+   MOTION.
+   
+   The rule this file follows: motion is only allowed to say something the
+   still frame cannot. Where a thing came from, that two panels are the same
+   panel, that something arrived. Everything else is decoration, and decoration
+   in an editor is a tax you pay on every single interaction.
+
+   So: nothing here is longer than 220ms, nothing moves more than about ten
+   pixels, and nothing animates a property that costs a layout. Transform and
+   opacity only, which the compositor can do without the main thread — the
+   canvas has to stay at 60fps while a wire is being dragged.
+
+   And all of it is off for anyone who has asked their system for less motion.
+   That switch is at the bottom, and it is not a suggestion.
+   ============================================================ */
+
+:root {
+  --ease: cubic-bezier(.22, .61, .36, 1);   /* out-quad-ish: quick, then settles */
+  --t-fast: .12s;
+  --t: .17s;
+  --t-slow: .22s;
+}
+
+/* ── Changing page ────────────────────────────────────────────
+ * A page swap is a cut, not a dissolve — but a cut with nothing to tell you
+ * it happened reads as a flicker. Four pixels of rise is enough. */
+.page.active { animation: page-in var(--t-slow) var(--ease); }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* The three-way Create → Canvas | Studio control. The button you pressed
+ * should feel pressed. */
+.stepbtn, .seg button { transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.stepbtn:active, .seg button:active, .btn:active, .page-btn:active { transform: translateY(.5px); }
+.viewflow-to, .viewflow #view-seg { transition: opacity var(--t) var(--ease); }
+
+/* The page bar's active underline slides in rather than blinking on. */
+.pagebar .page-btn { position: relative; }
+.pagebar .page-btn::after {
+  content: ""; position: absolute; left: 8px; right: 8px; bottom: 0; height: 2px;
+  background: var(--accent); border-radius: 1px;
+  transform: scaleX(0); transform-origin: center;
+  transition: transform var(--t) var(--ease);
+}
+.pagebar .page-btn.active::after { transform: scaleX(1); }
+/* The box-shadow version would now draw a second line under the first. */
+.pagebar .page-btn.active { box-shadow: none; }
+
+/* ── Inspector groups ─────────────────────────────────────────
+ * An accordion that snaps is an accordion you lose your place in. The
+ * 0fr → 1fr grid trick animates to the content's own height without anyone
+ * having to measure it in JavaScript. */
+.insp-group > .gb {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows var(--t-slow) var(--ease), opacity var(--t) var(--ease);
+}
+.insp-group > .gb > .gb-in {
+  min-height: 0;
+  /* Its own vertical padding has to go too. `box-sizing: border-box` will not
+   * shrink a box below its padding, so an 11px/13px inset is an 24px-tall
+   * "collapsed" group — the one thing this was supposed to avoid. */
+  transition: padding var(--t-slow) var(--ease);
+}
+.insp-group.closed > .gb {
+  display: grid;            /* not none — display cannot be animated */
+  grid-template-rows: 0fr;
+  opacity: 0; pointer-events: none;
+}
+/* Only while it is collapsing: an open group must not clip its own selects. */
+.insp-group.closed > .gb > .gb-in { overflow: hidden; padding-top: 0; padding-bottom: 0; }
+
+/* `display: none` used to take a collapsed group out of the tab order for
+ * free. A zero-height grid row does not — the controls inside are still
+ * focusable, still clickable, and still read out by a screen reader, which is
+ * a worse group than the one that snapped. `visibility` fixes all three, and
+ * is delayed by exactly the length of the collapse so it does not cut the
+ * animation off at the knees. */
+.insp-group > .gb > .gb-in { visibility: visible; transition: visibility 0s; }
+.insp-group.closed > .gb > .gb-in { visibility: hidden; transition: visibility 0s linear var(--t-slow); }
+
+/* ── Toasts ───────────────────────────────────────────────── */
+.toast { animation: toast-in var(--t) var(--ease); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(16px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Modal ────────────────────────────────────────────────────
+ * The dialog comes from the middle and stays there. Anything more elaborate
+ * is a delay between deciding and doing. */
+.overlay.open { animation: fade-in var(--t) var(--ease); }
+.overlay.open > .modal { animation: modal-in var(--t-slow) var(--ease); }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── The canvas ───────────────────────────────────────────────
+ * Nodes settle in rather than appearing, so a node the director just added is
+ * visibly the new one. Deliberately not applied while a wire is being dragged:
+ * the canvas redraws on every frame then, and a re-triggered animation on a
+ * node under the cursor is the single worst thing this file could do. */
+.sn-world:not(.sn-linking) .sn-node { animation: node-in var(--t-slow) var(--ease); }
+@keyframes node-in {
+  from { opacity: 0; transform: scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+.sn-node { transition: box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease); }
+/* A legal drop target should light up like a control, not like a slideshow. */
+.sn-node.sn-target { transition: box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+
+/* ── Progress ─────────────────────────────────────────────────
+ * A render bar that jumps in 8% steps looks stuck between them. */
+.bar > i, .prog > i, .rp-bar > i { transition: width var(--t-slow) linear; }
+
+/* ── Chips and dials ──────────────────────────────────────── */
+.sn-chip, .dr-chip, .st-tag, .sn-fix, .dr-mini {
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+.dr-act { transition: background-color var(--t-fast) var(--ease); }
+.dr-plan { animation: page-in var(--t-slow) var(--ease); }
+.dr-err, .dr-reply, .dr-asks { animation: page-in var(--t) var(--ease); }
+
+/* ── The honest part ──────────────────────────────────────────
+ * Someone who has turned motion down has usually done it because motion makes
+ * them ill. Everything above becomes instant — including the accordion, which
+ * goes back to being a plain show/hide. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .insp-group.closed > .gb { display: none; }
+}

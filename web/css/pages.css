@@ -1,0 +1,1286 @@
+/* ============================================================
+   MOTIONSTILL CUT — per-page layouts.
+   Resolve gives every page its own furniture arrangement while the chrome
+   stays identical; same idea here.
+   ============================================================ */
+
+/* ── MEDIA ────────────────────────────────────────────────── */
+#page-media .cols { grid-template-columns: 208px 1fr 316px; }
+#page-media .bin {
+  display: flex; align-items: center; gap: 7px; padding: 6px 9px;
+  border-bottom: 1px solid var(--line-hair); cursor: pointer; color: var(--fg-dim);
+}
+#page-media .bin:hover { background: #262626; color: var(--fg); }
+#page-media .bin.sel { background: #2b3948; color: var(--fg-bright); box-shadow: inset 2px 0 0 var(--accent); }
+#page-media .bin .count { margin-left: auto; font-family: var(--mono); font-size: var(--fs-sm); color: var(--fg-faint); }
+#page-media .bin .ico { width: 14px; text-align: center; opacity: .8; }
+
+/* ── CUT ──────────────────────────────────────────────────── */
+#page-cut .cols { grid-template-columns: 230px 1fr 320px; }
+#page-cut .cut-center { display: grid; grid-template-rows: 1fr 214px; gap: 1px; background: var(--line); min-height: 0; }
+/* With the node view open the middle column gains a third row for it. */
+#page-cut .cut-center.with-nodes { grid-template-rows: 1fr 168px 214px; }
+#page-cut .shot-list { display: flex; flex-direction: column; }
+#page-cut .shot-row {
+  display: flex; gap: 7px; padding: 6px 8px; border-bottom: 1px solid var(--line-hair);
+  cursor: pointer; align-items: flex-start;
+}
+#page-cut .shot-row:hover { background: #262626; }
+#page-cut .shot-row.sel { background: #2b3948; box-shadow: inset 2px 0 0 var(--clip-sel); }
+#page-cut .shot-row.live { background: #2f3f31; }
+#page-cut .shot-row.live.sel { background: #344a44; }
+#page-cut .shot-row .idx {
+  flex: none; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  background: #2f4058; border: 1px solid #16283a; border-radius: 2px;
+  font-family: var(--mono); font-size: var(--fs-sm); color: #cfe2f4;
+}
+#page-cut .shot-row .txt { flex: 1; min-width: 0; }
+#page-cut .shot-row .txt .line1 { color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#page-cut .shot-row .txt .line2 { color: var(--fg-faint); font-size: var(--fs-sm); font-family: var(--mono); }
+
+/* ── SOUND ────────────────────────────────────────────────── */
+#page-sound .cols { grid-template-columns: 1fr 1fr 300px; }
+#page-sound .dlg-row {
+  display: grid; grid-template-columns: 54px 78px 1fr 22px; gap: 6px; align-items: start;
+  padding: 6px 8px; border-bottom: 1px solid var(--line-hair);
+}
+#page-sound .dlg-row .spk {
+  height: 22px; display: flex; align-items: center; justify-content: center;
+  background: #3a2d47; border: 1px solid #241b2d; border-radius: 2px;
+  font-family: var(--mono); color: #d9c3ef;
+}
+
+/* ── DELIVER ──────────────────────────────────────────────── */
+#page-deliver .cols { grid-template-columns: 300px 1fr 360px; }
+#page-deliver .job {
+  padding: 7px 9px; border-bottom: 1px solid var(--line-hair); cursor: pointer;
+}
+#page-deliver .job:hover { background: #262626; }
+#page-deliver .job.sel { background: #2b3948; }
+#page-deliver .job .top { display: flex; align-items: center; gap: 7px; }
+#page-deliver .job .name { flex: 1; color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#page-deliver .job .time { font-family: var(--mono); font-size: var(--fs-sm); color: var(--fg-faint); }
+
+/* ── SETUP ────────────────────────────────────────────────── */
+#page-setup .cols { grid-template-columns: 1fr 1fr; }
+#page-setup .bd.pad { padding: 12px 14px 26px; }
+#page-setup .cmd {
+  font-family: var(--mono); font-size: var(--fs-sm); background: #101010; color: #9fd0a8;
+  border: 1px solid #0a0a0a; border-radius: 2px; padding: 7px 9px; margin: 5px 0;
+  white-space: pre-wrap; word-break: break-all; position: relative; cursor: pointer;
+}
+#page-setup .cmd:hover { border-color: var(--line-soft); }
+#page-setup .cmd::after {
+  content: "copy"; position: absolute; top: 4px; right: 6px;
+  font-size: 9px; color: var(--fg-faint); text-transform: uppercase; letter-spacing: .08em;
+}
+#page-setup .cmd:hover::after { color: var(--accent); }
+#page-setup .nodes { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; }
+#page-setup .nodes .n { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: var(--fs-sm); }
+#page-setup .nodes .n .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); flex: none; }
+#page-setup .nodes .n.ok .dot { background: var(--green); }
+#page-setup .steps { counter-reset: step; }
+#page-setup .steps > li { margin: 0 0 10px; }
+
+/* ── Reference cards (Ref2V) ──────────────────────────────── */
+.refcard {
+  display: grid; grid-template-columns: 74px 1fr; gap: 8px;
+  padding: 7px; border: 1px solid var(--line-hair); border-radius: var(--radius);
+  background: var(--bg-panel-2); margin-bottom: 7px;
+}
+.refcard .pic { aspect-ratio: 1; background: #0b0b0b center/cover no-repeat; border: 1px solid #000; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--fg-faint); }
+.refcard .body { min-width: 0; }
+.refcard .body .name { color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.refcard select { height: 20px; }
+
+/* ── Validation report ────────────────────────────────────── */
+.checks { display: flex; flex-direction: column; }
+.check { display: flex; gap: 7px; padding: 5px 9px; border-bottom: 1px solid var(--line-hair); align-items: flex-start; }
+.check .ico { flex: none; width: 13px; text-align: center; }
+.check.err .ico { color: #e07060; }
+.check.warn .ico { color: var(--amber); }
+.check.ok .ico { color: var(--green); }
+.check .msg { flex: 1; color: var(--fg-dim); }
+.check .msg b { color: var(--fg-bright); font-weight: 600; }
+.check .fix { flex: none; }
+
+/* ── Word budget bar ──────────────────────────────────────── */
+.budget { display: flex; align-items: center; gap: 8px; }
+.budget .meter { flex: 1; }
+.budget .n { font-family: var(--mono); font-size: var(--fs-sm); color: var(--fg-dim); white-space: nowrap; }
+
+/* ── Split textareas used by the prompt composer ──────────── */
+.prompt-fields textarea { min-height: 52px; }
+.prompt-fields .field-head {
+  display: flex; align-items: center; gap: 7px; margin: 9px 0 3px;
+}
+.prompt-fields .field-head .k {
+  font-family: var(--mono); color: #7fb2e5; font-size: var(--fs-sm);
+}
+.prompt-fields .field-head .spacer { flex: 1; }
+
+/* ── Node view (Cut, above the timeline) ──────────────────── */
+.nv-strip { position: relative; height: 100%; overflow: auto; background: #171a1e; }
+.nv-canvas { position: relative; min-width: 100%; }
+.nv-wires { position: absolute; inset: 0; pointer-events: none; }
+.nv-wires path { pointer-events: stroke; }
+
+.nv-node {
+  position: absolute; border: 1px solid #0d0d0d; border-radius: 3px;
+  background: #232323; overflow: hidden; cursor: pointer; user-select: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.45);
+  transition: box-shadow .12s ease, transform .12s ease;
+}
+.nv-node:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.6); }
+.nv-node .nv-hd {
+  padding: 2px 7px; font-family: var(--mono); font-size: var(--fs-sm);
+  color: #eaf1f8; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nv-node .nv-bd {
+  padding: 4px 7px 5px; font-size: var(--fs-sm); color: var(--fg-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nv-node.sel { box-shadow: 0 0 0 1px var(--clip-sel), 0 4px 12px rgba(0,0,0,.6); }
+.nv-node.nv-unused { opacity: .55; border-style: dashed; }
+.nv-node.nv-out .nv-bd { color: #a8e0c0; }
+
+.nv-flag {
+  position: absolute; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--amber); color: #1a1a1a; font-weight: 700; font-size: 10px;
+  display: flex; align-items: center; justify-content: center; z-index: 2;
+  box-shadow: 0 1px 4px rgba(0,0,0,.6);
+}
+.nv-note {
+  position: absolute; font-size: var(--fs-sm); color: #79c79b; font-family: var(--mono);
+}
+.nv-empty {
+  position: absolute; inset: auto 0 8px 0; text-align: center;
+  color: var(--fg-faint); font-size: var(--fs-sm); pointer-events: none;
+}
+.nv-legend { display: flex; gap: 9px; align-items: center; font-size: var(--fs-sm); color: var(--fg-faint); }
+.nv-legend span { display: flex; align-items: center; gap: 4px; }
+.nv-legend i { width: 12px; height: 2px; border-radius: 1px; display: inline-block; }
+.nv-legend-warn { color: var(--amber); }
+
+/* ── Narrow windows ───────────────────────────────────────────
+ * The side columns are the first thing a real NLE collapses. These live at the
+ * end of the LAST stylesheet on purpose: the page layouts above have the same
+ * specificity, so anything responsive placed before them silently loses. */
+@media (max-width: 1420px) {
+  #page-cut .cols     { grid-template-columns: 196px 1fr 288px; }
+  #page-media .cols   { grid-template-columns: 180px 1fr 280px; }
+  #page-deliver .cols { grid-template-columns: 260px 1fr 300px; }
+  .field > label { flex-basis: 92px; }
+}
+@media (max-width: 1180px) {
+  /* Two columns: the work and the inspector. The shot list and the media bins
+     are reachable from the timeline and the page bar anyway. */
+  #page-cut .cols     { grid-template-columns: 1fr 300px; }
+  #page-cut .cols > .panel:first-child { display: none; }
+  #page-media .cols   { grid-template-columns: 1fr 300px; }
+  #page-media .cols > .panel:first-child { display: none; }
+  #page-deliver .cols { grid-template-columns: 268px 1fr; }
+  #page-deliver .cols > .panel:last-child { display: none; }
+  #page-sound .cols   { grid-template-columns: 1fr 1fr; }
+  #page-sound .cols > .panel:last-child { display: none; }
+  #page-setup .cols   { grid-template-columns: 1fr; overflow-y: auto; }
+  .panel > .hd { overflow-x: auto; scrollbar-width: none; }
+  .panel > .hd::-webkit-scrollbar { display: none; }
+  .seg button { padding: 0 8px; }
+}
+@media (max-width: 880px) {
+  /* One column. The inspector becomes a bottom sheet under the timeline so a
+     tablet in portrait still edits, rather than only playing back. */
+  #page-cut .cols, #page-media .cols, #page-deliver .cols, #page-sound .cols {
+    grid-template-columns: 1fr; grid-template-rows: 1fr auto;
+  }
+  #page-cut .cols > .panel:last-child,
+  #page-media .cols > .panel:last-child { max-height: 42vh; }
+  #page-cut .cut-center:not(.sz-grid), #page-cut .cut-center.with-nodes:not(.sz-grid) { grid-template-rows: 1fr 190px; }
+  /* By class, not by position: the resizer puts a drag seam between panels,
+     so "the second child" stopped being the node strip. */
+  #page-cut .cut-center.with-nodes > .cut-nodes { display: none; }
+  .pagebar .page-btn { min-width: 58px; }
+  .pagebar .corner .btn, .pagebar .corner-left { display: none; }
+  .pagebar .corner .btn.record { display: inline-flex; }
+  .titlebar .project { display: none; }
+}
+
+/* ── Storyboard (Cut ▸ Viewer ▸ Board) ────────────────────── */
+.bd-wrap { display: flex; flex-direction: column; height: 100%; background: var(--bg-panel); }
+.bd-strip {
+  flex: 1; min-height: 0; overflow: auto; padding: 12px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 10px;
+  /* Cards size to their own content and the strip scrolls. Without both of
+     these the rows share the container's height between them and every card
+     with two lines of beat text gets its last line clipped. */
+  align-content: start; align-items: start; grid-auto-rows: min-content;
+}
+.bd-card {
+  background: var(--bg-panel-2); border: 1px solid #141414; border-radius: 3px;
+  overflow: hidden; cursor: pointer; transition: border-color .12s ease, transform .12s ease;
+}
+.bd-card:hover { border-color: var(--line-soft); transform: translateY(-1px); }
+.bd-card.sel { border-color: var(--clip-sel); box-shadow: 0 0 0 1px rgba(224,161,58,.4); }
+.bd-thumb { background: #0d1116; border-bottom: 1px solid #141414; line-height: 0; }
+.bd-thumb svg { display: block; }
+.bd-thumb .bd-gate { fill: none; stroke: #2a3340; }
+.bd-thumb .bd-third { stroke: #1e2530; stroke-width: 1; }
+.bd-thumb .bd-subject { fill: rgba(224,161,58,.14); stroke: rgba(224,161,58,.9); stroke-width: 1.2; }
+.bd-thumb .bd-ghost { fill: rgba(122,178,229,.08); stroke: rgba(122,178,229,.75); stroke-dasharray: 3 2; }
+.bd-thumb .bd-arrow { stroke: #7fb2e5; stroke-width: 1.2; }
+.bd-meta { padding: 6px 8px 8px; }
+.bd-shot { color: var(--fg-dim); font-size: var(--fs-sm); margin: 3px 0 2px; }
+.bd-beat { color: var(--fg-bright); line-height: 1.45; }
+.bd-cam { color: #8fd3a8; font-family: var(--mono); font-size: var(--fs-sm); margin-top: 4px; }
+.bd-dlg { color: #e0a5c8; font-size: var(--fs-sm); margin-top: 3px; }
+.bd-foot {
+  flex: none; display: flex; gap: 10px; align-items: center;
+  padding: 6px 12px; border-top: 1px solid var(--line); background: #1b1b1b;
+}
+
+/* Suggested edits from the second opinion. */
+.fix-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 0; border-top: 1px solid var(--line-hair);
+}
+.fix-row .fix-what { color: var(--fg-bright); line-height: 1.45; }
+
+/* ── Simple mode ──────────────────────────────────────────────
+ * One canvas, icon nodes, drag to wire. Bigger targets and calmer type than
+ * the studio pages: this is the view for someone who has a picture and an idea,
+ * not for someone tuning a shot list. */
+#page-simple { background: #16181b; }
+.sn-wrap { display: flex; flex-direction: column; height: 100%; }
+
+.sn-toolbar {
+  flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: linear-gradient(180deg, #262626, #1d1d1d);
+  border-bottom: 1px solid var(--line);
+}
+.sn-tool {
+  display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px;
+  background: #2e2e2e; border: 1px solid #1a1a1a; border-radius: 4px;
+  color: var(--fg); cursor: pointer; font-size: var(--fs);
+  transition: background-color .12s ease, transform .1s ease;
+}
+.sn-tool:hover { background: #3a3a3a; transform: translateY(-1px); }
+.sn-tool:active { transform: none; }
+.sn-tool.ai { background: #3a3050; border-color: #2a2140; color: #c9b8ec; }
+.sn-tool.ai:hover { background: #473a63; }
+.sn-tool-ico { font-size: 15px; line-height: 1; opacity: .9; }
+.sn-tool.disabled { opacity: .5; pointer-events: none; }
+
+.sn-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
+.sn-tool.ghost { background: transparent; border-color: #2c2c2c; color: var(--fg-dim); }
+.sn-tool.ghost:hover { background: #2c2c2c; color: var(--fg-bright); }
+.sn-zoom { display: flex; align-items: center; gap: 2px; }
+.sn-zoom button {
+  width: 26px; height: 26px; border-radius: 4px; border: 1px solid #2c2c2c;
+  background: transparent; color: var(--fg-dim); cursor: pointer; font-size: 15px; line-height: 1; padding: 0;
+}
+.sn-zoom button:hover { background: #2c2c2c; color: var(--fg-bright); }
+.sn-zoom-pct {
+  font-family: var(--mono); font-size: var(--fs-sm); color: var(--fg-faint);
+  min-width: 40px; text-align: center;
+}
+
+/* The viewport clips; the world inside it is what pans and scales. */
+.sn-canvas {
+  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  cursor: grab; touch-action: none;
+  background:
+    radial-gradient(circle at 1px 1px, #262b31 1px, transparent 0) 0 0/26px 26px,
+    #16181b;
+}
+.sn-canvas.panning { cursor: grabbing; }
+/* Dragging the background pans; it must never sweep a text selection across
+ * the graph. This is what lets the pointer handlers skip preventDefault. */
+.sn-canvas, .sn-world { user-select: none; -webkit-user-select: none; }
+.sn-bd textarea, .sn-bd input { user-select: text; -webkit-user-select: text; }
+.sn-canvas.linking { cursor: crosshair; }
+/* While a wire is armed, a NODE is a target and nothing inside it is.
+ *
+ * "Press Link, then click a shot" was only true of the few bare pixels between
+ * a shot's controls: its body is a textarea, two inputs, a camera pad and now
+ * a fine-tune fold, and a click on any of those was ignored so that hitting
+ * the shot's own ✎ mid-link would not both rewrite it AND wire something to
+ * it. Making the children inert answers both at once — the whole node accepts
+ * the drop, and no control inside it fires while you are aiming. */
+.sn-canvas.linking .sn-node > * { pointer-events: none; }
+.sn-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.sn-wires { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.sn-wires .sn-wire-hit { pointer-events: stroke; cursor: pointer; }
+
+/* Cut a connection: a real button at the midpoint of the wire, revealed when
+ * either the wire or the button is under the cursor. */
+.sn-cut {
+  position: absolute; z-index: 8; width: 20px; height: 20px; margin: -10px 0 0 -10px; padding: 0;
+  border-radius: 50%; border: 1px solid #0e0e0e; background: var(--red); color: #fff;
+  font-size: 11px; line-height: 1; cursor: pointer; opacity: 0; pointer-events: none;
+  transition: opacity .12s ease, transform .12s ease;
+}
+.sn-cut.hot, .sn-cut:hover { opacity: 1; pointer-events: auto; transform: scale(1.1); }
+
+.sn-node {
+  position: absolute; border: 1px solid #0e0e0e; border-radius: 7px;
+  background: #232323; box-shadow: 0 6px 18px rgba(0,0,0,.5);
+  overflow: visible; user-select: none;
+  transition: box-shadow .12s ease, opacity .12s ease;
+}
+.sn-node.dragging { box-shadow: 0 14px 34px rgba(0,0,0,.6); z-index: 6; }
+/* While a connection is in flight the canvas says what may receive it. */
+.sn-node.valid { box-shadow: 0 0 0 1px #4b9b58, 0 6px 18px rgba(0,0,0,.5); }
+.sn-node.invalid { opacity: .35; }
+.sn-node.target { box-shadow: 0 0 0 3px var(--green, #4b9b58), 0 10px 26px rgba(0,0,0,.6); }
+.sn-canvas.linking .sn-node.valid .sn-bd { background: rgba(75,155,88,.07); }
+
+.sn-hd {
+  display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 10px;
+  background: #35506e; border-radius: 6px 6px 0 0; cursor: grab;
+  color: #eaf1f8; font-weight: 600;
+}
+.sn-hd:active { cursor: grabbing; }
+.sn-image .sn-hd { background: #2b3f57; }
+.sn-video .sn-hd { background: #45324f; }
+.sn-audio .sn-hd { background: #2c4a3b; }
+.sn-sound .sn-hd { background: #2c4a3b; }
+.sn-render .sn-hd { background: #2f5c46; }
+.sn-steer .sn-hd { background: #5d4a20; }
+.sn-ico { font-size: 15px; opacity: .9; }
+.sn-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sn-badge {
+  font-family: var(--mono); font-size: var(--fs-sm); background: rgba(0,0,0,.3);
+  border-radius: 9px; padding: 1px 7px; color: #dce8f4;
+}
+.sn-x { width: 18px; height: 18px; border: 0; border-radius: 3px; background: transparent; color: #dce8f4; cursor: pointer; opacity: .6; }
+.sn-x:hover { background: var(--red); opacity: 1; }
+.sn-bd { padding: 9px 10px 11px; border-radius: 0 0 6px 6px; transition: background-color .12s ease; }
+.sn-bd textarea { font-size: var(--fs); line-height: 1.5; resize: none; overflow: hidden; }
+.sn-thumb {
+  aspect-ratio: 16/9; border-radius: 3px; background: #0b0b0b center/cover no-repeat;
+  display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--fg-faint);
+  cursor: grab;
+}
+.sn-note { margin-top: 6px; color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.4; }
+.sn-preview {
+  aspect-ratio: 16/9; border-radius: 3px; background: #101317;
+  display: flex; align-items: center; justify-content: center; color: var(--fg-faint); font-size: var(--fs-sm);
+}
+.sn-row { display: flex; align-items: center; gap: 5px; }
+.sn-row .grow { flex: 1; }
+.sn-pick { margin-top: 8px; }
+.sn-pick-lb {
+  display: block; margin-bottom: 4px; color: var(--fg-faint);
+  font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .06em;
+}
+.sn-pick-row { display: flex; gap: 4px; }
+.sn-chip {
+  flex: 1; height: 24px; border-radius: 3px; background: #2c2c2c; border: 1px solid #191919;
+  color: var(--fg-dim); cursor: pointer; font-size: var(--fs-sm); line-height: 1; padding: 0 4px;
+  white-space: nowrap;
+}
+.sn-chip:hover { background: #383838; color: var(--fg-bright); }
+.sn-chip.on { background: var(--accent); border-color: #23507f; color: #fff; }
+
+/* The steering dials, on the canvas. */
+.sn-dials { display: flex; flex-direction: column; gap: 9px; }
+.sn-dial-hd { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--fg-bright); }
+.sn-dial-hd .grow { flex: 1; }
+.sn-dial-ico { opacity: .75; }
+.sn-dial input[type="range"] { width: 100%; margin: 2px 0 1px; height: 14px; }
+.sn-dial-say { color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.4; }
+.sn-dial-say.warn { color: var(--amber, #e0a13a); }
+.sn-fix {
+  margin-top: 5px; padding: 3px 9px; border-radius: 4px; cursor: pointer;
+  background: #4a3a14; border: 1px solid #6b551f; color: #f0d79a; font-size: var(--fs-sm);
+}
+.sn-fix:hover { background: #5d4a20; }
+
+/* The director: the LLM as a node that proposes edits you review before they
+ * land, rather than a button that overwrites a field. */
+.sn-director { width: 300px !important; }
+.sn-director .sn-hd { background: #3f2f5c; }
+.dr-ask { width: 100%; min-height: 52px; resize: vertical; }
+/* In the inspector there is room for the whole question, and the placeholder
+ * is three lines of it. In a 236px node there is not, so only the panel gets
+ * the taller box. */
+.insp .dr-ask { min-height: 64px; }
+.dr-quick { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.dr-chip {
+  padding: 3px 9px; border-radius: 11px; background: #322847; border: 1px solid #241d33;
+  color: #c9b8ec; font-size: var(--fs-sm); cursor: pointer;
+}
+.dr-chip:hover { background: #43355e; color: #e2d7f7; }
+.dr-chip.disabled { opacity: .5; pointer-events: none; }
+.dr-reply {
+  margin-top: 8px; padding: 8px 9px; border-radius: 4px; background: #1c1a23;
+  border-left: 2px solid #7b5fb0; color: var(--fg-bright); font-size: var(--fs); line-height: 1.5;
+}
+.dr-err {
+  margin-top: 8px; padding: 7px 9px; border-radius: 4px; background: #2e1a1a;
+  border-left: 2px solid var(--red); color: #f0c2c2; font-size: var(--fs-sm); line-height: 1.45;
+}
+.dr-asks { margin-top: 8px; }
+.dr-asks-hd { color: var(--fg-faint); font-size: var(--fs-sm); margin-bottom: 4px; }
+.dr-askrow {
+  display: flex; align-items: baseline; gap: 6px; padding: 4px 0;
+  color: var(--fg); font-size: var(--fs-sm); line-height: 1.45;
+}
+.dr-askrow .grow { flex: 1; }
+.dr-mini {
+  flex: none; padding: 1px 7px; border-radius: 9px; background: #2c2c2c; border: 1px solid #191919;
+  color: var(--fg-dim); font-size: var(--fs-sm); cursor: pointer;
+}
+.dr-mini:hover { background: #383838; color: var(--fg-bright); }
+.dr-plan { margin-top: 9px; border-top: 1px solid var(--line); padding-top: 8px; }
+.dr-plan-hd { color: var(--fg-faint); font-size: var(--fs-sm); margin-bottom: 6px; line-height: 1.4; }
+/* A long plan scrolls inside the node rather than growing it past the screen. */
+.dr-plan-list { max-height: 260px; overflow-y: auto; }
+.dr-act {
+  display: flex; align-items: flex-start; gap: 7px; padding: 5px 0; cursor: pointer;
+}
+.dr-act input { margin-top: 2px; flex: none; }
+.dr-act-body { display: flex; flex-direction: column; gap: 2px; }
+.dr-act-what { color: var(--fg-bright); font-size: var(--fs-sm); line-height: 1.45; }
+.dr-act-why { color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.4; }
+.dr-drop { margin-top: 7px; color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.4; }
+.dr-drop summary { cursor: pointer; }
+.dr-drop summary:hover { color: var(--fg-dim); }
+.dr-droprow { padding: 3px 0 0 12px; }
+.dr-droprow b { color: var(--fg-dim); font-family: var(--mono); font-weight: 400; }
+.dr-note { margin-top: 7px; color: var(--fg-faint); font-family: var(--mono); font-size: var(--fs-sm); }
+
+/* Ports stay for people who reach for them, but nothing depends on hitting one. */
+.sn-port {
+  position: absolute; width: 14px; height: 14px; border-radius: 50%;
+  background: #1b1b1b; border: 2px solid #7fb2e5; top: 11px;
+  transition: transform .1s ease, background-color .1s ease;
+}
+.sn-port.out { right: -8px; cursor: crosshair; }
+.sn-port.out:hover { background: #7fb2e5; transform: scale(1.35); }
+.sn-port.in { left: -8px; border-color: #4b9b58; }
+
+/* "drag me onto a shot" — the instruction lives on the thing it describes. */
+.sn-link {
+  position: absolute; right: 8px; bottom: -11px; padding: 2px 9px;
+  border-radius: 11px; border: 1px solid #23507f; background: var(--accent);
+  color: #fff; font-size: var(--fs-sm); cursor: pointer; opacity: 0;
+  transition: opacity .12s ease;
+}
+.sn-node:hover .sn-link { opacity: 1; }
+.sn-link:hover { filter: brightness(1.15); }
+.sn-hint {
+  position: absolute; left: 0; right: 0; bottom: -20px; text-align: center;
+  color: var(--fg-faint); font-size: var(--fs-sm); pointer-events: none;
+  opacity: 0; transition: opacity .12s ease;
+}
+.sn-node:hover .sn-hint { opacity: .8; }
+
+.sn-cursor-label {
+  position: absolute; z-index: 40; pointer-events: none; white-space: nowrap;
+  padding: 4px 9px; border-radius: 4px; background: #101317; border: 1px solid var(--line);
+  color: var(--fg-bright); font-size: var(--fs-sm); box-shadow: 0 4px 14px rgba(0,0,0,.6);
+}
+
+.sn-empty {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  text-align: center; color: var(--fg-dim); pointer-events: none; max-width: 420px;
+}
+.sn-empty-ico { font-size: 30px; opacity: .3; margin-bottom: 10px; }
+.sn-empty-hd { color: var(--fg-bright); font-size: 15px; margin-bottom: 14px; }
+.sn-empty-steps { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; text-align: left; }
+.sn-step { display: flex; align-items: baseline; gap: 9px; font-size: var(--fs); line-height: 1.45; }
+.sn-step b {
+  flex: none; width: 19px; height: 19px; border-radius: 50%; background: #2c2c2c;
+  color: var(--fg-dim); font-size: var(--fs-sm); display: inline-flex;
+  align-items: center; justify-content: center; font-weight: 600;
+}
+
+/* In Simple mode the page bar keeps only the render controls. */
+body.simple-view .pagebar .page-btn,
+body.simple-view .pagebar .corner-left { display: none; }
+body.simple-view .pagebar { justify-content: flex-end; }
+/* The generation mode is inferred from the wiring here — a switch for it would
+   be a second way to say the same thing, and they could disagree. */
+body.simple-view #mode-badge { display: none; }   /* the canvas shows it in its own toolbar */
+
+/* ── Library ──────────────────────────────────────────────── */
+#page-library .cols { grid-template-columns: 260px 1fr 340px; }
+.lb-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px; padding: 11px; align-content: start; align-items: start;
+}
+.lb-card {
+  background: var(--bg-panel-2); border: 1px solid #141414; border-radius: 4px;
+  overflow: hidden; cursor: pointer; transition: border-color .12s ease, transform .12s ease;
+}
+.lb-card:hover { border-color: var(--line-soft); transform: translateY(-1px); }
+.lb-card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
+.lb-card.picked { border-color: var(--clip-sel); box-shadow: 0 0 0 1px rgba(224,161,58,.45); }
+.lb-thumb { position: relative; aspect-ratio: 16/9; background: #0b0b0b; }
+.lb-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.lb-nofile { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--fg-faint); font-size: var(--fs-sm); }
+.lb-variant {
+  position: absolute; left: 5px; bottom: 5px; padding: 1px 6px; border-radius: 8px;
+  background: rgba(0,0,0,.65); color: #dce8f4; font-family: var(--mono); font-size: 9px;
+}
+.lb-pick {
+  position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,.6); border: 1px solid #000; color: #ddd; cursor: pointer;
+  font-size: 11px; line-height: 1; padding: 0;
+}
+.lb-pick:hover { background: var(--accent); color: #fff; }
+.lb-pick.on { background: var(--clip-sel); color: #1a1a1a; font-weight: 700; }
+.lb-meta { padding: 7px 8px 9px; }
+.lb-stars { display: flex; gap: 1px; }
+.lb-stars.big { font-size: 19px; }
+.lb-star { color: #3a3a3a; cursor: pointer; line-height: 1; }
+.lb-star:hover { color: #c9a24a; }
+.lb-star.on { color: var(--clip-sel); }
+.lb-sum { color: var(--fg-faint); font-family: var(--mono); font-size: var(--fs-sm); margin: 3px 0 4px; }
+.lb-prompt { color: var(--fg-dim); font-size: var(--fs-sm); line-height: 1.5; max-height: 62px; overflow: hidden; }
+
+.cmp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cmp-side { min-width: 0; }
+.cmp-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.cmp-table th { text-align: left; color: var(--fg-faint); font-weight: 500; padding: 3px 8px 3px 0; }
+.cmp-table td { padding: 3px 8px 3px 0; border-top: 1px solid var(--line-hair); font-family: var(--mono); color: var(--fg); }
+.cmp-table td:first-child { color: var(--fg-dim); font-family: var(--font); }
+.cmp-diff {
+  background: #121212; border: 1px solid #0b0b0b; border-radius: var(--radius);
+  padding: 10px 11px; line-height: 1.7; color: var(--fg-dim); white-space: pre-wrap; word-break: break-word;
+  max-height: 34vh; overflow: auto;
+}
+.d-del { background: #3a1e1e; color: #f0b4ac; text-decoration: line-through; }
+.d-add { background: #1c3524; color: #a8e8be; text-decoration: underline; }
+
+.rule-row {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 9px 0; border-top: 1px solid var(--line-hair);
+}
+.rule-row input[type="checkbox"] { margin-top: 2px; }
+
+/* ── Create — the front of house ──────────────────────────────
+ * Nothing here looks like an NLE. Wide margins, one question at a time, type
+ * big enough to think in. The studio is a door on the far side of it. */
+#page-create { background: #15171a; overflow: auto; }
+.cr-wrap { min-height: 100%; padding: 0 0 60px; }
+
+.cr-rail {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; gap: 4px; justify-content: center; align-items: center;
+  padding: 10px; background: rgba(21,23,26,.92); backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+}
+.cr-step {
+  display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 14px;
+  background: transparent; border: 1px solid transparent; border-radius: 16px;
+  color: var(--fg-faint); cursor: pointer; font-size: var(--fs);
+}
+.cr-step:hover { color: var(--fg); background: #1e2126; }
+.cr-step.done { color: var(--fg-dim); }
+.cr-step.on { color: var(--fg-bright); background: #232830; border-color: #2f3640; }
+.cr-step-n {
+  width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: #2a2f36; color: var(--fg-dim); font-family: var(--mono); font-size: 9px;
+}
+.cr-step.on .cr-step-n { background: var(--accent); color: #fff; }
+.cr-step.done .cr-step-n { background: #2f5c46; color: #cfe8da; }
+
+.cr-stage { max-width: 720px; margin: 0 auto; padding: 34px 24px 0; }
+.cr-hero { margin-bottom: 22px; }
+.cr-hero.small { margin-bottom: 16px; }
+.cr-h { margin: 0 0 6px; font-size: 25px; font-weight: 600; color: var(--fg-bright); letter-spacing: -.01em; }
+.cr-hero.small .cr-h { font-size: 19px; }
+.cr-sub { margin: 0; color: var(--fg-dim); font-size: 13px; line-height: 1.65; max-width: 60ch; }
+
+.cr-idea {
+  width: 100%; font-size: 16px; line-height: 1.6; padding: 14px 16px;
+  background: #1b1e22; border: 1px solid #262b31; border-radius: 8px; color: var(--fg-bright);
+  box-shadow: none;
+}
+.cr-idea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,134,200,.15); }
+.cr-idea::placeholder { color: #4e565f; }
+
+.cr-drop {
+  margin-top: 14px; padding: 18px; border: 1px dashed #333a42; border-radius: 8px;
+  text-align: center; cursor: pointer; background: #191c20;
+}
+.cr-drop:hover, .cr-drop.over { border-color: var(--accent); background: #1b2027; }
+.cr-drop-row { display: flex; gap: 8px; align-items: center; justify-content: center; color: var(--fg-dim); margin-bottom: 6px; }
+.cr-drop-ico { font-size: 17px; opacity: .8; margin-left: 10px; }
+.cr-drop-row span:first-child { margin-left: 0; }
+
+.cr-material { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.cr-chip-media {
+  display: flex; align-items: center; gap: 10px; padding: 7px 9px;
+  background: #1b1e22; border: 1px solid #23272c; border-radius: 6px;
+}
+.cr-chip-thumb {
+  width: 46px; height: 30px; border-radius: 4px; background: #0d1013 center/cover no-repeat;
+  display: flex; align-items: center; justify-content: center; color: var(--fg-faint); flex: none;
+}
+
+.cr-row { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+.cr-label { color: var(--fg-dim); }
+.cr-actions { margin: 26px 0 40px; display: flex; align-items: center; }
+.cr-go {
+  height: 44px; padding: 0 26px; border-radius: 22px; border: 0; cursor: pointer;
+  background: linear-gradient(180deg, #5a95d6, #3d76b4); color: #fff;
+  font-size: 14px; font-weight: 600; letter-spacing: .01em;
+  box-shadow: 0 4px 16px rgba(58,110,170,.35);
+  transition: transform .1s ease, box-shadow .12s ease;
+}
+.cr-go:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(58,110,170,.45); }
+.cr-go.disabled { opacity: .55; pointer-events: none; }
+
+/* Steer */
+.cr-steer { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 26px; max-width: 1180px; margin: 0 auto; padding: 30px 24px 0; }
+.cr-col-side { position: sticky; top: 62px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+.cr-card {
+  background: #1a1d21; border: 1px solid #23272c; border-radius: 8px;
+  padding: 14px 16px 16px; margin-bottom: 12px;
+}
+.cr-ask { display: flex; align-items: center; gap: 8px; color: var(--fg-bright); font-size: 14px; margin-bottom: 9px; }
+.cr-why {
+  margin: -3px 0 10px; padding: 8px 10px; border-left: 2px solid var(--accent-dim);
+  background: #171b20; color: var(--fg-dim); font-size: var(--fs-sm); line-height: 1.6;
+}
+.cr-ctl input[type="text"], .cr-ctl textarea { font-size: 13px; height: 30px; }
+.cr-beat { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.cr-beat-n {
+  width: 18px; height: 18px; flex: none; border-radius: 50%; background: #262b31;
+  color: var(--fg-faint); font-family: var(--mono); font-size: 9px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cr-brief { margin: 6px 0 0; }
+.cr-brief > summary { cursor: pointer; color: var(--fg-faint); padding: 8px 0; font-size: var(--fs-sm); }
+.cr-brief > summary:hover { color: var(--fg); }
+
+.cr-previz { position: relative; height: 200px; border-radius: 8px; overflow: hidden; background: #000; border: 1px solid #23272c; }
+.cr-strength { background: #1a1d21; border: 1px solid #23272c; border-radius: 8px; padding: 11px 13px; }
+.cr-dials { background: #1a1d21; border: 1px solid #23272c; border-radius: 8px; padding: 6px 13px 12px; }
+.cr-dial { padding: 9px 0; border-bottom: 1px solid #212529; }
+.cr-dial:last-child { border-bottom: 0; }
+.cr-dial-hd { display: flex; align-items: baseline; gap: 7px; color: var(--fg); margin-bottom: 6px; }
+/* The readout is a sentence, not a word — the light dial names a source AND a
+   grade, and pace explains itself when a clip is crowded. Left to grow it
+   overflowed leftwards, right-aligned, straight through the dial's own label.
+   The label holds its width; the readout wraps into what is left. */
+.cr-dial-hd > .grow { flex: 0 0 auto; white-space: nowrap; }
+.cr-dial-hd .hint { flex: 1 1 auto; min-width: 0; font-size: var(--fs-sm); text-align: right; }
+.cr-dial-ico { opacity: .7; width: 14px; }
+.cr-dial input[type="range"] { width: 100%; height: 5px; }
+.cr-dial-ends { display: flex; justify-content: space-between; color: var(--fg-faint); font-size: 9px; margin-top: 4px; }
+
+/* Takes */
+.cr-takes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.cr-take { background: #1a1d21; border: 1px solid #23272c; border-radius: 8px; padding: 12px; }
+.cr-take-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cr-take video { width: 100%; border-radius: 5px; background: #000; display: block; }
+.cr-take-empty {
+  aspect-ratio: 16/9; border-radius: 5px; background: #0f1216; display: flex;
+  align-items: center; justify-content: center; color: var(--fg-faint); font-size: var(--fs-sm);
+}
+
+@media (max-width: 1080px) {
+  .cr-steer { grid-template-columns: 1fr; }
+  .cr-col-side { position: static; }
+  .cr-takes { grid-template-columns: 1fr; }
+}
+
+/* Create hides the studio's chrome: no page bar, no mode switch — the mode is
+   decided by what you dropped, and the pages are behind the Studio door. */
+body.create-view .pagebar .page-btn,
+body.create-view .pagebar .corner-left,
+body.create-view #mode-badge { display: none; }
+body.create-view .pagebar { justify-content: flex-end; }
+
+/* ── The readthrough ──────────────────────────────────────────
+ * The prompt, playing. Three views of one instant: the plate, the score, and
+ * the text with the clause currently in effect lit up. */
+.rt { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #14161a; }
+.rt-top {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, 1fr);
+  gap: 10px; padding: 10px 12px 0;
+}
+.rt-top > *:first-child { min-width: 0; min-height: 0; }
+.rt-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
+
+/* What is true right now, in words. */
+.rt-now {
+  flex: none; display: flex; flex-direction: column; gap: 5px; padding: 9px 10px;
+  background: #1b1e23; border: 1px solid var(--line); border-radius: 5px;
+}
+.rt-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs); line-height: 1.45; flex-wrap: wrap; }
+.rt-row b { color: var(--fg-bright); }
+.rt-dim { color: var(--fg-faint); font-size: var(--fs-sm); }
+.rt-warn { color: var(--amber, #e0a13a); font-size: var(--fs-sm); }
+.rt-say { color: #e58f8f; }
+.rt-pill {
+  display: inline-block; margin-right: 4px; padding: 1px 8px; border-radius: 10px;
+  border: 1px solid var(--line); color: var(--fg-dim); font-size: var(--fs-sm);
+}
+.rt-pill.rt-quiet { opacity: .6; }
+/* Every beat of the current shot, with the one in play lit — so you can see
+ * what has happened and what is still coming, not just where you are. */
+.rt-beats { display: flex; flex-wrap: wrap; gap: 4px; }
+.rt-beats i {
+  font-style: normal; padding: 1px 8px; border-radius: 10px; background: #23262b;
+  color: var(--fg-faint); font-size: var(--fs-sm);
+}
+.rt-beats i.on { background: #4a3a14; color: #f0d79a; }
+
+/* The prompt, scrolling itself. */
+.rt-text {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 10px 11px;
+  background: #101317; border: 1px solid var(--line); border-radius: 5px;
+  font-size: var(--fs); line-height: 1.65; color: #6f7883;
+}
+.rt-para { margin-bottom: 9px; }
+.rt-para:last-child { margin-bottom: 0; }
+.rt-shotmark { color: #4d5762; font-family: var(--mono); font-size: var(--fs-sm); margin-right: 5px; }
+.rt-field { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 10px; }
+.rt-fieldname { display: block; color: #4d5762; font-family: var(--mono); font-size: var(--fs-sm); margin-bottom: 3px; }
+.rt-clause { transition: color .14s ease, background-color .14s ease; border-radius: 2px; }
+/* Unlit text stays readable but recedes; the live clause is the only bright
+ * thing on the panel, which is what makes the reading legible at a glance. */
+.rt-clause.live { color: #eaf1f8; background: rgba(127,178,229,.12); box-shadow: 0 0 0 2px rgba(127,178,229,.12); }
+.rt-clause.rt-action.live { background: rgba(224,161,58,.16); box-shadow: 0 0 0 2px rgba(224,161,58,.16); }
+.rt-clause.rt-camera.live { background: rgba(199,154,224,.15); box-shadow: 0 0 0 2px rgba(199,154,224,.15); }
+.rt-clause.rt-speech.live { background: rgba(229,143,143,.16); box-shadow: 0 0 0 2px rgba(229,143,143,.16); }
+.rt-clause.rt-sound.live, .rt-clause.rt-music.live { background: rgba(121,199,155,.14); box-shadow: 0 0 0 2px rgba(121,199,155,.14); }
+.rt-clause.rt-silent { font-style: italic; opacity: .75; }
+
+.rt-bar {
+  flex: none; display: flex; align-items: center; gap: 9px; padding: 8px 12px 6px;
+}
+.rt-bar .grow { flex: 1; }
+.rt-play {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid #1a1a1a; background: #2e2e2e;
+  color: var(--fg-bright); cursor: pointer; font-size: 11px; line-height: 1; padding: 0;
+}
+.rt-play:hover { background: #3a3a3a; }
+.rt-time { color: var(--fg-bright); }
+
+/* The score. One row per channel, one playhead through all of them. */
+.rt-scroll { flex: none; position: relative; padding: 0 12px 12px; cursor: text; }
+.rt-ruler { position: relative; height: 14px; margin-left: 92px; }
+.rt-ruler i {
+  position: absolute; transform: translateX(-50%); color: var(--fg-faint);
+  font-family: var(--mono); font-size: var(--fs-sm); font-style: normal;
+}
+.rt-lanes { display: flex; flex-direction: column; gap: 3px; }
+.rt-lane { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 0; }
+.rt-lane-lb {
+  display: flex; align-items: center; gap: 6px; color: var(--fg-faint);
+  font-size: var(--fs-sm); padding-right: 8px; white-space: nowrap;
+}
+.rt-lane-lb i { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+.rt-track {
+  position: relative; height: 22px; border-radius: 3px; background: #1a1d21;
+  border: 1px solid #16181b; overflow: hidden;
+}
+.rt-lane-density .rt-track { height: 26px; background: #16181b; }
+/* The camera lane draws effort as height, so it needs room for the tall end
+ * of that scale to still be a readable block rather than a thin line. */
+.rt-lane-camera .rt-track { height: 32px; }
+.rt-lane-camera .rt-block span { line-height: 1; }
+.rt-block {
+  position: absolute; top: 2px; bottom: 2px; border-radius: 2px; opacity: .32;
+  border: 1px solid transparent; overflow: hidden; display: flex; align-items: center;
+  transition: opacity .12s ease, filter .12s ease;
+}
+.rt-block span {
+  padding: 0 5px; font-size: var(--fs-sm); color: #0d0f12; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rt-block.silent { opacity: .5; border-style: dashed; }
+.rt-block.silent span { color: var(--fg-faint); font-weight: 400; font-style: italic; }
+.rt-block.live { opacity: 1; filter: brightness(1.05); }
+.rt-none { padding: 0 7px; line-height: 20px; color: var(--fg-faint); font-size: var(--fs-sm); font-style: italic; }
+.rt-density { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 0; }
+.rt-density i { flex: 1; background: linear-gradient(180deg, #7a6030, #3a3020); min-height: 1px; }
+.rt-playhead {
+  position: absolute; top: 0; bottom: 12px; width: 1px; background: var(--red);
+  margin-left: 92px; pointer-events: none; box-shadow: 0 0 6px rgba(224,60,60,.6);
+}
+.rt-playhead::before {
+  content: ""; position: absolute; top: 0; left: -4px; width: 9px; height: 9px;
+  background: var(--red); clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+
+@media (max-width: 1100px) {
+  .rt-top { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(140px, 1fr) minmax(0, 1fr); }
+}
+
+/* A modal that has to hold a timeline gives its body the whole box. */
+#modal.modal-full { display: flex; flex-direction: column; }
+#modal.modal-full #modal-body { flex: 1; min-height: 0; padding: 0; overflow: hidden; }
+#modal.modal-full #modal-body > * { height: 100%; }
+
+/* previz positions its overlays absolutely; without a positioned, clipped box
+ * of its own they escape and paint over the whole page. */
+.rt-plate {
+  position: relative; overflow: hidden; min-width: 0; min-height: 0;
+  border: 1px solid var(--line); border-radius: 5px; background: #000;
+}
+.rt-plate > * { position: absolute; inset: 0; }
+
+/* Create's hand-off: what was built, and what each view is now for. */
+.cr-hand { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 4px; max-width: 640px; }
+.cr-hand-row {
+  display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: baseline;
+  padding: 9px 11px; background: #1b1e23; border: 1px solid var(--line); border-radius: 5px;
+}
+.cr-hand-row b { color: var(--fg-bright); }
+.cr-hand-row span { color: var(--fg-dim); font-size: var(--fs); line-height: 1.5; }
+
+/* The director says what it is reading, because "what do I wire this to" is
+ * the first question the node provokes. */
+/* The director's shot picker. Narrowing the LLM to one shot is a real idea —
+ * "work on this one" — which is why it survived the steering split. */
+.dr-pick { margin-bottom: 9px; }
+.dr-pick-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.dr-pick-row .sn-chip { flex: 0 0 auto; min-width: 26px; }
+
+.dr-scope {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line);
+  font-size: var(--fs-sm);
+}
+.dr-scope-lb { color: var(--fg-faint); text-transform: uppercase; letter-spacing: .06em; }
+.dr-scope b { color: #c9b8ec; }
+.dr-scope-hint { color: var(--fg-faint); }
+
+/* ── The camera pad ───────────────────────────────────────────
+ * Angle picks the move, distance picks the amplitude, centre is static. */
+.cam { margin-top: 9px; }
+.cam-modes { display: flex; gap: 4px; margin-bottom: 6px; }
+.cam-modes .sn-chip { flex: 1; }
+.cam-body { display: flex; gap: 7px; align-items: stretch; }
+.cam-pad {
+  position: relative; flex: none; width: 96px; height: 96px; border-radius: 5px;
+  background: #16191d; border: 1px solid #0e0e0e; cursor: crosshair;
+  touch-action: none; overflow: hidden;
+}
+.cam-ring {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  border: 1px solid #262b31; border-radius: 50%; pointer-events: none;
+}
+.cam-ring.small { width: 34%; height: 34%; }
+.cam-ring.mid { width: 62%; height: 62%; }
+.cam-ring.large { width: 88%; height: 88%; border-style: dashed; }
+.cam-cross {
+  position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), #262b31 calc(50% - 1px), #262b31 50%, transparent 50%),
+    linear-gradient(180deg, transparent calc(50% - 1px), #262b31 calc(50% - 1px), #262b31 50%, transparent 50%);
+}
+.cam-puck {
+  position: absolute; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px;
+  border-radius: 50%; background: var(--accent); border: 1px solid #23507f;
+  box-shadow: 0 0 0 3px rgba(60,120,190,.2); pointer-events: none;
+  transition: left .06s linear, top .06s linear;
+}
+.cam-static {
+  position: absolute; left: 0; right: 0; bottom: 4px; text-align: center;
+  color: var(--fg-faint); font-size: var(--fs-sm); pointer-events: none;
+}
+.cam-depth { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.cam-depth-b {
+  flex: 1; border-radius: 3px; background: #2c2c2c; border: 1px solid #191919;
+  color: var(--fg-dim); cursor: pointer; font-size: 11px; line-height: 1; padding: 0;
+}
+.cam-depth-b:hover { background: #383838; color: var(--fg-bright); }
+.cam-depth-b.on { background: var(--accent); border-color: #23507f; color: #fff; }
+.cam-lens {
+  flex: none; height: 20px; border-radius: 3px; background: #23262b; border: 1px solid #191919;
+  color: var(--fg-faint); cursor: pointer; font-size: var(--fs-sm); line-height: 1; padding: 0;
+}
+.cam-lens:hover { color: var(--fg-bright); }
+.cam-lens.on { background: #3a3050; border-color: #2a2140; color: #c9b8ec; }
+.cam-row { display: flex; gap: 4px; margin-top: 5px; }
+.cam-row .sn-chip { flex: 1; padding: 0 2px; }
+.cam-say {
+  margin-top: 6px; color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.4;
+}
+.cam-held {
+  display: flex; align-items: baseline; gap: 6px; margin-top: 5px;
+  color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.4;
+}
+.cam-held .grow { flex: 1; }
+
+/* The render node, while it renders. */
+.rn-prog { margin-top: 7px; }
+.rn-prog .progress { height: 5px; }
+.rn-prog-row {
+  display: flex; align-items: baseline; gap: 7px; margin-top: 4px;
+  font-size: var(--fs-sm); color: var(--fg-faint);
+}
+.rn-prog-row .grow { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sn-shotplate {
+  aspect-ratio: 16/9; border-radius: 3px; background: #0b0b0b; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.sn-shotplate img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* A live sampler frame fills the viewer the way the finished clip does. */
+.viewer .surface img.live { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+
+/* A reference no shot names does nothing at all. Say so on the node, where
+ * the missing wire is, rather than as a warning on another page. */
+.sn-node.unused { border-color: var(--amber, #e0a13a); }
+.sn-node.unused .sn-hd { background: #5d4a20; }
+.sn-unused {
+  margin-top: 6px; padding: 7px 8px; border-radius: 4px;
+  background: rgba(224,161,58,.1); border-left: 2px solid var(--amber, #e0a13a);
+  color: var(--fg-dim); font-size: var(--fs-sm); line-height: 1.45;
+}
+.sn-unused-hd { color: #f0d79a; font-weight: 600; margin-bottom: 3px; }
+.sn-unused .dr-mini { flex: 1; }
+/* A per-node verb, beside the badge. */
+.sn-act {
+  width: 20px; height: 18px; padding: 0; border: 0; border-radius: 3px;
+  background: rgba(0,0,0,.25); color: #dce8f4; cursor: pointer; font-size: 11px; line-height: 1;
+  opacity: .7; transition: opacity .12s ease, background-color .12s ease;
+}
+.sn-act:hover { opacity: 1; background: var(--accent); }
+.sn-act.disabled { opacity: .4; pointer-events: none; }
+
+/* Steering scope: the whole clip, or one shot. */
+/* Steering says what it governs in a sentence, at the top, once. The old panel
+ * said it with a scope switch and by greying half its own controls out. */
+.st-lede { color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.45; margin-bottom: 8px; }
+.st-note {
+  margin-top: 9px; padding-top: 7px; border-top: 1px solid var(--line);
+  color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.5;
+}
+.st-tag {
+  font-size: var(--fs-sm); color: var(--fg-faint); border: 1px solid var(--line);
+  border-radius: 8px; padding: 0 6px; background: transparent; cursor: default;
+}
+button.st-tag { cursor: pointer; }
+.st-tag.on { color: #f0d79a; border-color: #6b551f; background: #26200f; }
+button.st-tag.on:hover { background: #3a3116; color: #ffe9b8; }
+/* A dial this shot has taken over gets the amber the rest of the app uses for
+ * "modified", so you can see which of the three you moved without reading. */
+.sn-dial.own input[type="range"] { accent-color: var(--amber); }
+.sn-dial.own .sn-dial-hd { color: #f0d79a; }
+.st-shot .sn-dials { margin-top: 2px; }
+
+/* ── A fold inside a node ────────────────────────────────────
+ * Fine-tuning is on the shot, where the shot is — but most shots follow the
+ * clip, and three more sliders on every node would bury the writing. */
+.sn-fold { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 7px; }
+.sn-fold-hd {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  background: transparent; border: 0; padding: 2px 0; cursor: pointer;
+  color: var(--fg-dim); font-size: var(--fs-sm); text-align: left;
+}
+.sn-fold-hd:hover { color: var(--fg-bright); }
+.sn-fold-hd .grow { flex: 1; }
+.sn-fold-caret { font-size: 9px; opacity: .7; transition: transform .14s ease; }
+.sn-fold.open .sn-fold-caret { transform: rotate(90deg); }
+.sn-fold.open .sn-fold-hd { color: var(--fg-bright); }
+.sn-fold-bd { padding-top: 7px; }
+
+/* Where a shot happens and how it is lit — the fields the director writes. */
+.sn-where { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.sn-where input {
+  width: 100%; height: 24px; padding: 0 7px; font-size: var(--fs-sm);
+  background: #1a1d21; border: 1px solid #16181b; border-radius: 3px; color: var(--fg);
+}
+.sn-where input:focus { border-color: var(--accent); outline: none; }
+.sn-where input::placeholder { color: #4d5762; }
+
+/* ── A reference tag in a compiled prompt ─────────────────────
+ * The tag alone tells you nothing about which picture it names, and a tag with
+ * nothing behind it looks exactly like one that works — while the model
+ * silently ignores it. So the chip carries the media's name and turns red when
+ * there is no media. */
+.ptag {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 0 6px; border-radius: 10px; white-space: nowrap;
+  background: color-mix(in srgb, var(--ptag, #7fb2e5) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ptag, #7fb2e5) 55%, transparent);
+  color: var(--ptag, #7fb2e5);
+}
+.ptag-name {
+  font-style: normal; font-size: var(--fs-sm); opacity: .8;
+  max-width: 12ch; overflow: hidden; text-overflow: ellipsis;
+}
+.ptag-name::before { content: "· "; opacity: .6; }
+.ptag.dangling {
+  background: rgba(224,60,60,.14); border-color: var(--red); color: #f0c2c2;
+  text-decoration: underline wavy var(--red) 1px; text-underline-offset: 3px;
+}
+/* In the readthrough the prompt is prose, so the chip stays inline and quiet
+ * until its clause is the one in effect. */
+.rt-text .ptag { padding: 0 5px; }
+/* Rewrite-with-a-model and delete should not be neighbours. */
+.sn-hd-gap { width: 6px; flex: none; }
+
+/* Turning "that went wrong" into "stop it happening again" — the one click
+ * between noticing a problem and preventing it. */
+.lb-learn {
+  margin-top: 9px; padding: 9px 10px; border-radius: 5px;
+  background: rgba(224,161,58,.09); border-left: 2px solid var(--amber, #e0a13a);
+}
+.lb-learn-hd { color: #f0d79a; font-weight: 600; font-size: var(--fs-sm); margin-bottom: 4px; }
+.lb-learn-rule {
+  color: var(--fg); font-size: var(--fs-sm); line-height: 1.5; margin-bottom: 7px;
+}
+
+/* ── Create is a step; Canvas and Studio are a pair ───────────
+ * Three equal buttons said "three places to be". Create sits before an arrow,
+ * numbered; the two views of the same project are grouped after it. */
+.viewflow { display: flex; align-items: center; gap: 7px; }
+.stepbtn {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 5px;
+  border-radius: 12px; border: 1px solid var(--line); background: transparent;
+  color: var(--fg-dim); cursor: pointer; font-size: var(--fs);
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.stepbtn:hover { color: var(--fg-bright); border-color: #3a3a3a; }
+.stepbtn-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; background: #2c2c2c;
+  color: var(--fg-faint); font-size: 10px; font-weight: 600;
+  transition: background-color .15s ease, color .15s ease;
+}
+.stepbtn.on { background: var(--accent); border-color: #23507f; color: #fff; }
+.stepbtn.on .stepbtn-n { background: rgba(255,255,255,.25); color: #fff; }
+.viewflow-to { color: var(--fg-faint); font-size: 11px; transition: opacity .2s ease; }
+/* While you are in Create the pair recedes — it is where you are going next. */
+.viewflow.at-create #view-seg { opacity: .55; }
+.viewflow.at-create #view-seg:hover { opacity: 1; }
+.viewflow:not(.at-create) .viewflow-to { opacity: .35; }
+
+
+/* ── Resizable seams ──────────────────────────────────────────
+ * The 1px hairline between two sections becomes something you can grab. It is
+ * a grid track of its own rather than an overlay, so it never sits on top of a
+ * panel's scrollbar — and the seamed grid drops its gap, so the seam is
+ * exactly as thin as it always was until you point at it.
+ */
+.sz-gut {
+  position: relative;
+  background: var(--line);
+  touch-action: none;
+  align-self: stretch; justify-self: stretch;
+  display: flex; align-items: center; justify-content: center;
+}
+.sz-gut.sz-col { cursor: col-resize; }
+.sz-gut.sz-row { cursor: row-resize; }
+/* The grip: three dots, and only once you are near it. */
+.sz-gut > i {
+  position: relative; z-index: 1; display: block; border-radius: 3px;
+  background: var(--line-soft);
+  opacity: 0; transform: scale(.7);
+  transition: opacity .14s ease, transform .14s ease, background-color .14s ease;
+}
+.sz-gut.sz-col > i { width: 2px; height: 26px; }
+.sz-gut.sz-row > i { width: 26px; height: 2px; }
+.sz-gut:hover, .sz-gut:focus-visible { background: #2a2a2a; }
+.sz-gut:hover > i, .sz-gut:focus-visible > i { opacity: 1; transform: scale(1); }
+.sz-gut:focus-visible { outline: none; background: var(--accent-dim); }
+.sz-grid.sz-dragging > .sz-gut { background: var(--accent); }
+.sz-grid.sz-dragging > .sz-gut > i { opacity: 1; transform: scale(1); background: #fff; }
+
+/* While a seam is moving, nothing else should be selecting text or fighting
+ * for the cursor. */
+body.sz-busy { user-select: none; }
+body.sz-busy * { cursor: inherit !important; }
+body.sz-busy .sz-grid.sz-dragging > .sz-gut.sz-col ~ * { cursor: col-resize; }
+
+/* A fingertip needs more than six pixels, and there is no hover to reveal the
+ * grip with — so on a touch screen it is simply always there. */
+@media (pointer: coarse) {
+  .sz-gut { background: #232323; }
+  .sz-gut > i { opacity: .85; transform: none; }
+  .sz-gut.sz-col > i { width: 3px; height: 34px; }
+  .sz-gut.sz-row > i { width: 34px; height: 3px; }
+}
+
+/* ── The voice node ───────────────────────────────────────────
+ * A speaking part, wired to every shot it speaks in. The lines still live on
+ * their shots — that is where H3 reads them — but a speaker is a person, and
+ * this is the only place the app shows one as such.
+ */
+.sn-voice .sn-hd { background: #5c2f4a; }
+.vc-line { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 6px; }
+.vc-line:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+.vc-hd { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+.vc-hd .grow { flex: 1; }
+.vc-where { font-size: var(--fs-sm); color: #e6b8d4; font-family: var(--mono); }
+.vc-lang {
+  height: 17px; padding: 0 2px; font-size: var(--fs-sm);
+  background: #262024; border: 1px solid var(--line); color: var(--fg-dim);
+}
+.vc-x {
+  width: 16px; height: 16px; padding: 0; line-height: 1;
+  background: transparent; border: 0; color: var(--fg-faint); cursor: pointer; border-radius: 3px;
+}
+.vc-x:hover { background: #4a2530; color: #f0b8c8; }
+.vc-vo {
+  display: flex; align-items: center; gap: 5px; margin-top: 3px;
+  font-size: var(--fs-sm); color: var(--fg-faint); cursor: pointer;
+}
+.vc-vo:hover { color: var(--fg-dim); }
+.vc-add { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 7px; }
+.vc-add-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.vc-add-row .sn-chip { flex: 0 0 auto; min-width: 26px; }
+
+/* ── The look node ──────────────────────────────────────────── */
+.sn-look .sn-hd { background: #2f4a5c; }
+.sn-look select { width: 100%; }
+.sn-cast .sn-hd { background: #4a3a2a; }
+.sn-cast select { width: 100%; }
+
+/* The two fields H3 builds a voice out of. They sit with the words rather than
+ * behind a "more", because a line whose speaker has never been described is
+ * the commonest way to get a voice you did not ask for. */
+.dlg-identity { width: 100%; margin-bottom: 4px; }
+.dlg-delivery { width: 120px; flex: none; }
+.vc-identity { width: 100%; margin-bottom: 7px; }
+.vc-delivery { width: 100%; margin-top: 4px; }
+
+/* <scenetrans> and <cutoff> — the two markers that say a line of dialogue does
+ * not stop where the shot does. Shown, because a continuity tag in the wrong
+ * place is invisible as plain prose. */
+.cont {
+  color: #e6b8d4; background: #3a2432; border-radius: 3px; padding: 0 3px;
+  font-family: var(--mono); font-size: var(--fs-sm);
+}
+
+/* ── Action beats ─────────────────────────────────────────────
+ * One editor, two hosts. `.compact` is the canvas node, where the column is
+ * 236px wide and the labels have to go; everything structural is shared,
+ * because the two views disagreeing about a shot is what this replaced.
+ */
+.beats-hd {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+  font-size: var(--fs-sm); color: var(--fg-dim);
+}
+.beats-hd .grow { flex: 1; }
+.beat-row { margin-bottom: 5px; }
+.beat-hd { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+.beat-hd .grow { flex: 1; }
+.beat-link { width: 104px; height: 18px; }
+
+.beats.compact .beats-hd { color: var(--fg-faint); }
+.beats.compact .beat-row { margin-bottom: 4px; }
+.beats.compact .beat-link { width: 88px; height: 16px; font-size: var(--fs-sm); }
+.beats.compact .beat-hd .tag { font-size: var(--fs-sm); }
+.beats.compact textarea { font-size: var(--fs); }
+.beats.compact .btn-row { margin-top: 2px; }
+
+/* The subject, on the node, as its own field — an em dash in it used to cut
+ * the shot in half. */
+.sn-subject { width: 100%; margin-bottom: 7px; }
+
+/* ── The render queue ─────────────────────────────────────── */
+.qrow {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg-panel-2); padding: 7px 8px; margin-bottom: 6px;
+}
+.qrow.running { border-color: var(--amber); background: #241f14; }
+.qrow.done    { opacity: .62; }
+.qrow.error   { border-color: #5d2820; }
+.qtop { display: flex; align-items: center; gap: 6px; }
+.qname { color: var(--fg-bright); font-weight: 600; }
+.qline {
+  margin-top: 4px; color: var(--fg-dim); font-size: var(--fs-sm);
+  line-height: 1.45; max-height: 42px; overflow: hidden;
+}
+
+/* ── The project manager ──────────────────────────────────────
+ * Where the app opens, and the only page that is about the tool rather than
+ * about a clip. Deliberately roomier than the editor: this is the moment
+ * before the work, not during it.
+ */
+#page-projects { overflow: auto; }
+.pm { max-width: 1100px; margin: 0 auto; padding: 28px 24px 40px; }
+.pm-head { margin-bottom: 22px; }
+.pm-title { margin: 0 0 5px; font-size: 26px; font-weight: 700; color: var(--fg-bright); letter-spacing: -.01em; }
+.pm-sub { color: var(--fg-dim); font-size: var(--fs-lg); line-height: 1.5; max-width: 62ch; }
+.pm-cols { display: grid; grid-template-columns: 320px 1fr; gap: 26px; align-items: start; }
+
+.pm-starter {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 11px; margin-bottom: 7px;
+  background: var(--bg-panel-2); border: 1px solid var(--line); border-radius: 5px;
+  color: var(--fg); cursor: pointer;
+  transition: background-color .13s ease, border-color .13s ease, transform .13s ease;
+}
+.pm-starter:hover { background: #2c2c2c; border-color: var(--line-soft); transform: translateY(-1px); }
+.pm-starter-ico { font-size: 17px; opacity: .7; line-height: 1.4; flex: none; }
+.pm-starter-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pm-starter-name { color: var(--fg-bright); font-weight: 600; }
+.pm-starter-blurb { color: var(--fg-faint); font-size: var(--fs-sm); line-height: 1.45; }
+
+.pm-listhead { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; }
+.pm-listhead input { flex: 1; max-width: 220px; }
+.pm-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 11px; margin-bottom: 6px;
+  background: var(--bg-panel-2); border: 1px solid var(--line); border-radius: 5px;
+}
+.pm-row.open { border-color: var(--accent-dim); background: #1f2833; }
+.pm-row.broken { border-color: #5d2820; opacity: .8; }
+.pm-main { flex: 1; min-width: 0; }
+.pm-name { color: var(--fg-bright); font-weight: 600; display: flex; align-items: center; }
+.pm-meta { color: var(--fg-faint); font-size: var(--fs-sm); margin-top: 2px; }
+.pm-when { color: var(--fg-faint); font-size: var(--fs-sm); font-family: var(--mono); flex: none; }
+.pm-actions { display: flex; gap: 5px; flex: none; }
+.pm-foot {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.stepbtn-ico { opacity: .8; }
+
+@media (max-width: 780px) {
+  .pm { padding: 18px 12px 32px; }
+  .pm-cols { grid-template-columns: 1fr; gap: 18px; }
+  .pm-row { flex-wrap: wrap; }
+  .pm-when { order: 3; }
+  .pm-actions { order: 4; width: 100%; }
+}
+
+/* ── The character index ──────────────────────────────────────
+ * A picker over 1293 names, so it is a search box and a list and nothing
+ * else. The bucket a name is in is the only thing worth colour here: it is
+ * the difference between writing "Walter White" and having to describe him. */
+.kc { display: flex; flex-direction: column; gap: 9px; min-height: 0; }
+.kc-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.kc-top input[type="search"] { flex: 1 1 220px; min-width: 0; }
+.kc-filter { flex: none; }
+.kc-results {
+  min-height: 220px; max-height: 46vh; overflow: auto;
+  border-top: 1px solid var(--line-hair);
+}
+.kc-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 2px; border-bottom: 1px solid var(--line-hair);
+}
+.kc-row:last-child { border-bottom: 0; }
+/* Dimmed rather than hidden: sixty rows with an invisible button on each
+ * reads as a list you cannot do anything with. */
+.kc-row .btn { flex: none; opacity: .5; transition: opacity var(--t-fast, .12s) ease; }
+.kc-row:hover, .kc-row:focus-within { background: var(--bg-panel-2); }
+.kc-row:hover .btn, .kc-row:focus-within .btn { opacity: 1; }
+.kc-name { color: var(--fg-bright); }
+.kc-dot {
+  flex: none; width: 17px; height: 17px; border-radius: 50%;
+  display: grid; place-items: center; font-size: var(--fs-sm); line-height: 1;
+}
+.kc-dot.ok   { background: #1c3524; color: #a8e8be; }
+.kc-dot.warn { background: var(--amber-dim); color: #f0cf94; }
+.kc-dot.err  { background: #3a1e1e; color: #f0b4ac; }
+.kc-source { border-top: 1px solid var(--line-hair); padding-top: 8px; line-height: 1.6; }
+
+/* Touch has no hover to bring it up the rest of the way. */
+@media (hover: none) {
+  .kc-row .btn { opacity: 1; }
+}

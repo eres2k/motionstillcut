@@ -1,0 +1,19 @@
+# i2v-two-speakers
+# The prompt a user pasted back. Two speakers, an image anchor, an auto-written soundscape.
+# mode=i2v duration=5s
+
+For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
+
+integrated_multimodal_description: [Shot 1] A live-action cinematic medium wide shot, side: a woman with long dark hair in a light blue t-shirt and jeans kneeling on the ground, and a standing man in a camouflage uniform and cap holding a bloody bandage on his arm, shown in <Picture 1>. The opening preserves the appearance, clothing and spatial arrangement established in <Picture 1>. Shot on a 35mm lens. The setting is a dilapidated outdoor area with cracked pavement and scattered rubble in the background. Single practical lamp in frame. Warm golden-hour grade, amber highlights and soft shadows. The camera tilts up with small amplitude at fast speed while panning right. The woman kneels on the broken pavement with her hands clasped tightly at her chest, then she looks up at the standing soldier with a face contorted in grief, then the soldier stands rigid, staring down at her while clutching his injured arm. The Spartan warrior stands with his back to the camera, his fur-lined armor and axe visible. (S1) says, <d>[English] Please help us</d> (S2) says, <d>[English] I am sorry</d>
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A
+
+--- checks ---
+err: overall_soundscape is empty, so it exports as N/A — which tells the model to render the clip SILENT. Describe what can be heard, or tick deliberate silence if that is what you want.
+warn: non_diegetic_music is empty, so it exports as N/A — no score.
+warn: Shot 1: (S1) "Please help us" has no full stop. The words go into the prompt exactly as typed, so the sentence ends without one.
+warn: Shot 1: (S2) "I am sorry" has no full stop. The words go into the prompt exactly as typed, so the sentence ends without one.
+warn: (S1) speaks in shot 1 with no description. Say who they are and how they sound — "a young woman with a quiet, breathy voice" — or the model picks a voice for you.
+warn: (S2) speaks in shot 1 with no description. Say who they are and how they sound — "a young woman with a quiet, breathy voice" — or the model picks a voice for you.

@@ -1,0 +1,12 @@
+# silent
+# N/A is a positive instruction for a silent video, and must only appear when asked for.
+# mode=t2v duration=5s
+
+integrated_multimodal_description: [Shot 1] A live-action cinematic medium shot, front-facing: an empty corridor. The camera remains static. Holds still as the lights tick off one bank at a time.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A
+
+--- checks ---
+ok: Nothing to flag — the prompt matches the format H3's rewriter emits.

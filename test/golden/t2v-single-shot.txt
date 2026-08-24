@@ -1,0 +1,12 @@
+# t2v-single-shot
+# The commonest project in the app. Guide Cases 3 and 4 are single shots and both keep [Shot 1].
+# mode=t2v duration=5s
+
+integrated_multimodal_description: [Shot 1] A live-action cinematic medium shot, front-facing: a barista in a grey apron. The setting is a narrow cafe at closing time. One warm lamp over the bar. The camera pushes in with small amplitude at slow speed toward the cup. Pours the last of the water in a slow spiral.
+
+overall_soundscape: Steam hisses from the wand and cups clink on the drainer.
+
+non_diegetic_music: N/A
+
+--- checks ---
+warn: non_diegetic_music is empty, so it exports as N/A — no score.

@@ -1,0 +1,15 @@
+# i2v-voiceover
+# The one form the guide mandates an exact phrase for.
+# mode=i2v duration=5s
+
+For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
+
+integrated_multimodal_description: [Shot 1] A live-action cinematic medium shot, front-facing: a man at the wheel of a parked car, shown in <Picture 1>. The opening preserves the appearance, clothing and spatial arrangement established in <Picture 1>. The camera remains static. Watches the road ahead without moving. (S1) says in an off-screen voiceover, <d>[English] I still remember that road.</d> while their lips remain completely closed.
+
+overall_soundscape: Rain ticks on the roof of the car and the engine ticks as it cools.
+
+non_diegetic_music: N/A
+
+--- checks ---
+warn: non_diegetic_music is empty, so it exports as N/A — no score.
+warn: (S1) speaks in shot 1 with no description. Say who they are and how they sound — "a young woman with a quiet, breathy voice" — or the model picks a voice for you.

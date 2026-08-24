@@ -1,0 +1,13 @@
+# t2v-two-shots
+# Cut times, the cut verb, and style carried on shot 1 only.
+# mode=t2v duration=10s
+
+integrated_multimodal_description: [Shot 1] A live-action cinematic medium shot, front-facing: a woman in a charcoal coat. The setting is a rain-streaked cafe window at night. Teal-and-orange grade with cool shadows and warm skin tones. The camera remains static. Lowers her cup, then looks up. [Shot 2] At 00:04.500, the camera cuts to a close-up shot, front-facing of her hands. The camera tilts down with small amplitude at slow speed. Twist the portafilter free.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A
+
+--- checks ---
+err: overall_soundscape is empty, so it exports as N/A — which tells the model to render the clip SILENT. Describe what can be heard, or tick deliberate silence if that is what you want.
+warn: non_diegetic_music is empty, so it exports as N/A — no score.

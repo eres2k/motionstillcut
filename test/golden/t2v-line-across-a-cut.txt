@@ -1,0 +1,12 @@
+# t2v-line-across-a-cut
+# A line the cut lands in the middle of, and a line the clip ends before finishing. Both have their own tag in H3's grammar and neither was expressible.
+# mode=t2v duration=10s
+
+integrated_multimodal_description: [Shot 1] A live-action cinematic medium shot, front-facing: a baker opening the shutters of a small street bakery. The camera pushes in with small amplitude at slow speed. Places a fresh loaf on the wooden counter. The middle-aged baker with a calm, slightly raspy voice (S1) says, <d>[English] First batch of the morning.</d> <scenetrans> [Shot 2] At 00:05.000, the camera cuts to a close-up shot, front-facing of steam rising from the sliced bread. <scenetrans> The line from (S1) carries over from the previous shot. The camera remains static. Curls toward the cold window. (S1) says, <d>[English] And the last of the rye—</d> <cutoff>
+
+overall_soundscape: Wooden shutters scrape open and trays clink softly inside the bakery.
+
+non_diegetic_music: N/A
+
+--- checks ---
+warn: non_diegetic_music is empty, so it exports as N/A — no score.

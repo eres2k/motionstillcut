@@ -1,0 +1,24 @@
+# MOTIONSTILL CUT — static, client-only deployment.
+#
+# The whole app is the web/ folder: no build step, no functions, no server.
+# Everything the hosted version saves stays in the visitor's browser
+# (localStorage + IndexedDB); ComfyUI and the LLM server are reached directly
+# from the page, on the visitor's own machine.
+
+[build]
+  publish = "web"
+  command = ""
+
+# SPA fallback: every unknown path is a page of the editor. Netlify serves
+# real files first (this redirect is not forced), so js/css/assets still
+# resolve to the actual files.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MOTIONSTILL CUT — MiniMax H3</title>
+<meta name="color-scheme" content="dark">
+<meta name="description" content="An editor for MiniMax H3 — text, image and reference to video. Writes prompts in the format H3's own rewriter emits, previews the timing before the render, and delivers a stock-node ComfyUI workflow.">
+<meta name="theme-color" content="#1f1f1f">
+<!-- Public release: everything this page saves stays in the visitor's own
+     browser, and the engines it drives run on the visitor's own machine. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231f1f1f'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%234a86c8' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='%23d99a35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/resolve.css">
+<link rel="stylesheet" href="css/pages.css">
+<link rel="stylesheet" href="css/motion.css">
+<link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Title bar ───────────────────────────────────────── -->
+  <header class="titlebar">
+    <h1 class="brand">Motionstill<em>Cut</em></h1>
+    <input id="project-name" class="project" style="height:20px;background:transparent;border:1px solid transparent;box-shadow:none"
+           value="Untitled Timeline" spellcheck="false" title="Project name" aria-label="Project name">
+
+    <div class="vsep"></div>
+
+    <!-- Create is a STEP; Canvas and Studio are two views of the same work.
+         Showing all three as equal peers said they were three places to be. -->
+    <div class="viewflow">
+      <button class="stepbtn" data-view="projects" title="Projects — open, save, start a new one">
+        <span class="stepbtn-ico">▤</span>Projects
+      </button>
+      <span class="viewflow-to" aria-hidden="true">→</span>
+      <button class="stepbtn on" data-view="create" title="Start here — turn rough material into a canvas">
+        <span class="stepbtn-n">1</span>Create
+      </button>
+      <span class="viewflow-to" aria-hidden="true">→</span>
+      <div class="seg" id="view-seg" role="radiogroup" aria-label="View"
+           title="Two views of the same project — switch freely, nothing is lost">
+        <button data-view="simple">Canvas</button>
+        <button data-view="studio">Studio</button>
+      </div>
+    </div>
+
+    <div class="badge" id="mode-badge" aria-live="polite"
+         title="The generation mode follows from what you attach: nothing is text to video, one picture is image to video, more is reference to video."><span class="dot"></span>Text to Video</div>
+
+    <div class="spacer"></div>
+
+    <div class="badge" id="badge-gpu" title="Which engine currently holds the GPU">
+      <span class="dot"></span><span class="txt">GPU idle</span>
+    </div>
+    <div class="badge" id="badge-comfy" title="ComfyUI"><span class="dot"></span><span class="txt">ComfyUI</span></div>
+    <div class="badge" id="badge-llm" title="LLM server"><span class="dot"></span><span class="txt">LLM</span></div>
+    <button class="btn sm" id="btn-signin" title="Sign in" hidden>Sign in</button>
+    <button class="btn ghost sm" id="btn-refresh-health" title="Re-check both servers" aria-label="Re-check both servers">⟳</button>
+    <button class="btn ghost sm" id="btn-quickguide" title="Quick guide (F1)" aria-label="Quick guide">?</button>
+  </header>
+
+  <!-- ── Pages ───────────────────────────────────────────── -->
+  <main class="stage" aria-label="Editor">
+    <section class="page" id="page-projects"></section>
+    <section class="page" id="page-create"></section>
+    <section class="page" id="page-simple"></section>
+    <section class="page" id="page-media"></section>
+    <section class="page" id="page-cut"></section>
+    <section class="page" id="page-sound"></section>
+    <section class="page" id="page-deliver"></section>
+    <section class="page" id="page-library"></section>
+    <section class="page" id="page-setup"></section>
+  </main>
+
+  <!-- ── Page bar ────────────────────────────────────────── -->
+  <footer class="pagebar" role="navigation" aria-label="Pages">
+    <div class="corner-left" id="status-line">
+      <span id="save-state">saved</span>
+    </div>
+
+    <button class="page-btn" data-page="media" aria-label="Media pool">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16v3H4V5zm0 5h16v9H4v-9zm2 2v5h5v-5H6zm7 0v2h5v-2h-5zm0 3v2h5v-2h-5z"/></svg>
+      Media
+    </button>
+    <button class="page-btn active" data-page="cut" aria-label="Cut" aria-current="page">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18v4H3V6zm0 6h11v6H3v-6zm13 0h5v6h-5v-6z"/></svg>
+      Cut
+    </button>
+    <button class="page-btn" data-page="sound" aria-label="Sound">
+      <svg viewBox="0 0 24 24"><path d="M4 10h2v4H4v-4zm4-4h2v12H8V6zm4 2h2v8h-2V8zm4-5h2v18h-2V3zm4 7h2v4h-2v-4z"/></svg>
+      Sound
+    </button>
+    <button class="page-btn" data-page="deliver" aria-label="Deliver">
+      <svg viewBox="0 0 24 24"><path d="M12 3l5 5h-3v6h-4V8H7l5-5zM4 17h16v4H4v-4z"/></svg>
+      Deliver
+    </button>
+    <button class="page-btn" data-page="library" aria-label="Library">
+      <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4V4zm6 0h4v16h-4V4zm6.2.6l3.6 15.6-3.9.9L12.3 5.5l3.9-.9z"/></svg>
+      Library
+    </button>
+    <button class="page-btn" data-page="setup" aria-label="Setup">
+      <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 4l-2-1.2.3-2.3-2.2-.9-1-2.1-2.2.6L12 3l-1.9 1.1-2.2-.6-1 2.1-2.2.9.3 2.3L3 12l2 1.2-.3 2.3 2.2.9 1 2.1 2.2-.6L12 21l1.9-1.1 2.2.6 1-2.1 2.2-.9-.3-2.3L21 12z"/></svg>
+      Setup
+    </button>
+
+    <div class="corner">
+      <button class="btn sm ghost" id="btn-palette" title="Command palette (⌘K)">⌘K</button>
+      <button class="btn sm ghost" id="btn-release-gpu" title="Unload both engines and hand the GPU back">Release GPU</button>
+      <button class="btn sm" id="btn-download-json" title="Download the ComfyUI API workflow">JSON</button>
+      <button class="btn sm record" id="btn-render-now" title="Build the workflow and queue it on ComfyUI">● Render</button>
+    </div>
+  </footer>
+</div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal">
+    <div class="hd"><span id="modal-title">—</span><span class="spacer" style="flex:1"></span>
+      <button class="btn ghost sm" id="modal-x" aria-label="Close">✕</button></div>
+    <div class="bd" id="modal-body"></div>
+    <div class="ft" id="modal-foot"></div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

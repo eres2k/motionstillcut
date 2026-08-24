@@ -1,0 +1,28 @@
+# r2v-three-references
+# The full-reference IR block: definitions, task type, retention markers.
+# mode=r2v duration=10s
+
+subject_definitions: <Subject 1> is the subject shown in <Picture 1>, kratos.
+<Subject 2> is the subject shown in <Picture 2>, soldier.
+<Audio 1> is the synchronized audio track of <Video 1>.
+<Video 1> is a reference clip of walk, used for its motion and structure.
+
+summary: [reference generation + audio reference] The target video features <Subject 1> and <Subject 2> in a single shot. <Video 1> supplies the motion and structure it follows. <Audio 1> is used for its audio.
+
+retention_analysis: <Subject 1> (appears in [Shot 1]): fully_preserved
+<Subject 2> (appears in [Shot 1]): fully_preserved
+<Audio 1>: reference
+<Video 1>: fully_preserved
+
+detailed_description: The target video is in a live-action cinematic style. [Shot 1] A medium shot, front-facing: a bearded man and a soldier — <Subject 1> and <Subject 2>. The setting is a flooded courtyard. The camera remains static. Square up in the rain.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A
+
+--- checks ---
+warn: Description is 42 words; this mode reads best at 350–500.
+err: overall_soundscape is empty, so it exports as N/A — which tells the model to render the clip SILENT. Describe what can be heard, or tick deliberate silence if that is what you want.
+warn: non_diegetic_music is empty, so it exports as N/A — no score.
+warn: <Audio 1> is attached but never mentioned in the description. Say what it is for.
+warn: <Video 1> is attached but never mentioned in the description. Say what it is for.

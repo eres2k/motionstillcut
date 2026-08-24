@@ -1,0 +1,16 @@
+{
+  "name": "motionstillcut",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MiniMax H3 online editor — T2V / I2V / Ref2V, DaVinci-Resolve-style, ComfyUI + local LLM. Public client-only release with an optional local Node server.",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "test": "node --test 'test/**/*.test.js'",
+    "test:update": "UPDATE_GOLDEN=1 node --test 'test/**/*.test.js'"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

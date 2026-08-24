@@ -1,0 +1,1306 @@
+# MiniMax H3 — character usability index
+#
+# Which named characters H3 actually reproduces when you write the name and
+# nothing else. Compiled by malcolmrey by generating test clips per character
+# and judging each one by eye:
+#   https://huggingface.co/datasets/malcolmrey/various  (h3-center/known-characters)
+# Snapshot of the INDEX.md generated 2026-08-21. Community testing, not an
+# official MiniMax list, and one person's judgement of a handful of clips —
+# treat it as a strong hint, never as a guarantee.
+#
+# status	name	actor	franchise	clips
+#   g  reproduced recognisably       f  mixed        b  did not reproduce
+# actor is blank when it is the same as the name (the real-person rows).
+g	Abby Sciuto	Pauley Perrette	NCIS	1
+g	Ace Ventura	Jim Carrey	Ace Ventura	2
+g	Adam Driver		Real Person / Celebrity	1
+g	Adam Sandler		Real Person / Celebrity	1
+g	Adonis Creed	Michael B. Jordan	Creed	1
+g	Adrian Monk	Tony Shalhoub	Monk	1
+g	Alan Dutch Schaefer	Arnold Schwarzenegger	Predator	1
+g	Alan Harper	Jon Cryer	Two and a Half Men	1
+g	Aldo Raine	Brad Pitt	Inglourious Basterds	1
+g	Alex Munday	Lucy Liu	Charlie's Angels	1
+g	Alluri Sitarama Raju	Ram Charan	RRR	1
+g	Alonzo Harris	Denzel Washington	Training Day	1
+g	Alvy Singer	Woody Allen	Annie Hall	1
+g	Amy Farrah Fowler	Mayim Bialik	The Big Bang Theory	1
+g	Anakin Skywalker	Hayden Christensen	Star Wars	1
+g	Andy Bernard	Ed Helms	The Office	1
+g	Andy Sachs	Anne Hathaway	The Devil Wears Prada	1
+g	Andy Stitzer	Steve Carell	The 40-Year-Old Virgin	1
+g	Angel	David Boreanaz	Buffy the Vampire Slayer	1
+g	Angelina Jolie		Real Person / Celebrity	1
+g	Annalise Keating	Viola Davis	How to Get Away with Murder	1
+g	Anne Hathaway		Real Person / Celebrity	1
+g	Annette Hargrove	Reese Witherspoon	Cruel Intentions	1
+g	Anthony DiNozzo	Michael Weatherly	NCIS	1
+g	Anthony Hopkins		Real Person / Celebrity	1
+g	Anthony Mackie		Real Person / Celebrity	1
+g	Ashton Kutcher		Real Person / Celebrity	1
+g	Axel Foley	Eddie Murphy	Beverly Hills Cop	1
+g	Barack Obama		Real Person / Celebrity	2
+g	Barney Ross	Sylvester Stallone	The Expendables	1
+g	Barney Stinson	Neil Patrick Harris	How I Met Your Mother	1
+g	Barry Allen / The Flash	Grant Gustin	The Flash	1
+g	Bella Swan	Kristen Stewart	Twilight	1
+g	Ben Affleck		Real Person / Celebrity	1
+g	Ben Stiller		Real Person / Celebrity	1
+g	Benjamin Franklin Gates	Nicolas Cage	National Treasure	1
+g	Benoit Blanc	Daniel Craig	Knives Out	1
+g	Bernadette Rostenkowski	Melissa Rauch	The Big Bang Theory	1
+g	Beth Smith	Sarah Chalke	Rick and Morty	1
+g	Bilbo Baggins	Martin Freeman	The Hobbit	1
+g	Billy Butcher	Karl Urban	The Boys	2
+g	Billy Costigan	Leonardo DiCaprio	The Departed	1
+g	Bjorn Ironside	Alexander Ludwig	Vikings	1
+g	Black Widow	Scarlett Johansson	Marvel's Avengers	1
+g	Bobby Singer	Jim Beaver	Supernatural	1
+g	Brad Pitt		Real Person / Celebrity	1
+g	Brennan Huff	Will Ferrell	Step Brothers	1
+g	Brick Tamland	Steve Carell	Anchorman	1
+g	Bruce Banner	Mark Ruffalo	Marvel's Avengers	1
+g	Bruce Wayne	Christian Bale	The Dark Knight	1
+g	Bruce Wayne / Batman	Ben Affleck	Batman v Superman	1
+g	Bruce Wayne / Batman	Christian Bale	The Dark Knight	1
+g	Bruce Wayne / Batman	George Clooney	Batman & Robin	1
+g	Bruce Wayne / Batman	Robert Pattinson	The Batman	1
+g	Bryan Mills	Liam Neeson	Taken	1
+g	Buffy Summers	Sarah Michelle Gellar	Buffy the Vampire Slayer	1
+g	Calvin Candie	Leonardo DiCaprio	Django Unchained	1
+g	Cameron Poe	Nicolas Cage	Con Air	1
+g	Captain Jack Sparrow	Johnny Depp	Pirates of the Caribbean	3
+g	Captain Raymond Holt	Andre Braugher	Brooklyn Nine-Nine	1
+g	Caroline Channing	Beth Behrs	2 Broke Girls	1
+g	Carrie Bradshaw	Sarah Jessica Parker	Sex and the City	1
+g	Carrie Mathison	Claire Danes	Homeland	1
+g	Castiel	Misha Collins	Supernatural	1
+g	Castor Troy	John Travolta	Face/Off	1
+g	Castor Troy	Nicolas Cage	Face/Off	1
+g	Catwoman / Selina Kyle	Michelle Pfeiffer	Batman Returns	1
+g	Celeste Wright	Nicole Kidman	Big Little Lies	1
+g	Chandler Bing	Matthew Perry	Friends	1
+g	Charlie Harper	Charlie Sheen	Two and a Half Men	1
+g	Chef Gordon Ramsay	Gordon Ramsay	Hell's Kitchen	1
+g	Chloe Decker	Lauren German	Lucifer	1
+g	Clara Oswald	Jenna Coleman	Doctor Who	1
+g	Clark Kent	Tom Welling	Smallville	1
+g	Cliff Booth	Brad Pitt	Once Upon a Time in Hollywood	1
+g	Clint Barton / Hawkeye	Jeremy Renner	Marvel's Avengers	1
+g	Colin Farrell		Real Person / Celebrity	1
+g	Commodus	Joaquin Phoenix	Gladiator	1
+g	Conan	Arnold Schwarzenegger	Conan the Barbarian	1
+g	Conan O'Brien		Late Night	2
+g	Daemon Targaryen	Matt Smith	House of the Dragon	1
+g	Daenerys Targaryen	Emilia Clarke	Game of Thrones	1
+g	Dana Scully	Gillian Anderson	The X-Files	1
+g	Daniel Craig		Real Person / Celebrity	1
+g	Daniel Hillard / Mrs. Doubtfire	Robin Williams	Mrs. Doubtfire	1
+g	Darlene Alderson	Carly Chaikin	Mr. Robot	1
+g	Darth Vader (voiced by James Earl Jones)		Star Wars	1
+g	Daryl Dixon	Norman Reedus	The Walking Dead	2
+g	Data	Brent Spiner	Star Trek: The Next Generation	1
+g	Dave Chappelle		Chappelle's Show	2
+g	David Attenborough		Real Person / Celebrity	1
+g	David Letterman		Late Show	2
+g	Deadpool	Ryan Reynolds	Deadpool / Marvel's Avengers	2
+g	Dean Winchester	Jensen Ackles	Supernatural	1
+g	Denzel Washington		Real Person / Celebrity	1
+g	Derek Zoolander	Ben Stiller	Zoolander	1
+g	Detective Rosa Diaz	Stephanie Beatriz	Brooklyn Nine-Nine	1
+g	Diana Prince / Wonder Woman	Gal Gadot	Wonder Woman	1
+g	Django	Jamie Foxx	Django Unchained	1
+g	Django Freeman	Jamie Foxx	Django Unchained	1
+g	Doctor Stephen Strange	Benedict Cumberbatch	Doctor Strange	1
+g	Doctor Strange	Benedict Cumberbatch	Marvel's Avengers	1
+g	Dominic Toretto	Vin Diesel	Fast & Furious	1
+g	Don Draper	Jon Hamm	Mad Men	1
+g	Donald Trump		The Apprentice	2
+g	Douglas Quaid	Arnold Schwarzenegger	Total Recall	1
+g	Dr. Doug Ross	George Clooney	ER	1
+g	Dr. Gregory House	Hugh Laurie	House M.D.	1
+g	Dr. Hannibal Lecter	Anthony Hopkins	The Silence of the Lambs	2
+g	Dr. Hannibal Lecter	Mads Mikkelsen	Hannibal	1
+g	Dr. John Watson	Martin Freeman	Sherlock (BBC)	1
+g	Dr. Robert Ford	Anthony Hopkins	Westworld	2
+g	Dr. Rodney McKay	David Hewlett	Stargate Atlantis	1
+g	Dr. Temperance Brennan	Emily Deschanel	Bones	1
+g	Dr. Walter Bishop	John Noble	Fringe	1
+g	Driver	Ryan Gosling	Drive	1
+g	Dwight Schrute	Rainn Wilson	The Office	1
+g	Dylan Sanders	Drew Barrymore	Charlie's Angels	2
+g	Eddie Brock	Tom Hardy	Venom	1
+g	Edward Cullen	Robert Pattinson	Twilight	2
+g	Edward Nygma / The Riddler	Jim Carrey	Batman Forever	1
+g	Edward Scissorhands	Johnny Depp	Edward Scissorhands	1
+g	Elaine Benes	Julia Louis-Dreyfus	Seinfeld	1
+g	Eleven	Millie Bobby Brown	Stranger Things	1
+g	Elizabeth Swann	Keira Knightley	Pirates of the Caribbean	1
+g	Elliot Alderson	Rami Malek	Mr. Robot	1
+g	Ellis Boyd 'Red' Redding	Morgan Freeman	The Shawshank Redemption	1
+g	Eric Cartman	Trey Parker	South Park	1
+g	Erik Killmonger	Michael B. Jordan	Black Panther	1
+g	Ethan Hunt	Tom Cruise	Mission: Impossible	2
+g	Eve Polastri	Sandra Oh	Killing Eve	1
+g	Fletcher Reede	Jim Carrey	Liar Liar	1
+g	Forrest Gump	Tom Hanks	Forrest Gump	2
+g	Fox Mulder	David Duchovny	The X-Files	1
+g	Frank Costello	Jack Nicholson	The Departed	1
+g	Frank Lucas	Denzel Washington	American Gangster	1
+g	Frank Martin	Jason Statham	The Transporter	1
+g	Frank Slade	Al Pacino	Scent of a Woman	1
+g	Frank Underwood	Kevin Spacey	House of Cards	1
+g	Gandalf	Ian McKellen	Lord of the Rings	1
+g	Gellert Grindelwald	Mads Mikkelsen	Fantastic Beasts	1
+g	Geordi La Forge	LeVar Burton	Star Trek: The Next Generation	1
+g	George Costanza	Jason Alexander	Seinfeld	1
+g	Glenn Rhee	Steven Yeun	The Walking Dead	1
+g	God	Morgan Freeman	Bruce Almighty	1
+g	Gordon Gekko	Michael Douglas	Wall Street	1
+g	Gordon Ramsay		Real Person / Celebrity	1
+g	Gracie Hart	Sandra Bullock	Miss Congeniality	1
+g	Grant Gustin		Real Person / Celebrity	1
+g	Hal Wilkerson	Bryan Cranston, 2000s Malcolm in the Middle era	Malcolm in the Middle	1
+g	Han Solo	Harrison Ford	Star Wars	2
+g	Hank Moody	David Duchovny	Californication	1
+g	Hansel	Owen Wilson	Zoolander	1
+g	Happy Gilmore	Adam Sandler	Happy Gilmore	1
+g	Harold Finch	Michael Emerson	Person of Interest	1
+g	Harrison Ford		Real Person / Celebrity	1
+g	Harry Callahan	Clint Eastwood	Dirty Harry	1
+g	Harry Potter	Daniel Radcliffe	Harry Potter	1
+g	Hermione Granger	Emma Watson	Harry Potter	1
+g	Homelander	Antony Starr	The Boys	1
+g	Host Neil deGrasse Tyson	Neil deGrasse Tyson	Cosmos	1
+g	Howard Wolowitz	Simon Helberg	The Big Bang Theory	1
+g	Hugh Jackman		Real Person / Celebrity	1
+g	Idris Elba		Real Person / Celebrity	1
+g	Indiana Jones	Harrison Ford	Indiana Jones	2
+g	Inspector Lee	Jackie Chan	Rush Hour	1
+g	J Robert Oppenheimer	Cillian Murphy	Oppenheimer	1
+g	J.K. Simmons		Real Person / Celebrity	1
+g	Jack Bauer	Kiefer Sutherland	24	1
+g	Jack Black		Real Person / Celebrity	1
+g	Jack Dawson	Leonardo DiCaprio	Titanic	1
+g	Jack Donaghy	Alec Baldwin	30 Rock	1
+g	Jack Nicholson		Real Person / Celebrity	1
+g	Jack Shephard	Matthew Fox	Lost	1
+g	Jackie Chan		Real Person / Celebrity	1
+g	Jake Gyllenhaal		Real Person / Celebrity	1
+g	Jake Peralta	Andy Samberg	Brooklyn Nine-Nine	1
+g	James Bond	Daniel Craig	Casino Royale	1
+g	James Bond (Daniel Craig)	Daniel Craig	James Bond	1
+g	James Hunt	Chris Hemsworth	Rush	1
+g	Jamie Foxx		Real Person / Celebrity	1
+g	Jane Smith	Angelina Jolie	Mr. & Mrs. Smith	1
+g	Jason Bourne	Matt Damon	Bourne Franchise / The Bourne Identity	2
+g	Javier Peña	Pedro Pascal	Narcos	1
+g	Jax Teller	Charlie Hunnam	Sons of Anarchy	1
+g	Jean-Luc Picard	Patrick Stewart	Star Trek: The Next Generation	1
+g	Jeff Goldblum		Real Person / Celebrity	1
+g	Jennifer Love Hewitt		Real Person / Celebrity	1
+g	Jeremy Grey	Vince Vaughn	Wedding Crashers	1
+g	Jeremy Renner		Real Person / Celebrity	1
+g	Jerry Seinfeld		Seinfeld	1
+g	Jesse Eisenberg		Real Person / Celebrity	1
+g	Jesse Pinkman	Aaron Paul	Breaking Bad	1
+g	Jessica Jones	Krysten Ritter	Jessica Jones	1
+g	Jim Carrey		Real Person / Celebrity	1
+g	Jim Halpert	John Krasinski	The Office	1
+g	Jimmy Conway	Robert De Niro	Goodfellas	1
+g	Jimmy Fallon		Real Person / Celebrity	1
+g	Joe Rogan		The Joe Rogan Experience	2
+g	Joey Tribbiani	Matt LeBlanc	Friends	1
+g	John Cena		Real Person / Celebrity	1
+g	John Dutton	Kevin Costner	Yellowstone	1
+g	John Locke	Terry O'Quinn	Lost	1
+g	John Luther	Idris Elba	Luther	1
+g	John McClane	Bruce Willis	Die Hard	1
+g	John Nolan	Nathan Fillion	The Rookie	1
+g	John Oliver		Last Week Tonight	1
+g	John Rambo	Sylvester Stallone	Rambo	1
+g	John Reese	Jim Caviezel	Person of Interest	1
+g	John Travolta		Real Person / Celebrity	2
+g	John Wick	Keanu Reeves	John Wick	2
+g	Johnny Blaze / Ghost Rider	Nicolas Cage	Ghost Rider	1
+g	Jon Snow	Kit Harington	Game of Thrones	1
+g	Jordan Belfort	Leonardo DiCaprio	The Wolf of Wall Street	2
+g	Joseph Cooper	Matthew McConaughey	Interstellar	1
+g	Josh Lyman	Bradley Whitford	The West Wing	1
+g	Judge Joseph Dredd	Sylvester Stallone	Judge Dredd	1
+g	Jules Winnfield	Samuel L. Jackson	Pulp Fiction	1
+g	Julia Roberts		Real Person / Celebrity	1
+g	Kanye West		Real Person / Celebrity	2
+g	Kate Beckett	Stana Katic	Castle	1
+g	Kenny McCormick	Matt Stone	South Park	1
+g	Kevin Costner		Real Person / Celebrity	1
+g	Kevin Hart		Real Person / Celebrity	1
+g	Kirk Lazarus	Robert Downey Jr.	Tropic Thunder	1
+g	Kobe Bryant		Lakers court	2
+g	Komaram Bheem	N. T. Rama Rao Jr.	RRR	1
+g	Kyle Broflovski	Matt Stone	South Park	1
+g	Kylo Ren	Adam Driver	Star Wars	1
+g	Larry David		Curb Your Enthusiasm	1
+g	Laurence Fishburne		Real Person / Celebrity	1
+g	Leonard Hofstadter	Johnny Galecki	The Big Bang Theory	1
+g	Leonardo DiCaprio		Real Person / Celebrity	1
+g	Lex Luthor	Kevin Spacey	Superman Returns	1
+g	Liz Lemon	Tina Fey	30 Rock	1
+g	Lloyd Christmas	Jim Carrey	Dumb and Dumber	1
+g	Loki	Tom Hiddleston	Marvel's Avengers	2
+g	Lou Bloom	Jake Gyllenhaal	Nightcrawler	1
+g	Lt. Aldo Raine	Brad Pitt	Inglourious Basterds	1
+g	Lt. Colonel John Sheppard	Joe Flanigan	Stargate Atlantis	1
+g	Lucifer Morningstar	Tom Ellis	Lucifer	1
+g	Luke Cage	Mike Colter	Luke Cage	1
+g	Mace Windu	Samuel L. Jackson	Star Wars	1
+g	Madeline Martha Mackenzie	Reese Witherspoon	Big Little Lies	1
+g	Mads Mikkelsen		Real Person / Celebrity	1
+g	Major Marquis Warren	Samuel L. Jackson	The Hateful Eight	1
+g	Malcolm Reynolds	Nathan Fillion	Firefly	1
+g	Maleficent	Angelina Jolie	Maleficent	1
+g	Mark Watney	Matt Damon	The Martian	1
+g	Martin Riggs	Mel Gibson	Lethal Weapon	1
+g	Martin Sheen		Real Person / Celebrity	1
+g	Marty McFly	Michael J. Fox	Back to the Future	1
+g	Mathayus	Dwayne Johnson	The Scorpion King	1
+g	Matt Damon		Real Person / Celebrity	1
+g	Matt Murdock	Ben Affleck	Daredevil	1
+g	Matthew McConaughey		Real Person / Celebrity	1
+g	Maverick / Pete Mitchell	Tom Cruise	Top Gun	1
+g	Max Black	Kat Dennings	2 Broke Girls	1
+g	Max Rockatansky	Mel Gibson	Mad Max	1
+g	Max Rockatansky	Tom Hardy	Mad Max: Fury Road	1
+g	Maximus Decimus Meridius	Russell Crowe	Gladiator	1
+g	Melinda Gordon	Jennifer Love Hewitt	Ghost Whisperer	1
+g	Meryl Streep		Real Person / Celebrity	1
+g	Michael B. Jordan		Real Person / Celebrity	1
+g	Michael Corleone	Al Pacino	The Godfather	2
+g	Michael Douglas		Real Person / Celebrity	1
+g	Michael Fassbender		Real Person / Celebrity	1
+g	Michael Kelso	Ashton Kutcher	That '70s Show	1
+g	Michael Scofield	Wentworth Miller	Prison Break	1
+g	Michael Scott	Steve Carell	The Office	1
+g	Michonne	Danai Gurira	The Walking Dead	1
+g	Miranda Priestly	Meryl Streep	The Devil Wears Prada	1
+g	Morgan Freeman		Real Person / Celebrity	1
+g	Morpheus	Laurence Fishburne	The Matrix	1
+g	Morty Smith	Justin Roiland	Rick and Morty	1
+g	Mr. Bean	Rowan Atkinson	Mr. Bean	1
+g	Natalie Cook	Cameron Diaz	Charlie's Angels	1
+g	Natalie Portman		Real Person / Celebrity	1
+g	Natasha Romanoff	Scarlett Johansson	The Avengers	1
+g	Navin R. Johnson	Steve Martin	The Jerk	1
+g	Negan	Jeffrey Dean Morgan	The Walking Dead	1
+g	Neil deGrasse Tyson		Real Person / Celebrity	1
+g	Neo	Keanu Reeves	The Matrix	2
+g	Neytiri	Zoe Saldana	Avatar	1
+g	Nicholas Brody	Damian Lewis	Homeland	1
+g	Nick Fury	Samuel L. Jackson	Marvel's Avengers	1
+g	Nicolas Cage		Real Person / Celebrity	1
+g	Norman Osborn	Willem Dafoe	Spider-Man	1
+g	Norman Reedus		Real Person / Celebrity	1
+g	Oscar Isaac		Real Person / Celebrity	1
+g	Owen Grady	Chris Pratt	Jurassic World	1
+g	Owen Wilson		Real Person / Celebrity	1
+g	Pam Beesly	Jenna Fischer	The Office	1
+g	Patrick Bateman	Christian Bale	American Psycho	1
+g	Patrick Jane	Simon Baker	The Mentalist	1
+g	Paul Atreides	Timothée Chalamet	Dune	1
+g	Paul Rudd		Real Person / Celebrity	1
+g	Peacemaker	John Cena	Peacemaker	1
+g	Penny	Kaley Cuoco	The Big Bang Theory	1
+g	Pennywise	Bill Skarsgård	IT	1
+g	Pete Maverick Mitchell	Tom Cruise	Top Gun	1
+g	Phil Wenneck	Bradley Cooper	The Hangover	1
+g	Phoebe Buffay	Lisa Kudrow	Friends	1
+g	President Josiah \"Jed\" Bartlet	Martin Sheen	The West Wing	1
+g	Qui-Gon Jinn	Liam Neeson	Star Wars	1
+g	Rachel Green	Jennifer Aniston	Friends	1
+g	Ragnar Lothbrok	Travis Fimmel	Vikings	1
+g	Raj Koothrappali	Kunal Nayyar	The Big Bang Theory	1
+g	Randy Marsh	Trey Parker	South Park	1
+g	Ransom Drysdale	Chris Evans	Knives Out	1
+g	Ray	Colin Farrell	In Bruges	1
+g	Raymond Reddington	James Spader	The Blacklist	1
+g	Richard B. Riddick	Vin Diesel	The Chronicles of Riddick	1
+g	Richard Castle	Nathan Fillion	Castle	1
+g	Richard Kimble	Harrison Ford	The Fugitive	1
+g	Rick Deckard	Harrison Ford	Blade Runner	1
+g	Rick Grimes	Andrew Lincoln	The Walking Dead	1
+g	Rick Sanchez	Justin Roiland	Rick and Morty	1
+g	Ricky Bobby	Will Ferrell	Talladega Nights	1
+g	Rob Lowe		Real Person / Celebrity	1
+g	Robert De Niro		Real Person / Celebrity	1
+g	Robert McCall	Denzel Washington	The Equalizer	1
+g	Robert Pattinson		Real Person / Celebrity	1
+g	Robin Williams		Real Person / Celebrity	1
+g	RoboCop	Peter Weller	RoboCop	1
+g	Rocky Balboa	Sylvester Stallone	Rocky	1
+g	Ron Burgundy	Will Ferrell	Anchorman	1
+g	Ron Weasley	Rupert Grint	Harry Potter	1
+g	Ross Geller	David Schwimmer	Friends	1
+g	Rubeus Hagrid	Robbie Coltrane	Harry Potter	1
+g	Rust Cohle	Matthew McConaughey	True Detective	1
+g	Ryan Gosling		Real Person / Celebrity	1
+g	Ryan Reynolds		Real Person / Celebrity	1
+g	Sam Ace Rothstein	Robert De Niro	Casino	1
+g	Sam Seaborn	Rob Lowe	The West Wing	1
+g	Sam Winchester	Jared Padalecki	Supernatural	1
+g	Samuel L. Jackson		Real Person / Celebrity	1
+g	Sandra Bullock		Real Person / Celebrity	1
+g	Saul Berenson	Mandy Patinkin	Homeland	1
+g	Saul Goodman	Bob Odenkirk	Breaking Bad	1
+g	Scarlet Witch	Elizabeth Olsen	Marvel's Avengers	1
+g	Scott Lang / Ant-Man	Paul Rudd	Marvel's Avengers	1
+g	Sean Archer	John Travolta	Face/Off	1
+g	Sean Dignam	Mark Wahlberg	The Departed	1
+g	Seeley Booth	David Boreanaz	Bones	1
+g	Sergeant Terry Jeffords	Terry Crews	Brooklyn Nine-Nine	1
+g	Seth	Jonah Hill	Superbad	1
+g	Sheldon Cooper	Jim Parsons	The Big Bang Theory	1
+g	Sherlock Holmes	Benedict Cumberbatch	Sherlock (BBC)	1
+g	Sherlock Holmes	Robert Downey Jr.	Sherlock Holmes	1
+g	Snoop Dogg		Real Person / Celebrity	2
+g	Special Agent Leroy Jethro Gibbs	Mark Harmon	NCIS	1
+g	Spike	James Marsters	Buffy the Vampire Slayer	1
+g	Spock	Leonard Nimoy	Star Trek: The Original Series	1
+g	Stan Marsh	Trey Parker	South Park	1
+g	Stanley Ipkiss as The Mask	Jim Carrey	The Mask	1
+g	Star-Lord	Chris Pratt	Marvel's Avengers	1
+g	Stephen Colbert		Real Person / Celebrity	1
+g	Steve Rogers	Chris Evans	Marvel's Avengers	1
+g	Stringer Bell	Idris Elba	The Wire	1
+g	Summer Smith	Spencer Grammer	Rick and Morty	1
+g	Sylvester Stallone		Real Person / Celebrity	1
+g	Tallahassee	Woody Harrelson	Zombieland	1
+g	Taylor Swift		Real Person / Celebrity	1
+g	Ted Mosby	Josh Radnor	How I Met Your Mother	1
+g	Thanos	Josh Brolin	Marvel's Avengers	1
+g	The Eleventh Doctor	Matt Smith	Doctor Who	1
+g	The Narrator	Edward Norton	Fight Club	1
+g	The Tenth Doctor	David Tennant	Doctor Who	1
+g	The Terminator T-800	Arnold Schwarzenegger	The Terminator	2
+g	The Twelfth Doctor	Peter Capaldi	Doctor Who	1
+g	Thor	Chris Hemsworth	Marvel's Avengers	1
+g	Tim \"The Tool Man\" Taylor	Tim Allen	Home Improvement	1
+g	Tim Allen		Real Person / Celebrity	1
+g	Tom Cruise		Real Person / Celebrity	1
+g	Tom Hanks		Real Person / Celebrity	1
+g	Tom Hardy		Real Person / Celebrity	1
+g	Tom Hiddleston		Real Person / Celebrity	1
+g	Tom Selleck		Real Person / Celebrity	1
+g	Tommy Shelby	Cillian Murphy	Peaky Blinders	1
+g	Tony Montana	Al Pacino	Scarface	2
+g	Tony Soprano	James Gandolfini	The Sopranos	1
+g	Tony Stark	Robert Downey Jr.	Marvel's Avengers	2
+g	Travis Bickle	Robert De Niro	Taxi Driver	1
+g	Tyler Durden	Brad Pitt	Fight Club	2
+g	Tyler Rake	Chris Hemsworth	Extraction	1
+g	Tyrion Lannister	Peter Dinklage	Game of Thrones	1
+g	Vince Vaughn		Real Person / Celebrity	1
+g	Vincent Hanna	Al Pacino	Heat	1
+g	Vincent Vega	John Travolta	Pulp Fiction	2
+g	Walter White	Bryan Cranston	Breaking Bad	1
+g	Wednesday Addams	Jenna Ortega	Wednesday	1
+g	Will Ferrell		Real Person / Celebrity	1
+g	Will Hunting	Matt Damon	Good Will Hunting	1
+g	Will Smith		The Fresh Prince of Bel-Air	1
+g	Willem Dafoe		Real Person / Celebrity	1
+g	William Munny	Clint Eastwood	Unforgiven	1
+g	William Riker	Jonathan Frakes	Star Trek: The Next Generation	1
+g	William Somerset	Morgan Freeman	Se7en	1
+g	Willow Rosenberg	Alyson Hannigan	Buffy the Vampire Slayer	2
+g	Willy Wonka	Johnny Depp	Charlie and the Chocolate Factory	1
+g	Wolverine	Hugh Jackman	Marvel's Avengers / X-Men	2
+g	Woody Harrelson		Real Person / Celebrity	1
+g	Worf	Michael Dorn	Star Trek: The Next Generation	1
+g	Ziva David	Cote de Pablo	NCIS	1
+f	Agent Olivia Dunham	Anna Torv	Fringe	1
+f	Albus Dumbledore	Michael Gambon	Harry Potter	1
+f	Alfred Pennyworth	Michael Caine	The Dark Knight	1
+f	Annie Porter	Sandra Bullock	Speed	1
+f	Arthur Fleck as Joker	Joaquin Phoenix	Joker	1
+f	Barbie	Margot Robbie	Barbie	1
+f	Bill Skarsgård		Real Person / Celebrity	1
+f	Bruce Wayne / Batman	Adam West	Batman	1
+f	Caitlyn	Katie Leung	Arcane	1
+f	Chris Rock		Real Person / Celebrity	1
+f	Colin Firth		Real Person / Celebrity	1
+f	Commissioner James Gordon	Jeffrey Wright	The Batman	1
+f	Craig Ferguson		The Late Late Show	2
+f	Cruella de Vil	Emma Stone	Cruella	1
+f	Danny Zuko	John Travolta	Grease	1
+f	Dr. Ian Malcolm	Jeff Goldblum	Jurassic Park	1
+f	Ewan McGregor		Real Person / Celebrity	1
+f	Geralt of Rivia	Henry Cavill	The Witcher	2
+f	Giselle	Amy Adams	Enchanted	1
+f	Henry Cavill		Real Person / Celebrity	1
+f	Idi Amin	Forest Whitaker	The Last King of Scotland	1
+f	Jean Valjean	Hugh Jackman	Les Miserables	1
+f	Jeff Bridges		Real Person / Celebrity	1
+f	Jimmy Carr		8 Out of 10 Cats	2
+f	Jinx	Ella Purnell	Arcane	1
+f	Jon Stewart		The Daily Show	2
+f	Jonathan Archer	Scott Bakula	Star Trek: Enterprise	1
+f	Lara Croft	Angelina Jolie	Lara Croft: Tomb Raider	1
+f	Lex Luthor	Jesse Eisenberg	Batman v Superman	1
+f	Magneto	Michael Fassbender	X-Men	1
+f	Malcolm Wilkerson	Frankie Muniz	Malcolm in the Middle	1
+f	Marc Spector / Moon Knight	Oscar Isaac	Moon Knight	1
+f	Mark Wahlberg		Real Person / Celebrity	1
+f	Michael Caine		Real Person / Celebrity	1
+f	Michael Jackson		Real Person / Celebrity	2
+f	Millie Bobby Brown		Real Person / Celebrity	1
+f	Oberyn Martell	Pedro Pascal	Game of Thrones	1
+f	Obi-Wan Kenobi	Ewan McGregor	Star Wars	1
+f	P.T. Barnum	Hugh Jackman	The Greatest Showman	1
+f	Ren McCormack	Kevin Bacon	Footloose	1
+f	Rick Dalton	Leonardo DiCaprio	Once Upon a Time in Hollywood	1
+f	Rick O'Connell	Brendan Fraser	The Mummy	2
+f	Ricky Gervais		Real Person / Celebrity	1
+f	Robert Lewandowski		football pitch	2
+f	Rufus	Chris Rock	Dogma	1
+f	Ryan Stone	Sandra Bullock	Gravity	1
+f	Sam Wilson / Falcon	Anthony Mackie	The Falcon and the Winter Soldier	1
+f	Samuel Gerard	Tommy Lee Jones	The Fugitive	1
+f	Silco	Jason Spisak	Arcane	1
+f	T'Challa / Black Panther	Chadwick Boseman	Black Panther	1
+f	Tilda Swinton		Real Person / Celebrity	1
+f	Tucker Carlson		Tucker Carlson Tonight	2
+f	Vi	Hailee Steinfeld	Arcane	1
+b	A-Train	Jessie T. Usher	The Boys	1
+b	Aaron Eckhart		Real Person / Celebrity	1
+b	Abbi Abrams	Abbi Jacobson	Broad City	1
+b	Abed Nadir	Danny Pudi	Community	1
+b	Adam West		Real Person / Celebrity	1
+b	Agent Dale Cooper	Kyle MacLachlan	Twin Peaks	1
+b	Agent K	Tommy Lee Jones	Men in Black	1
+b	Agent Smith	Hugo Weaving	The Matrix	1
+b	Ahsoka Tano	Rosario Dawson	Ahsoka	1
+b	Aida Turturro		Real Person / Celebrity	1
+b	Al Bundy	Ed O'Neill	Married... with Children	1
+b	Aladdin	Mena Massoud	Aladdin	1
+b	Alan Garner	Zach Galifianakis	The Hangover	1
+b	Alan Ruck		Real Person / Celebrity	1
+b	Albus Dumbledore	Richard Harris	Harry Potter	1
+b	Alejandro Gillick	Benicio del Toro	Sicario	1
+b	Alex Dunphy	Ariel Winter	Modern Family	1
+b	Alex Vause	Laura Prepon	Orange Is the New Black	1
+b	Alexander Siddig		Real Person / Celebrity	1
+b	Alexander Skarsgård		Real Person / Celebrity	1
+b	Alexis Rose	Annie Murphy	Schitt's Creek	1
+b	Alfred Hitchcock		Real Person / Celebrity	1
+b	Alfred Pennyworth	Jeremy Irons	Justice League	1
+b	Alfred Pennyworth	Michael Gough	Batman	1
+b	Alice	Milla Jovovich	Resident Evil	1
+b	Alice Eve		Real Person / Celebrity	1
+b	Alicia Silverstone		Real Person / Celebrity	1
+b	Alicia Vikander		Real Person / Celebrity	1
+b	Alison Brie		Real Person / Celebrity	1
+b	Allison Mack		Real Person / Celebrity	1
+b	Ally McBeal	Calista Flockhart	Ally McBeal	1
+b	Alyson Hannigan		Real Person / Celebrity	1
+b	Amanda Peet		Real Person / Celebrity	1
+b	Amanda Seyfried		Real Person / Celebrity	1
+b	Amy Adams		Real Person / Celebrity	1
+b	Amy Dunne	Rosamund Pike	Gone Girl	1
+b	Amy Poehler		Real Person / Celebrity	1
+b	Amy Pond	Karen Gillan	Doctor Who	1
+b	Amy Winehouse		Real Person / Celebrity	2
+b	Ana de Armas		Real Person / Celebrity	1
+b	Ana Kasparian		The Young Turks	2
+b	Anastasia Steele	Dakota Johnson	Fifty Shades of Grey	1
+b	Andie MacDowell		Real Person / Celebrity	1
+b	Andre Royo		Real Person / Celebrity	1
+b	Andrew Robinson		Real Person / Celebrity	1
+b	Andy Serkis		Real Person / Celebrity	1
+b	Angel Batista	David Zayas	Dexter	1
+b	Angela Martin	Angela Kinsey	The Office	1
+b	Angelica Teach	Penélope Cruz	Pirates of the Caribbean	1
+b	Anna Faris		Real Person / Celebrity	1
+b	Anna Gunn		Real Person / Celebrity	1
+b	Anna Kendrick		Real Person / Celebrity	1
+b	Anna Torv		Real Person / Celebrity	1
+b	Anne Dudek		Real Person / Celebrity	1
+b	Annette O'Toole		Real Person / Celebrity	1
+b	Annie Edison	Alison Brie	Community	1
+b	Annie Hall	Diane Keaton	Annie Hall	1
+b	Annie Wilkes	Kathy Bates	Misery	1
+b	Antje Traue		Real Person / Celebrity	1
+b	Anton Chigurh	Javier Bardem	No Country for Old Men	1
+b	Anya Chalotra		Real Person / Celebrity	1
+b	Anya Taylor-Joy		Real Person / Celebrity	1
+b	April Ludgate	Aubrey Plaza	Parks and Recreation	2
+b	Aragorn	Viggo Mortensen	Lord of the Rings	1
+b	Ari Gold	Jeremy Piven	Entourage	1
+b	Aria Giovanni		Real Person / Celebrity	1
+b	Aria Montgomery	Lucy Hale	Pretty Little Liars	1
+b	Ariel Winter		Real Person / Celebrity	1
+b	Armin Shimerman		Real Person / Celebrity	1
+b	Arthur Curry / Aquaman	Jason Momoa	Aquaman	1
+b	Arya Stark	Maisie Williams	Game of Thrones	1
+b	Ash Williams	Bruce Campbell	Evil Dead	1
+b	Ashley Judd		Real Person / Celebrity	1
+b	Asmongold	Zack Hoyt	Real Person / Celebrity	1
+b	Atticus Finch	Gregory Peck	To Kill a Mockingbird	1
+b	Aubrey Plaza		Real Person / Celebrity	1
+b	Audrey Hepburn		Real Person / Celebrity	1
+b	Austin Powers	Mike Myers	Austin Powers	1
+b	Ava	Alicia Vikander	Ex Machina	1
+b	Avon Barksdale	Wood Harris	The Wire	1
+b	B'Elanna Torres	Roxann Dawson	Star Trek: Voyager	1
+b	B-Rabbit	Eminem	8 Mile	1
+b	Bane	Tom Hardy	The Dark Knight Rises	1
+b	Barb Wire	Pamela Anderson	Barb Wire	1
+b	Barbarella	Jane Fonda	Barbarella	1
+b	Baron Vladimir Harkonnen	Stellan Skarsgård	Dune	1
+b	Beavis (voiced by Mike Judge)		Beavis and Butt-Head	1
+b	Beca Mitchell	Anna Kendrick	Pitch Perfect	1
+b	Bellatrix Lestrange	Helena Bonham Carter	Harry Potter	1
+b	Benicio del Toro		Real Person / Celebrity	1
+b	Bernard Hill		Real Person / Celebrity	1
+b	Bernard Lowe	Jeffrey Wright	Westworld	1
+b	Beth Dutton	Kelly Reilly	Yellowstone	1
+b	Beth Harmon	Anya Taylor-Joy	The Queen's Gambit	1
+b	Bette Davis		Real Person / Celebrity	1
+b	Biff Tannen	Thomas F. Wilson	Back to the Future	1
+b	Bilbo Baggins	Ian Holm	Lord of the Rings	1
+b	Bill	David Carradine	Kill Bill	1
+b	Bill Burr		Real Person / Celebrity	1
+b	Billy Dee Williams		Real Person / Celebrity	1
+b	Billy Hargrove	Dacre Montgomery	Stranger Things	1
+b	Blade	Wesley Snipes	Blade	1
+b	Blanche Devereaux	Rue McClanahan	The Golden Girls	1
+b	Boba Fett	Temuera Morrison	The Mandalorian	1
+b	Bobby Baccalieri	Steve Schirripa	The Sopranos	1
+b	Borat Sagdiyev	Sacha Baron Cohen	Borat	1
+b	Boromir	Sean Bean	The Lord of the Rings	1
+b	Boyd Crowder	Walton Goggins	Justified	1
+b	Bree Van de Kamp	Marcia Cross	Desperate Housewives	1
+b	Brendan Fraser		Real Person / Celebrity	1
+b	Brett Goldstein		Real Person / Celebrity	1
+b	Brian Cox		Real Person / Celebrity	1
+b	Bridget Jones	Renée Zellweger	Bridget Jones's Diary	1
+b	Brienne of Tarth	Gwendoline Christie	Game of Thrones	1
+b	Bronn	Jerome Flynn	Game of Thrones	1
+b	Bruce Lee		Real Person / Celebrity	1
+b	Bryce Dallas Howard		Real Person / Celebrity	1
+b	Bubbles	Andre Royo	The Wire	1
+b	Bucky Barnes / Winter Soldier	Sebastian Stan	Captain America	1
+b	Bunk Moreland	Wendell Pierce	The Wire	1
+b	Butt-Head (voiced by Mike Judge)		Beavis and Butt-Head	1
+b	C.J. Cregg	Allison Janney	The West Wing	1
+b	C.J. Parker	Pamela Anderson	Baywatch	1
+b	Cady Heron	Lindsay Lohan	Mean Girls	1
+b	Caleb McLaughlin		Real Person / Celebrity	1
+b	Captain Jack Harkness	John Barrowman	Torchwood	1
+b	Captain James T. Kirk	William Shatner	Star Trek: The Original Series	1
+b	Captain Leland Stottlemeyer	Ted Levine	Monk	1
+b	Carey Mahoney	Steve Guttenberg	Police Academy	1
+b	Carmela Soprano	Edie Falco	The Sopranos	1
+b	Carol Connelly	Helen Hunt	As Good as It Gets	1
+b	Carol Peletier	Melissa McBride	The Walking Dead	1
+b	Carrie Fisher		Real Person / Celebrity	1
+b	Cary Elwes		Real Person / Celebrity	1
+b	Cary Grant		Real Person / Celebrity	1
+b	Cassian Andor	Diego Luna	Andor	1
+b	Cassie Howard	Sydney Sweeney	Euphoria	1
+b	Catherine Tramell	Sharon Stone	Basic Instinct	1
+b	Cece Parekh	Hannah Simone	New Girl	1
+b	Cedric Daniels	Lance Reddick	The Wire	1
+b	Cersei Lannister	Lena Headey	Game of Thrones	1
+b	Chadwick Boseman		Real Person / Celebrity	1
+b	Chakotay	Robert Beltran	Star Trek: Voyager	1
+b	Charles	Hugh Grant	Four Weddings and a Funeral	1
+b	Charles Dance		Real Person / Celebrity	1
+b	Charlie Kelly	Charlie Day	It's Always Sunny in Philadelphia	1
+b	Charlotte York	Kristin Davis	Sex and the City	1
+b	Cher Horowitz	Alicia Silverstone	Clueless	1
+b	Chevy Chase		Real Person / Celebrity	1
+b	Chloe Sullivan	Allison Mack	Smallville	1
+b	Chloë Sevigny		Real Person / Celebrity	1
+b	Chris Farley		Real Person / Celebrity	1
+b	Christopher Lee		Real Person / Celebrity	1
+b	Christopher Lloyd		Real Person / Celebrity	1
+b	Christopher Moltisanti	Michael Imperioli	The Sopranos	1
+b	Christopher Nolan		Real Person / Celebrity	1
+b	Christopher Walken		Real Person / Celebrity	1
+b	Chuck McGill	Michael McKean	Better Call Saul	1
+b	Cindy Campbell	Anna Faris	Scary Movie	2
+b	Claire	Sian Clifford	Fleabag	1
+b	Claire Dearing	Bryce Dallas Howard	Jurassic World	1
+b	Claire Underwood	Robin Wright	House of Cards	1
+b	Clarice Starling	Jodie Foster	The Silence of the Lambs	1
+b	Clark Gable		Real Person / Celebrity	1
+b	Clark Griswold	Chevy Chase	National Lampoon's Vacation	1
+b	Clarke Peters		Real Person / Celebrity	1
+b	Clay Morrow	Ron Perlman	Sons of Anarchy	1
+b	Cleopatra	Elizabeth Taylor	Cleopatra	1
+b	Colm Meaney		Real Person / Celebrity	1
+b	Colonel Jack O'Neill	Richard Dean Anderson	Stargate SG-1	1
+b	Colonel Kurtz	Marlon Brando	Apocalypse Now	1
+b	Commissioner James Gordon	Gary Oldman	The Dark Knight	1
+b	Commissioner James Gordon	J.K. Simmons	Justice League	1
+b	Conleth Hill		Real Person / Celebrity	1
+b	Connor MacLeod	Christopher Lambert	Highlander	1
+b	Connor Roy	Alan Ruck	Succession	1
+b	Cordell Walker	Chuck Norris	Walker	1
+b	Cosmo Kramer	Michael Richards	Seinfeld	1
+b	Count Dooku	Christopher Lee	Star Wars	1
+b	Crispin Glover		Real Person / Celebrity	1
+b	Cristal Connors	Gina Gershon	Showgirls	1
+b	Cyrus Grissom	John Malkovich	Con Air	1
+b	Dacre Montgomery		Real Person / Celebrity	1
+b	Dale Denton	Seth Rogen	Pineapple Express	1
+b	Daniel LaRusso	Ralph Macchio	The Karate Kid	1
+b	Daphne Bridgerton	Phoebe Dynevor	Bridgerton	1
+b	Dark Helmet	Rick Moranis	Spaceballs	1
+b	David Brent	Ricky Gervais	The Office	1
+b	David Carradine		Real Person / Celebrity	1
+b	David Dastmalchian		Real Person / Celebrity	1
+b	David Fincher		Real Person / Celebrity	1
+b	David Harbour		Real Person / Celebrity	1
+b	David Lynch		Real Person / Celebrity	1
+b	David Mitchell		Real Person / Celebrity	1
+b	David Thewlis		Real Person / Celebrity	1
+b	Davos Seaworth	Liam Cunningham	Game of Thrones	1
+b	Deanna Troi	Marina Sirtis	Star Trek: The Next Generation	2
+b	Debbie Eagan	Betty Gilpin	GLOW	1
+b	Debra Morgan	Jennifer Carpenter	Dexter	1
+b	Del Griffith	John Candy	Planes	1
+b	Denis Leary		Real Person / Celebrity	1
+b	Denis Villeneuve		Real Person / Celebrity	1
+b	Dennis Reynolds	Glenn Howerton	It's Always Sunny in Philadelphia	1
+b	Detective Angela Lopez	Alyssa Diaz	The Rookie	1
+b	Dewey Finn	Jack Black	School of Rock	1
+b	Dexter Morgan	Michael C. Hall	Dexter	1
+b	Diane Keaton		Real Person / Celebrity	1
+b	Diego Luna		Real Person / Celebrity	1
+b	Din Djarin	Pedro Pascal	The Mandalorian	1
+b	Doc Holliday	Val Kilmer	Tombstone	1
+b	Dolores Abernathy	Evan Rachel Wood	Westworld	1
+b	Dominic Chianese		Real Person / Celebrity	1
+b	Don Vito Corleone	Marlon Brando	The Godfather	1
+b	Donna Paulsen	Sarah Rafferty	Suits	1
+b	Dorothy Gale	Judy Garland	The Wizard of Oz	1
+b	Dorothy Zbornak	Bea Arthur	The Golden Girls	1
+b	Dr. Alan Grant	Sam Neill	Jurassic Park	1
+b	Dr. Amber Volakis	Anne Dudek	House M.D.	1
+b	Dr. Beverly Crusher	Gates McFadden	Star Trek: The Next Generation	1
+b	Dr. Carol Marcus	Alice Eve	Star Trek Into Darkness	1
+b	Dr. Cliff Huxtable	Bill Cosby	The Cosby Show	1
+b	Dr. Daniel Jackson	Michael Shanks	Stargate SG-1	1
+b	Dr. Elizabeth Weir	Torri Higginson	Stargate Atlantis	1
+b	Dr. Emmett Brown	Christopher Lloyd	Back to the Future	1
+b	Dr. Frasier Crane	Kelsey Grammer	Frasier	1
+b	Dr. James Wilson	Robert Sean Leonard	House M.D.	1
+b	Dr. Joel Fleischman	Rob Morrow	Northern Exposure	1
+b	Dr. John \"J.D.\" Dorian	Zach Braff	Scrubs	1
+b	Dr. John Carter	Noah Wyle	ER	1
+b	Dr. Kate McTiernan	Ashley Judd	Kiss the Girls	1
+b	Dr. King Schultz	Christoph Waltz	Django Unchained	1
+b	Dr. Leonard \"Bones\" McCoy	DeForest Kelley	Star Trek: The Original Series	1
+b	Dr. Lisa Cuddy	Lisa Edelstein	House M.D.	1
+b	Dr. Peter Venkman	Bill Murray	Ghostbusters	1
+b	Dr. Raymond Stantz	Dan Aykroyd	Ghostbusters	1
+b	Draco Malfoy	Tom Felton	Harry Potter	1
+b	Drew Barrymore		Real Person / Celebrity	1
+b	Dustin Henderson	Gaten Matarazzo	Stranger Things	1
+b	Dustin Hoffman		Real Person / Celebrity	1
+b	Eddie Munson	Joseph Quinn	Stranger Things	1
+b	Eddie Redmayne		Real Person / Celebrity	1
+b	Edie Falco		Real Person / Celebrity	1
+b	Edward James Olmos		Real Person / Celebrity	1
+b	Edward Norton		Real Person / Celebrity	1
+b	El Mariachi	Antonio Banderas	Desperado	1
+b	Elena Montero	Catherine Zeta-Jones	The Mask of Zorro	1
+b	Elim Garak	Andrew Robinson	Star Trek: Deep Space Nine	1
+b	Elizabeth Taylor		Real Person / Celebrity	1
+b	Ellen Ripley	Sigourney Weaver	Alien	2
+b	Elrond	Hugo Weaving	The Lord of the Rings	1
+b	Emily Blunt		Real Person / Celebrity	1
+b	Emily Fields	Shay Mitchell	Pretty Little Liars	1
+b	Eminem		Real Person / Celebrity	1
+b	Emma D'Arcy		Real Person / Celebrity	1
+b	Emma Thompson		Real Person / Celebrity	1
+b	Emperor Palpatine	Ian McDiarmid	Star Wars	1
+b	Eric Northman	Alexander Skarsgård	True Blood	1
+b	Erin Grant	Demi Moore	Striptease	1
+b	Erlich Bachman	T.J. Miller	Silicon Valley	1
+b	Evan	Michael Cera	Superbad	1
+b	Evanna Lynch		Real Person / Celebrity	1
+b	Evelyn Abbott	Emily Blunt	A Quiet Place	1
+b	Evelyn Carnahan	Rachel Weisz	The Mummy	1
+b	Faora-Ul	Antje Traue	Man of Steel	1
+b	Ferris Bueller	Matthew Broderick	Ferris Bueller's Day Off	1
+b	Finn Wolfhard		Real Person / Celebrity	1
+b	Fiona Goode	Jessica Lange	American Horror Story	1
+b	Fleabag	Phoebe Waller-Bridge	Fleabag	1
+b	Floki	Gustaf Skarsgård	Vikings	1
+b	Florence Pugh		Real Person / Celebrity	1
+b	Fran Fine	Fran Drescher	The Nanny	1
+b	Frances McDormand		Real Person / Celebrity	1
+b	Francis Ford Coppola		Real Person / Celebrity	1
+b	Franck Eggelhoffer	Martin Short	Father of the Bride	1
+b	Frank Black	Lance Henriksen	Millennium	1
+b	Frank Bullitt	Steve McQueen	Bullitt	1
+b	Frank Castle	Jon Bernthal	The Punisher	1
+b	Frank Castle	Thomas Jane	The Punisher	1
+b	Frank Reynolds	Danny DeVito	It's Always Sunny in Philadelphia	1
+b	Frank White	Christopher Walken	King of New York	2
+b	Frankie Bergstein	Lily Tomlin	Grace and Frankie	1
+b	Fredo Corleone	John Cazale	The Godfather	1
+b	Frenchie	Tomer Capone	The Boys	1
+b	Frodo Baggins	Elijah Wood	Lord of the Rings	1
+b	Gabriel Macht		Real Person / Celebrity	1
+b	Gabrielle Solis	Eva Longoria	Desperate Housewives	1
+b	Gaius Baltar	James Callis	Battlestar Galactica	1
+b	Galadriel	Cate Blanchett	The Lord of the Rings	1
+b	Galina \"Red\" Reznikov	Kate Mulgrew	Orange Is the New Black	1
+b	Gamora	Zoe Saldana	Guardians of the Galaxy	1
+b	Gary Oldman		Real Person / Celebrity	1
+b	Gaten Matarazzo		Real Person / Celebrity	1
+b	Gene Hackman		Real Person / Celebrity	1
+b	George Bailey	James Stewart	It's a Wonderful Life	1
+b	George Carlin		Real Person / Celebrity	1
+b	George Lucas		Real Person / Celebrity	1
+b	George McFly	Crispin Glover	Back to the Future	1
+b	George Takei		Real Person / Celebrity	1
+b	Gerri Kellman	J. Smith-Cameron	Succession	1
+b	Gil Grissom	William Petersen	CSI: Las Vegas	1
+b	Gillian Anderson		Real Person / Celebrity	1
+b	Gimli	John Rhys-Davies	The Lord of the Rings	1
+b	Goldie Hawn		Real Person / Celebrity	1
+b	Gollum	Andy Serkis	The Lord of the Rings	1
+b	Grace Hanson	Jane Fonda	Grace and Frankie	1
+b	Grace Kelly		Real Person / Celebrity	1
+b	Graham Norton		Real Person / Celebrity	1
+b	Grand Moff Tarkin	Peter Cushing	Star Wars	1
+b	Greg Hirsch	Nicholas Braun	Succession	1
+b	Gregory Peck		Real Person / Celebrity	1
+b	Gretchen Wieners	Lacey Chabert	Mean Girls	1
+b	Guillermo del Toro		Real Person / Celebrity	1
+b	Gustavo Fring	Giancarlo Esposito	Breaking Bad	1
+b	Guy Pearce		Real Person / Celebrity	1
+b	Gwendoline Christie		Real Person / Celebrity	1
+b	Halle Berry		Real Person / Celebrity	1
+b	Hank Schrader	Dean Norris	Breaking Bad	1
+b	Hanna Marin	Ashley Benson	Pretty Little Liars	1
+b	Hannah Montana	Miley Cyrus	Hannah Montana	1
+b	Hannah Waddingham		Real Person / Celebrity	1
+b	Harley Quinn	Margot Robbie	Suicide Squad	2
+b	Harry Hart / Galahad	Colin Firth	Kingsman	1
+b	Harvey Dent / Two-Face	Aaron Eckhart	The Dark Knight	1
+b	Harvey Dent / Two-Face	Tommy Lee Jones	Batman Forever	1
+b	Harvey Keitel		Real Person / Celebrity	1
+b	Harvey Specter	Gabriel Macht	Suits	1
+b	Hawkeye	Daniel Day-Lewis	The Last of the Mohicans	1
+b	Hawkeye Pierce	Alan Alda	M*A*S*H	1
+b	Hayden Christensen		Real Person / Celebrity	1
+b	Heath Ledger		Real Person / Celebrity	1
+b	Hela	Cate Blanchett	Thor: Ragnarok	1
+b	Helen Hunt		Real Person / Celebrity	1
+b	Helen Mirren		Real Person / Celebrity	1
+b	Henry Fonda		Real Person / Celebrity	1
+b	Henry Hill	Ray Liotta	Goodfellas	1
+b	Hercules	Kevin Sorbo	Hercules: The Legendary Journeys	1
+b	Hikaru Sulu	George Takei	Star Trek	1
+b	Hiro Nakamura	Masi Oka	Heroes	1
+b	Hoban Washburne	Alan Tudyk	Firefly	1
+b	Holly Golightly	Audrey Hepburn	Breakfast at Tiffany's	1
+b	Horatio Caine	David Caruso	CSI: Miami	1
+b	Howard Hamlin	Patrick Fabian	Better Call Saul	1
+b	Hugh Grant		Real Person / Celebrity	1
+b	Hughie Campbell	Jack Quaid	The Boys	1
+b	Humphrey Bogart		Real Person / Celebrity	1
+b	Ian McDiarmid		Real Person / Celebrity	1
+b	Ilana Wexler	Ilana Glazer	Broad City	1
+b	Ilsa Lund	Ingrid Bergman	Casablanca	1
+b	Inara Serra	Morena Baccarin	Firefly	1
+b	Ingrid Bergman		Real Person / Celebrity	1
+b	Inigo Montoya	Mandy Patinkin	The Princess Bride	1
+b	Inspector Jacques Clouseau	Peter Sellers	The Pink Panther	1
+b	Ip Man	Donnie Yen	Ip Man	1
+b	Ivar the Boneless	Alex Høgh Andersen	Vikings	1
+b	Iwan Rheon		Real Person / Celebrity	1
+b	J. Smith-Cameron		Real Person / Celebrity	1
+b	J.R. Ewing	Larry Hagman	Dallas	1
+b	Jack Carter	Colin Ferguson	Eureka	1
+b	Jack Gleeson		Real Person / Celebrity	1
+b	Jack Reacher	Alan Ritchson	Reacher	1
+b	Jack Torrance	Jack Nicholson	The Shining	1
+b	Jadzia Dax	Terry Farrell	Star Trek: Deep Space Nine	1
+b	Jaime Lannister	Nikolaj Coster-Waldau	Game of Thrones	1
+b	Jake Blues	John Belushi	The Blues Brothers	1
+b	Jake Harper	Angus T. Jones	Two and a Half Men	1
+b	James \"Sawyer\" Ford	Josh Holloway	Lost	1
+b	James Bond (Pierce Brosnan)	Pierce Brosnan	James Bond	1
+b	James Bond (Sean Connery)	Sean Connery	James Bond	1
+b	James Bond (Timothy Dalton)	Timothy Dalton	James Bond	1
+b	James Caan		Real Person / Celebrity	1
+b	James Callis		Real Person / Celebrity	1
+b	James Cameron		Real Person / Celebrity	1
+b	James Doohan		Real Person / Celebrity	1
+b	James Holden	Steven Strait	The Expanse	1
+b	James Stewart		Real Person / Celebrity	1
+b	Jamie Campbell Bower		Real Person / Celebrity	1
+b	Jamie Hector		Real Person / Celebrity	1
+b	Jamie Tartt	Phil Dunster	Ted Lasso	1
+b	Jan Levinson	Melora Hardin	The Office	1
+b	Jane Chapman	Shailene Woodley	Big Little Lies	1
+b	Janice Soprano	Aida Turturro	The Sopranos	1
+b	Jared Leto		Real Person / Celebrity	1
+b	Jason Isaacs		Real Person / Celebrity	1
+b	Jason Sudeikis		Real Person / Celebrity	1
+b	Javier Bardem		Real Person / Celebrity	1
+b	Jay	Jason Mewes	Jay and Silent Bob	1
+b	Jay Leno		Real Person / Celebrity	1
+b	Jayne Cobb	Adam Baldwin	Firefly	1
+b	Jeff Winger	Joel McHale	Community	1
+b	Jeffrey Wright		Real Person / Celebrity	1
+b	Jennifer Check	Megan Fox	Jennifer's Body	1
+b	Jennifer Melfi	Lorraine Bracco	The Sopranos	1
+b	Jeremy Irons		Real Person / Celebrity	1
+b	Jeremy Strong		Real Person / Celebrity	1
+b	Jeri Ryan		Real Person / Celebrity	1
+b	Jerome Flynn		Real Person / Celebrity	1
+b	Jerry Smith	Chris Parnell	Rick and Morty	1
+b	Jess Day	Zooey Deschanel	New Girl	1
+b	Jesse Plemons		Real Person / Celebrity	1
+b	Jessica Lange		Real Person / Celebrity	1
+b	Jill St. Claire	Amanda Peet	The Whole Nine Yards	1
+b	Jim Hopper	David Harbour	Stranger Things	1
+b	Jim Levenstein	Jason Biggs	American Pie	1
+b	Jimmy Kimmel		Real Person / Celebrity	1
+b	Jimmy McNulty	Dominic West	The Wire	1
+b	Jimmy Popeye Doyle	Gene Hackman	The French Connection	1
+b	Joan Holloway	Christina Hendricks	Mad Men	1
+b	Joe Keery		Real Person / Celebrity	1
+b	Joe Pantoliano		Real Person / Celebrity	1
+b	Joe Pesci		Real Person / Celebrity	1
+b	Joel Kinnaman		Real Person / Celebrity	1
+b	Joffrey Baratheon	Jack Gleeson	Game of Thrones	1
+b	John Belushi		Real Person / Celebrity	1
+b	John Candy		Real Person / Celebrity	1
+b	John Carpenter		Real Person / Celebrity	1
+b	John Cazale		Real Person / Celebrity	1
+b	John Hammond	Richard Attenborough	Jurassic Park	1
+b	John Kramer	Tobin Bell	Saw	1
+b	John Kreese	Martin Kove	Cobra Kai	1
+b	John Malkovich		Real Person / Celebrity	1
+b	John Noble		Real Person / Celebrity	1
+b	John Rhys-Davies		Real Person / Celebrity	1
+b	John Wayne		Real Person / Celebrity	1
+b	Johnny Carson		Real Person / Celebrity	1
+b	Johnny Lawrence	William Zabka	Cobra Kai	1
+b	Johnny Sack	Vincent Curatola	The Sopranos	1
+b	Jolene Blalock		Real Person / Celebrity	1
+b	Jonah Hill		Real Person / Celebrity	1
+b	Joseph Quinn		Real Person / Celebrity	1
+b	Josh Brolin		Real Person / Celebrity	1
+b	Joyce Byers	Winona Ryder	Stranger Things	1
+b	Juan	Mahershala Ali	Moonlight	1
+b	Judy Garland		Real Person / Celebrity	1
+b	Julian Bashir	Alexander Siddig	Star Trek: Deep Space Nine	1
+b	Julianne Moore		Real Person / Celebrity	1
+b	Julie Andrews		Real Person / Celebrity	1
+b	Juno Temple		Real Person / Celebrity	1
+b	Juror 8	Henry Fonda	12 Angry Men	1
+b	Justin Hammer	Sam Rockwell	Iron Man 2	1
+b	Kala Dandekar	Tina Desai	Sense8	1
+b	Kara Thrace	Katee Sackhoff	Battlestar Galactica	1
+b	Karen Smith	Amanda Seyfried	Mean Girls	2
+b	Karen van der Beek	Natascha McElhone	Californication	1
+b	Karl Urban		Real Person / Celebrity	1
+b	Kate Austen	Evangeline Lilly	Lost	1
+b	Kate Sharma	Simone Ashley	Bridgerton	1
+b	Katee Sackhoff		Real Person / Celebrity	1
+b	Katharine Hepburn		Real Person / Celebrity	1
+b	Kathryn Janeway	Kate Mulgrew	Star Trek: Voyager	1
+b	Kathryn Merteuil	Sarah Michelle Gellar	Cruel Intentions	1
+b	Kathy Bates		Real Person / Celebrity	1
+b	Katniss Everdeen	Jennifer Lawrence	The Hunger Games	2
+b	Keeley Jones	Juno Temple	Ted Lasso	1
+b	Kelly Reilly		Real Person / Celebrity	1
+b	Kelly Van Ryan	Denise Richards	Wild Things	1
+b	Kendall Roy	Jeremy Strong	Succession	1
+b	Kevin McCallister	Macaulay Culkin	Home Alone	1
+b	Khan Noonien Singh	Ricardo Montalbán	Star Trek	1
+b	Kieran Culkin		Real Person / Celebrity	1
+b	Kim Basinger		Real Person / Celebrity	1
+b	Kim Wexler	Rhea Seehorn	Breaking Bad	1
+b	King Arthur	Graham Chapman	Monty Python	1
+b	King George VI	Colin Firth	The King's Speech	1
+b	King Théoden	Bernard Hill	The Lord of the Rings	1
+b	Kira Nerys	Nana Visitor	Star Trek: Deep Space Nine	1
+b	Kirk Douglas		Real Person / Celebrity	1
+b	Kurt Russell		Real Person / Celebrity	1
+b	Kurt Sloane	Jean-Claude Van Damme	Kickboxer	1
+b	Lady Edith Crawley	Laura Carmichael	Downton Abbey	1
+b	Lady Mary Crawley	Michelle Dockery	Downton Abbey	1
+b	Lagertha	Katheryn Winnick	Vikings	1
+b	Lalo Salamanca	Tony Dalton	Better Call Saul	1
+b	Lance Reddick		Real Person / Celebrity	1
+b	Lando Calrissian	Billy Dee Williams	Star Wars	1
+b	Laura Roslin	Mary McDonnell	Battlestar Galactica	1
+b	Laurie Strode	Jamie Lee Curtis	Halloween	1
+b	Lea Thompson		Real Person / Celebrity	1
+b	Lee	Bruce Lee	Enter the Dragon	1
+b	Leeloo	Milla Jovovich	The Fifth Element	1
+b	Legolas	Orlando Bloom	The Lord of the Rings	1
+b	Leonard Shelby	Guy Pearce	Memento	1
+b	Leslie Knope	Amy Poehler	Parks and Recreation	2
+b	Lester Freamon	Clarke Peters	The Wire	1
+b	Lex Luthor	Gene Hackman	Superman	1
+b	Lex Luthor	Michael Rosenbaum	Smallville	1
+b	Liam Cunningham		Real Person / Celebrity	1
+b	Lieutenant Frank Drebin	Leslie Nielsen	The Naked Gun	1
+b	Lieutenant Randy Disher	Jason Gray-Stanford	Monk	1
+b	Lincoln Burrows	Dominic Purcell	Prison Break	1
+b	Lisa Fremont	Grace Kelly	Rear Window	1
+b	Llewelyn Moss	Josh Brolin	No Country for Old Men	1
+b	Logan Roy	Brian Cox	Succession	1
+b	Lois Wilkerson	Jane Kaczmarek	Malcolm in the Middle	1
+b	Lord Voldemort	Ralph Fiennes	Harry Potter	1
+b	Lorelai Gilmore	Lauren Graham	Gilmore Girls	1
+b	Lorraine Baines	Lea Thompson	Back to the Future	1
+b	Lorraine Bracco		Real Person / Celebrity	1
+b	Lorraine Broughton	Charlize Theron	Atomic Blonde	1
+b	Louis Litt	Rick Hoffman	Suits	1
+b	Lt. Col. Bill Kilgore	Robert Duvall	Apocalypse Now	1
+b	Luc Deveraux	Jean-Claude Van Damme	Universal Soldier	1
+b	Lucas Sinclair	Caleb McLaughlin	Stranger Things	1
+b	Lucius Malfoy	Jason Isaacs	Harry Potter	1
+b	Lukas Matsson	Alexander Skarsgård	Succession	1
+b	Luke Skywalker	Mark Hamill	Star Wars	1
+b	Luna Lovegood	Evanna Lynch	Harry Potter	1
+b	Luthen Rael	Stellan Skarsgård	Andor	1
+b	Lydia Deetz	Winona Ryder	Beetlejuice	1
+b	Lynette Scavo	Felicity Huffman	Desperate Housewives	1
+b	Lynn Bracken	Kim Basinger	L.A. Confidential	2
+b	Maeve Millay	Thandiwe Newton	Westworld	1
+b	Mahershala Ali		Real Person / Celebrity	1
+b	Major Richard Winters	Damian Lewis	Band of Brothers	1
+b	Major Samantha Carter	Amanda Tapping	Stargate SG-1	1
+b	Malcolm Tucker	Peter Capaldi	The Thick of It	1
+b	Malèna Scordia	Monica Bellucci	Malèna	1
+b	Marcus Burnett	Martin Lawrence	Bad Boys	1
+b	Mare Sheehan	Kate Winslet	Mare of Easttown	1
+b	Marge Gunderson	Frances McDormand	Fargo	1
+b	Margo Channing	Bette Davis	All About Eve	1
+b	Maria von Trapp	Julie Andrews	The Sound of Music	1
+b	Mark Corrigan	David Mitchell	Peep Show	1
+b	Mark Renton	Ewan McGregor	Trainspotting	1
+b	Mark Strong		Real Person / Celebrity	1
+b	Marlo Stanfield	Jamie Hector	The Wire	1
+b	Marta Cabrera	Ana de Armas	Knives Out	1
+b	Martha Kent	Annette O'Toole	Smallville	1
+b	Martin Kove		Real Person / Celebrity	1
+b	Martin Lawrence		Real Person / Celebrity	1
+b	Martin Scorsese		Real Person / Celebrity	1
+b	Martin Short		Real Person / Celebrity	1
+b	Marty Byrde	Jason Bateman	Ozark	1
+b	Mary McDonnell		Real Person / Celebrity	1
+b	Mary Poppins	Julie Andrews	Mary Poppins	1
+b	Matt Murdock	Charlie Cox	Daredevil	1
+b	Matthew Lewis		Real Person / Celebrity	1
+b	Matthew Macfadyen		Real Person / Celebrity	1
+b	Maude Lebowski	Julianne Moore	The Big Lebowski	1
+b	Max	Jessica Parker Kennedy	Black Sails	1
+b	Max Mayfield	Sadie Sink	Stranger Things	1
+b	Maya Hawke		Real Person / Celebrity	1
+b	Meg Ryan		Real Person / Celebrity	1
+b	Meredith Grey	Ellen Pompeo	Grey's Anatomy	1
+b	Merlin	Mark Strong	Kingsman	1
+b	Mia Wallace	Uma Thurman	Pulp Fiction	1
+b	Michael Bay		Real Person / Celebrity	1
+b	Michael Gambon		Real Person / Celebrity	1
+b	Michael Gough		Real Person / Celebrity	1
+b	Michael Hogan		Real Person / Celebrity	1
+b	Michael Imperioli		Real Person / Celebrity	1
+b	Michael Knight	David Hasselhoff	Knight Rider	1
+b	Michael Madsen		Real Person / Celebrity	1
+b	Michael Mando		Real Person / Celebrity	1
+b	Michael McKean		Real Person / Celebrity	1
+b	Mike Ehrmantraut	Jonathan Banks	Breaking Bad	1
+b	Mike Ross	Patrick J. Adams	Suits	1
+b	Mike Wheeler	Finn Wolfhard	Stranger Things	1
+b	Miles O'Brien	Colm Meaney	Star Trek: Deep Space Nine	1
+b	Miley Cyrus		Real Person / Celebrity	1
+b	Miranda Hobbes	Cynthia Nixon	Sex and the City	1
+b	Miranda Otto		Real Person / Celebrity	1
+b	Missy Pantone	Eliza Dushku	Bring It On	1
+b	Misty Quigley	Christina Ricci	Yellowjackets	1
+b	Mitch Buchannon	David Hasselhoff	Baywatch	1
+b	Moira Rose	Catherine O'Hara	Schitt's Creek	1
+b	Monica Geller	Courteney Cox	Friends	1
+b	Montgomery Scott	James Doohan	Star Trek	1
+b	Mother's Milk / MM	Laz Alonso	The Boys	1
+b	Mr. Blonde	Michael Madsen	Reservoir Dogs	1
+b	Mr. Miyagi	Pat Morita	The Karate Kid	1
+b	Mr. Orange	Tim Roth	Reservoir Dogs	1
+b	Mr. Pink	Steve Buscemi	Reservoir Dogs	1
+b	Mr. White	Harvey Keitel	Reservoir Dogs	1
+b	N. T. Rama Rao Jr. (NTR Jr.)		Real Person / Celebrity	1
+b	Nacho Varga	Michael Mando	Better Call Saul	1
+b	Nana Visitor		Real Person / Celebrity	1
+b	Nancy Botwin	Mary-Louise Parker	Weeds	1
+b	Nanny McPhee	Emma Thompson	Nanny McPhee	1
+b	Natalie Scatorccio	Juliette Lewis	Yellowjackets	1
+b	Natalie Teeger	Traylor Howard	Monk	1
+b	Ned Stark	Sean Bean	Game of Thrones	1
+b	Needy Lesnicki	Amanda Seyfried	Jennifer's Body	1
+b	Neville Longbottom	Matthew Lewis	Harry Potter	1
+b	Newt Scamander	Eddie Redmayne	Fantastic Beasts	1
+b	Nichelle Nichols		Real Person / Celebrity	1
+b	Nicholas Braun		Real Person / Celebrity	1
+b	Nicolette Grant	Chloë Sevigny	Big Love	1
+b	Noah Schnapp		Real Person / Celebrity	1
+b	Nomi Malone	Elizabeth Berkley	Showgirls	1
+b	Nomi Marks	Jamie Clayton	Sense8	1
+b	Norm Macdonald		Saturday Night Live	2
+b	Norman Bates	Anthony Perkins	Psycho	1
+b	Nucky Thompson	Steve Buscemi	Boardwalk Empire	1
+b	Number Six	Tricia Helfer	Battlestar Galactica	1
+b	Nurse Ratched	Louise Fletcher	One Flew Over the Cuckoo's Nest	1
+b	Nyota Uhura	Nichelle Nichols	Star Trek	1
+b	O-Ren Ishii	Lucy Liu	Kill Bill	1
+b	Obi-Wan Kenobi	Alec Guinness	Star Wars	1
+b	Odo	René Auberjonois	Star Trek: Deep Space Nine	1
+b	Oliver Queen	Stephen Amell	Arrow	1
+b	Omar Little	Michael K. Williams	The Wire	1
+b	Orlando Bloom		Real Person / Celebrity	1
+b	Ororo Munroe / Storm	Halle Berry	X-Men	1
+b	Oswald Cobblepot / The Penguin	Burgess Meredith	Batman	1
+b	Oswald Cobblepot / The Penguin	Colin Farrell	The Batman	1
+b	Pablo Escobar	Wagner Moura	Narcos	1
+b	Paddy Considine		Real Person / Celebrity	1
+b	Padmé Amidala	Natalie Portman	Star Wars	1
+b	Paige Matthews	Rose McGowan	Charmed	1
+b	Pat Morita		Real Person / Celebrity	1
+b	Patrick Fabian		Real Person / Celebrity	1
+b	Patrick J. Adams		Real Person / Celebrity	1
+b	Paul Bettany		Real Person / Celebrity	1
+b	Paul Dano		Real Person / Celebrity	1
+b	Paul Kersey	Charles Bronson	Death Wish	1
+b	Paulie Gualtieri	Tony Sirico	The Sopranos	1
+b	Pavel Chekov	Walter Koenig	Star Trek	1
+b	Peggy Bundy	Katey Sagal	Married... with Children	1
+b	Peggy Olson	Elisabeth Moss	Mad Men	1
+b	Penelope Featherington	Nicola Coughlan	Bridgerton	1
+b	Peter Cushing		Real Person / Celebrity	1
+b	Peter Parker / Spider-Man	Tom Holland	Marvel's Spider-Man	1
+b	Petyr Baelish	Aidan Gillen	Game of Thrones	1
+b	Phil Dunster		Real Person / Celebrity	1
+b	Phoebe Halliwell	Alyssa Milano	Charmed	1
+b	Piper Chapman	Taylor Schilling	Orange Is the New Black	1
+b	Piper Halliwell	Holly Marie Combs	Charmed	1
+b	Poe Dameron	Oscar Isaac	Star Wars	1
+b	Polka-Dot Man	David Dastmalchian	The Suicide Squad	1
+b	Princess Leia Organa	Carrie Fisher	Star Wars	1
+b	Princess Margaret	Vanessa Kirby	The Crown	1
+b	Private Judy Benjamin	Goldie Hawn	Private Benjamin	1
+b	Prue Halliwell	Shannen Doherty	Charmed	1
+b	Q	John de Lancie	Star Trek: The Next Generation	1
+b	Quark	Armin Shimerman	Star Trek: Deep Space Nine	1
+b	Queen Elizabeth II	Claire Foy	The Crown	1
+b	Queen Elizabeth II	Helen Mirren	The Queen	1
+b	R.J. MacReady	Kurt Russell	The Thing	1
+b	Ralph Cifaretto	Joe Pantoliano	The Sopranos	1
+b	Ralph Macchio		Real Person / Celebrity	1
+b	Ram Charan		Real Person / Celebrity	1
+b	Ramsay Bolton	Iwan Rheon	Game of Thrones	1
+b	Ray Liotta		Real Person / Celebrity	1
+b	Raylan Givens	Timothy Olyphant	Justified	1
+b	Raymond Babbitt	Dustin Hoffman	Rain Man	1
+b	Rebecca Welton	Hannah Waddingham	Ted Lasso	1
+b	Regina George	Rachel McAdams	Mean Girls	1
+b	Reginald Jeeves	Stephen Fry	Jeeves and Wooster	1
+b	Remus Lupin	David Thewlis	Harry Potter	1
+b	Renata Klein	Laura Dern	Big Little Lies	1
+b	René Auberjonois		Real Person / Celebrity	1
+b	Renée Zellweger		Real Person / Celebrity	1
+b	Rhaenyra Targaryen	Emma D'Arcy	House of the Dragon	1
+b	Rhett Butler	Clark Gable	Gone with the Wind	1
+b	Ricardo Montalbán		Real Person / Celebrity	1
+b	Richard Armitage		Real Person / Celebrity	1
+b	Richard Attenborough		Real Person / Celebrity	1
+b	Richard Fish	Greg Germann	Ally McBeal	1
+b	Richard Harris		Real Person / Celebrity	1
+b	Richard Hendricks	Thomas Middleditch	Silicon Valley	1
+b	Richard Madden		Real Person / Celebrity	1
+b	Richard Pryor		Real Person / Celebrity	1
+b	Rick Blaine	Humphrey Bogart	Casablanca	1
+b	Rick Flag	Joel Kinnaman	Suicide Squad	1
+b	Rick Hoffman		Real Person / Celebrity	1
+b	Rick Moranis		Real Person / Celebrity	1
+b	Ridley Scott		Real Person / Celebrity	1
+b	Riley Blue	Tuppence Middleton	Sense8	1
+b	Rita Hanson	Andie MacDowell	Groundhog Day	1
+b	Rita Vrataski	Emily Blunt	Edge of Tomorrow	1
+b	Robb Stark	Richard Madden	Game of Thrones	1
+b	Robert Beltran		Real Person / Celebrity	1
+b	Robert Duvall		Real Person / Celebrity	1
+b	Robert Picardo		Real Person / Celebrity	1
+b	Robert Redford		Real Person / Celebrity	1
+b	Robin Buckley	Maya Hawke	Stranger Things	1
+b	Roger Thornhill	Cary Grant	North by Northwest	1
+b	Roman Roy	Kieran Culkin	Succession	1
+b	Ron Swanson	Nick Offerman	Parks and Recreation	1
+b	Ronon Dex	Jason Momoa	Stargate Atlantis	1
+b	Rooster Cogburn	John Wayne	True Grit	1
+b	Rory Gilmore	Alexis Bledel	Gilmore Girls	1
+b	Rory McCann		Real Person / Celebrity	1
+b	Rosario Dawson		Real Person / Celebrity	1
+b	Rose Nylund	Betty White	The Golden Girls	1
+b	Roxann Dawson		Real Person / Celebrity	1
+b	Roy Kent	Brett Goldstein	Ted Lasso	1
+b	Rue Bennett	Zendaya	Euphoria	1
+b	Rufus	George Carlin	Bill & Ted's Excellent Adventure	1
+b	Ruth Wilder	Alison Brie	GLOW	1
+b	Ryan Howard	B.J. Novak	The Office	1
+b	Sabrina Spellman	Melissa Joan Hart	Sabrina the Teenage Witch	1
+b	Sacha Baron Cohen		Real Person / Celebrity	1
+b	Sadie Sink		Real Person / Celebrity	1
+b	Sally Albright	Meg Ryan	When Harry Met Sally...	1
+b	Sam \"Mayday\" Malone	Ted Danson	Cheers	1
+b	Sam Neill		Real Person / Celebrity	1
+b	Sam Raimi		Real Person / Celebrity	1
+b	Sam Rockwell		Real Person / Celebrity	1
+b	Sam Witwicky	Shia LaBeouf	Transformers	1
+b	Samantha Jones	Kim Cattrall	Sex and the City	1
+b	Samwise Gamgee	Sean Astin	The Lord of the Rings	1
+b	Sandor Clegane	Rory McCann	Game of Thrones	1
+b	Sansa Stark	Sophie Turner	Game of Thrones	1
+b	Santanico Pandemonium	Salma Hayek	From Dusk Till Dawn	1
+b	Sarah Connor	Linda Hamilton	Terminator 2: Judgment Day	1
+b	Sarah Manning	Tatiana Maslany	Orphan Black	1
+b	Sarah Rafferty		Real Person / Celebrity	1
+b	Sarah Silverman		The Sarah Silverman Program	2
+b	Sarah Snook		Real Person / Celebrity	1
+b	Saruman	Christopher Lee	The Lord of the Rings	1
+b	Saul Tigh	Michael Hogan	Battlestar Galactica	1
+b	Scott Bakula		Real Person / Celebrity	1
+b	Sean Astin		Real Person / Celebrity	1
+b	Sebastian Stan		Real Person / Celebrity	1
+b	Selene	Kate Beckinsale	Underworld	1
+b	Seth Gecko	George Clooney	From Dusk Till Dawn	1
+b	Seth Rogen		Real Person / Celebrity	1
+b	Seven of Nine	Jeri Ryan	Star Trek: Voyager	1
+b	Severus Snape	Alan Rickman	Harry Potter	1
+b	Shaquille O'Neal		Lakers court	2
+b	Sharona Fleming	Bitty Schram	Monk	1
+b	Shauna Shipman	Melanie Lynskey	Yellowjackets	1
+b	Shawn Spencer	James Roday Rodriguez	Psych	1
+b	Sigourney Weaver		Real Person / Celebrity	1
+b	Silent Bob	Kevin Smith	Jay and Silent Bob	1
+b	Silvio Dante	Steven Van Zandt	The Sopranos	1
+b	Siobhan Roy	Sarah Snook	Succession	1
+b	Sir Lancelot	John Cleese	Monty Python	1
+b	Sirius Black	Gary Oldman	Harry Potter	1
+b	Skyler White	Anna Gunn	Breaking Bad	1
+b	Snake Plissken	Kurt Russell	Escape from New York	1
+b	Sonny Corleone	James Caan	The Godfather	1
+b	Sookie Stackhouse	Anna Paquin	True Blood	1
+b	Sophia Petrillo	Estelle Getty	The Golden Girls	1
+b	Spartacus	Kirk Douglas	Spartacus	1
+b	Spencer Hastings	Troian Bellisario	Pretty Little Liars	1
+b	Spike Lee		Real Person / Celebrity	1
+b	Standartenführer Hans Landa	Christoph Waltz	Inglourious Basterds	1
+b	Stanley Hudson	Leslie David Baker	The Office	1
+b	Stanley Kubrick		Real Person / Celebrity	1
+b	Stannis Baratheon	Stephen Dillane	Game of Thrones	1
+b	Starlight / Annie January	Erin Moriarty	The Boys	1
+b	Stellan Skarsgård		Real Person / Celebrity	1
+b	Stephen Dillane		Real Person / Celebrity	1
+b	Stephen Fry		Real Person / Celebrity	1
+b	Steve Harrington	Joe Keery	Stranger Things	1
+b	Steve McQueen		Real Person / Celebrity	1
+b	Steve Schirripa		Real Person / Celebrity	1
+b	Sugar \"Kane\" Kowalczyk	Marilyn Monroe	Some Like It Hot	1
+b	Sun Bak	Doona Bae	Sense8	1
+b	Superman	Christopher Reeve	Superman	1
+b	Susan Mayer	Teri Hatcher	Desperate Housewives	1
+b	Suzie Toller	Neve Campbell	Wild Things	1
+b	Sydney Bristow	Jennifer Garner	Alias	1
+b	Sydney Sweeney		Real Person / Celebrity	1
+b	Sylar	Zachary Quinto	Heroes	1
+b	T'Pol	Jolene Blalock	Star Trek: Enterprise	1
+b	Taissa Turner	Tawny Cypress	Yellowjackets	1
+b	Taystee Jefferson	Danielle Brooks	Orange Is the New Black	1
+b	Ted Lasso	Jason Sudeikis	Ted Lasso	1
+b	Temuera Morrison		Real Person / Celebrity	1
+b	Terri Flores	Jennifer Lopez	Anaconda	2
+b	Terry Farrell		Real Person / Celebrity	1
+b	Teyla Emmagan	Rachel Luttrell	Stargate Atlantis	1
+b	The Ancient One	Tilda Swinton	Doctor Strange	1
+b	The Bride / Beatrix Kiddo	Uma Thurman	Kill Bill	1
+b	The Doctor	Robert Picardo	Star Trek: Voyager	1
+b	The Joker	Heath Ledger	The Dark Knight	2
+b	The Joker	Jack Nicholson	Batman	1
+b	The Joker	Jared Leto	Suicide Squad	1
+b	The Joker	Mark Hamill	Batman: The Animated Series	1
+b	The Man in Black	Ed Harris	Westworld	1
+b	The Riddler	Paul Dano	The Batman	1
+b	The Sundance Kid	Robert Redford	Butch Cassidy and the Sundance Kid	1
+b	Theo Kojak	Telly Savalas	Kojak	1
+b	Theodore \"T-Bag\" Bagwell	Robert Knepper	Prison Break	1
+b	Thomas F. Wilson		Real Person / Celebrity	1
+b	Thomas Jane		Real Person / Celebrity	1
+b	Thomas Magnum	Tom Selleck	Magnum	2
+b	Thorin Oakenshield	Richard Armitage	The Hobbit	1
+b	Tim Burton		Real Person / Celebrity	1
+b	Tim Roth		Real Person / Celebrity	1
+b	Tim Russ		Real Person / Celebrity	1
+b	Todd Alquist	Jesse Plemons	Breaking Bad	1
+b	Tom Felton		Real Person / Celebrity	1
+b	Tom Hagen	Robert Duvall	The Godfather	1
+b	Tom Jordache	Nick Nolte	Rich Man	1
+b	Tom Wambsgans	Matthew Macfadyen	Succession	1
+b	Tommy Callahan	Chris Farley	Tommy Boy	1
+b	Tommy DeVito	Joe Pesci	Goodfellas	1
+b	Tommy Gavin	Denis Leary	Rescue Me	2
+b	Tony Dalton		Real Person / Celebrity	1
+b	Tony Manero	John Travolta	Saturday Night Fever	1
+b	Torrance Shipman	Kirsten Dunst	Bring It On	1
+b	Tracy Lord	Katharine Hepburn	The Philadelphia Story	1
+b	Tricia Helfer		Real Person / Celebrity	1
+b	Trinity	Carrie-Anne Moss	The Matrix	1
+b	Troy Barnes	Donald Glover	Community	1
+b	Tuvok	Tim Russ	Star Trek: Voyager	1
+b	Tywin Lannister	Charles Dance	Game of Thrones	1
+b	Uncle Junior	Dominic Chianese	The Sopranos	1
+b	Val Kilmer		Real Person / Celebrity	1
+b	Valentine McKee	Kevin Bacon	Tremors	1
+b	Vanessa Ives	Eva Green	Penny Dreadful	1
+b	Varys	Conleth Hill	Game of Thrones	1
+b	Vecna	Jamie Campbell Bower	Stranger Things	1
+b	Veronica Mars	Kristen Bell	Veronica Mars	2
+b	Vic Mackey	Michael Chiklis	The Shield	1
+b	Villanelle	Jodie Comer	Killing Eve	1
+b	Vince Masuka	C.S. Lee	Dexter	1
+b	Vincent Curatola		Real Person / Celebrity	1
+b	Violet Crawley, Dowager Countess	Maggie Smith	Downton Abbey	1
+b	Viserys I Targaryen	Paddy Considine	House of the Dragon	1
+b	Vision	Paul Bettany	WandaVision	1
+b	Walter Koenig		Real Person / Celebrity	1
+b	Walton Goggins		Real Person / Celebrity	1
+b	Wash	Alan Tudyk	Firefly	1
+b	Wendell Pierce		Real Person / Celebrity	1
+b	Wes Anderson		Real Person / Celebrity	1
+b	Wesley Crusher	Wil Wheaton	Star Trek: The Next Generation	1
+b	Westley	Cary Elwes	The Princess Bride	1
+b	Will Byers	Noah Schnapp	Stranger Things	1
+b	William Adama	Edward James Olmos	Battlestar Galactica	1
+b	William Zabka		Real Person / Celebrity	1
+b	Winona Ryder		Real Person / Celebrity	1
+b	Winston Wolf	Harvey Keitel	Pulp Fiction	1
+b	Wood Harris		Real Person / Celebrity	1
+b	Woody Allen		Real Person / Celebrity	1
+b	Xena	Lucy Lawless	Xena: Warrior Princess	1
+b	Yelena Belova	Florence Pugh	Black Widow	1
+b	Yennefer of Vengerberg	Anya Chalotra	The Witcher	1
+b	Zoe Saldana		Real Person / Celebrity	1
+b	Zoe Washburne	Gina Torres	Firefly	1
+b	Éowyn	Miranda Otto	The Lord of the Rings	1
