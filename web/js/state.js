@@ -94,6 +94,21 @@ export const activeEngine = (p = project) =>
 export const durationFrames = (p = project) =>
   activeEngine(p) === "ltx25" ? LTX_DURATION_FRAMES : DURATION_FRAMES;
 
+/* LTXVAddGuide samples time on the video VAE's temporal stride of 8, so a
+ * pin placed at an arbitrary cut time lands on the nearest multiple of 8
+ * frames — a 1/3 s grid at 24 fps. The node quantises silently (a single
+ * image lands on latent ceil(idx / 8)); done invisibly it reads as drift,
+ * so the same rounding is shown on the pin row and used by the graph. */
+export const LTX_GUIDE_STRIDE = 8;
+export function ltxGuideIdx(seconds, p = project) {
+  const fps = p?.render?.fps || 24;
+  const last = frameCount(p) - 1;
+  const idx = Math.round((Number(seconds) || 0) * fps / LTX_GUIDE_STRIDE) * LTX_GUIDE_STRIDE;
+  return Math.max(0, Math.min(last, idx));
+}
+/** Where a pin at `seconds` actually lands, in seconds, on the guide grid. */
+export const ltxGuideTime = (seconds, p = project) => ltxGuideIdx(seconds, p) / (p?.render?.fps || 24);
+
 export const overLength = (seconds, p = project) => {
   const max = activeEngine(p) === "ltx25" ? LTX25_DURATION.max : H3_DURATION.max;
   return Number(seconds || 0) > max;

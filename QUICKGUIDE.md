@@ -718,6 +718,26 @@ like when the shot lands; it does not force a hard cut. Pins are ignored on
 the MiniMax engine (H3 has no per-frame guide input) and the checks warn
 when that is about to happen.
 
+Two things about pins that ComfyUI will not tell you, so this app does:
+
+- **Pins land on a ⅓ s grid.** `LTXVAddGuide` anchors on the video VAE's
+  8-frame stride, and it rounds to it silently — a pin at 4.20 s is really
+  at 4.33 s, and that looks like drift, not rounding. The pin row prints
+  the frame it actually lands on (`→ f104 · 00:04.333`), and the checks
+  list every pin that moved. Put the cut on the grid if the exact frame
+  matters.
+- **The same picture pinned twice freezes the character.** A guide says
+  "the frame looks like this, here". Pin one image at several cuts and the
+  guides agree with each other: the model has been told the pose does not
+  change, and it holds still between them. It is the intuitive move with a
+  cast sheet — the same reference at every shot — and the checks warn when
+  you make it. Pin a different frame at each cut, or drop the strength
+  under 0.7 on all but one.
+
+The LTX chip also leaves Lightricks' **prompt enhancer off** on purpose.
+It helps a thin prompt; it dilutes a compiled one, and every prompt this
+app sends is compiled.
+
 ### These settings stick
 
 Whatever you choose on this page becomes the default your **next** project
