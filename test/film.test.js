@@ -232,3 +232,56 @@ test("the plan describes itself the way the button has to read", () => {
   assert.equal(describePlan(planFilm(film(45, [15, 30]))), "3 × 15s — 45s");
   assert.match(describePlan(planFilm(film(20, [5, 12]))), /^2 clips \(/);
 });
+
+/* ── Every hard cut its own clip (LTX-2.5) ───────────────── */
+
+function ltxFilm(seconds, cuts, verbs = {}) {
+  const p = film(seconds, cuts);
+  p.render.engine = "ltx25";
+  p.render.variant = "ltx_two";
+  for (const [i, v] of Object.entries(verbs)) p.shots[Number(i)].cutVerb = v;
+  return p;
+}
+
+test("splitting at cuts gives one clip per hard cut on LTX-2.5", async () => {
+  const { splitsAtCuts, clipLengthsFor } = await import("../web/js/film.js");
+  const p = ltxFilm(20, [4, 8, 14]);
+  p.film.splitAtCuts = true;
+  assert.ok(splitsAtCuts(p));
+  const plan = planFilm(p);
+  assert.equal(plan.clips.length, 4);
+  assert.deepEqual(plan.clips.map(c => c.shots.length), [1, 1, 1, 1]);
+  assert.deepEqual(plan.clips.map(c => c.seconds), [5, 5, 10, 10], "each rounds up on LTX's grid");
+  assert.deepEqual(clipLengthsFor(p), [5, 10, 15, 20, 25, 30]);
+  assert.ok(plan.notes.some(n => /own clip/.test(n.msg)));
+});
+
+test("a row that continues the take stays inside its clip", () => {
+  const p = ltxFilm(20, [4, 8, 14], { 2: "none" });
+  p.film.splitAtCuts = true;
+  const plan = planFilm(p);
+  assert.equal(plan.clips.length, 3);
+  assert.deepEqual(plan.clips.map(c => c.shots.length), [1, 2, 1]);
+});
+
+test("MiniMax ignores the switch and packs shots as before", async () => {
+  const { splitsAtCuts } = await import("../web/js/film.js");
+  const p = film(20, [4, 8, 14]);
+  p.film.splitAtCuts = true;
+  assert.ok(!splitsAtCuts(p));
+  assert.equal(planFilm(p).clips.length, 2);
+});
+
+test("LTX clips may be longer than H3's window, and a 25 s take is one clip", () => {
+  const p = ltxFilm(30, [25]);
+  const plan = planFilm(p);
+  assert.equal(plan.clips.length, 1, "25 + 5 fits one 30 s LTX clip");
+  assert.equal(plan.clips[0].seconds, 30);
+  assert.ok(!plan.notes.some(n => /trimmed|loses/.test(n.msg)));
+});
+
+test("a short split piece is not warned about as too short for a film", () => {
+  const p = ltxFilm(10, [5]);
+  p.film.splitAtCuts = true;
+  assert.ok(!validate(p).checks.some(c => /short enough to be one or two clips/.test(c.msg)));
+});

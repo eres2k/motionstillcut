@@ -190,7 +190,13 @@ export const LTX_HARD_CUT = "a hard cut transitions to";
 export const cutVerbFor = (verb, engine) => {
   const v = verb || "the camera cuts to";
   if (engine !== "ltx25" || v === NO_CUT) return v;
-  return /dissolve|fade|wipe/i.test(v) ? v : LTX_HARD_CUT;
+  // docs.ltx.io, "Multi-shot prompts": name the transition in natural
+  // language — "A hard cut transitions to…", "The view cuts to…",
+  // "The image dissolves into…".
+  if (/dissolve/i.test(v)) return "the image dissolves into";
+  if (/fade/i.test(v)) return "the image fades into";
+  if (/transitions/i.test(v)) return "the view cuts to";
+  return LTX_HARD_CUT;
 };
 export const transitionLabel = (v) => (TRANSITIONS.find(t => t[0] === (v || "the camera cuts to")) || TRANSITIONS[0])[1];
 

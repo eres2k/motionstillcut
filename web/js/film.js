@@ -32,7 +32,8 @@
  *   the whole exercise exists to avoid.
  */
 
-import { orderedShots, H3_DURATION, filmSpan, FILM_LIMITS } from "./state.js";
+import { orderedShots, H3_DURATION, LTX25_DURATION, LTX_DURATION_FRAMES, filmSpan, FILM_LIMITS, activeEngine } from "./state.js";
+import { NO_CUT } from "./vocab.js";
 
 /** The clip lengths a film may use: the DURATION_FRAMES rows inside H3's
  *  4–15 s window. 20/25/30 exist in the table and are deliberately not here —
@@ -40,12 +41,24 @@ import { orderedShots, H3_DURATION, filmSpan, FILM_LIMITS } from "./state.js";
 export const CLIP_LENGTHS = [5, 10, 15];
 export const CLIP_MAX = H3_DURATION.max;
 
+/* LTX-2.5 genuinely renders up to 30 s, so its clips may be any length on
+ * its 8k+1 grid. The engine decides the ruler the planner cuts with. */
+export function clipLengthsFor(project) {
+  return activeEngine(project) === "ltx25"
+    ? Object.keys(LTX_DURATION_FRAMES).map(Number).filter(n => n <= LTX25_DURATION.max).sort((a, b) => a - b)
+    : CLIP_LENGTHS;
+}
+export const clipMaxFor = (project) => activeEngine(project) === "ltx25" ? LTX25_DURATION.max : CLIP_MAX;
+
+/** Every hard cut its own clip? Only on LTX-2.5, and only when asked. */
+export const splitsAtCuts = (project) => !!project?.film?.splitAtCuts && activeEngine(project) === "ltx25";
+
 const round2 = (n) => Math.round(n * 100) / 100;
 
 /** The shortest renderable clip that holds `seconds` of writing. */
-export function clipLengthFor(seconds) {
+export function clipLengthFor(seconds, lengths = CLIP_LENGTHS) {
   const s = Math.max(0, Number(seconds) || 0);
-  return CLIP_LENGTHS.find((l) => l >= s - 1e-9) ?? CLIP_MAX;
+  return lengths.find((l) => l >= s - 1e-9) ?? lengths[lengths.length - 1];
 }
 
 /**
@@ -63,6 +76,10 @@ export function planFilm(project, { span = null } = {}) {
   const shots = orderedShots(project);
   const total = Math.max(0, Number(span ?? filmSpan(project)) || 0);
   const notes = [];
+  const lengths = clipLengthsFor(project);
+  const max = clipMaxFor(project);
+  const split = splitsAtCuts(project);
+  const engineName = activeEngine(project) === "ltx25" ? "LTX-2.5" : "H3";
 
   if (!shots.length) {
     return { clips: [], seconds: 0, authored: 0, notes: [{ level: "err", msg: "The timeline has no shots to cut into clips." }] };
@@ -97,18 +114,21 @@ export function planFilm(project, { span = null } = {}) {
   shots.forEach((shot, i) => {
     const span_i = spans[i];
 
-    if (span_i > CLIP_MAX + 1e-9) {
+    if (span_i > max + 1e-9) {
       close();
-      clips.push({ at: shot.at || 0, span: CLIP_MAX, shots: [shot], trimmed: round2(span_i - CLIP_MAX) });
+      clips.push({ at: shot.at || 0, span: max, shots: [shot], trimmed: round2(span_i - max) });
       notes.push({
         level: "warn",
-        msg: `Shot ${i + 1} runs ${span_i.toFixed(1)}s on its own, past H3's ${CLIP_MAX}s window. It becomes a ${CLIP_MAX}s clip and loses `
-          + `${round2(span_i - CLIP_MAX).toFixed(1)}s — cut it in two if you want the rest of it.`,
+        msg: `Shot ${i + 1} runs ${span_i.toFixed(1)}s on its own, past ${engineName}'s ${max}s window. It becomes a ${max}s clip and loses `
+          + `${round2(span_i - max).toFixed(1)}s — cut it in two if you want the rest of it.`,
       });
       return;
     }
+    /* Every hard cut its own clip: the clip closes before any row that is a
+     * cut. A row that continues the take ("no cut") is not a cut, and stays. */
+    if (open && split && shot.cutVerb !== NO_CUT) close();
     if (!open) { open = { at: shot.at || 0, span: span_i, shots: [shot], trimmed: 0 }; return; }
-    if (open.span + span_i <= CLIP_MAX + 1e-9) {
+    if (open.span + span_i <= max + 1e-9) {
       open.span = round2(open.span + span_i);
       open.shots.push(shot);
     } else {
@@ -118,15 +138,21 @@ export function planFilm(project, { span = null } = {}) {
   });
   close();
 
-  const out = clips.map((c, index) => ({ ...c, index, span: round2(c.span), seconds: clipLengthFor(c.span) }));
+  const out = clips.map((c, index) => ({ ...c, index, span: round2(c.span), seconds: clipLengthFor(c.span, lengths) }));
   const seconds = out.reduce((n, c) => n + c.seconds, 0);
   const authored = round2(out.reduce((n, c) => n + c.span, 0));
 
   if (seconds > authored + 0.01) {
     notes.push({
       level: "info",
-      msg: `${authored.toFixed(0)}s of writing renders as ${seconds}s: a clip can only be ${CLIP_LENGTHS.join(", ")} seconds long, so short ones are `
+      msg: `${authored.toFixed(0)}s of writing renders as ${seconds}s: a clip can only be ${lengths.join(", ")} seconds long, so short ones are `
         + `rounded up. The extra time goes to the last shot of each clip.`,
+    });
+  }
+  if (split && out.length > 1) {
+    notes.push({
+      level: "info",
+      msg: `Every hard cut is rendered as its own clip — ${out.length} renders, joined afterwards. Rows marked "same take" stay inside their clip.`,
     });
   }
   if (out.length > FILM_LIMITS.maxClips) {

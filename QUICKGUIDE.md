@@ -665,6 +665,19 @@ continues the previous shot, and compiles *into* its `[Shot N]` block —
 new marker, and the markers after it renumber. That is how one long take gets
 several moments without pretending to be several shots.
 
+### One render per cut (LTX-2.5)
+
+On the LTX-2.5 engine the **Film** panel gains a **Cuts** row: *Every hard
+cut is its own clip, joined afterwards.* Each cut in the timeline then
+becomes a separate render — a real cut between two files instead of one the
+model is asked to perform inside a clip — and the clips are joined on
+Deliver as any film is. Rows marked **No cut — same take** stay inside their
+clip, so a long take with several moments is still one render. With
+**Continuity** on, each clip starts from the last frame of the one before.
+The film may be as short as a single render here; the planner uses LTX's own
+lengths (5–30 s). MiniMax ignores the row — its planner packs shots into
+15 s clips as before.
+
 ## 11 · Deliver
 
 - **⬇ Workflow JSON** — the ComfyUI API graph, stock nodes only. The Input files
@@ -740,8 +753,11 @@ title bar as a chip beside the mode, on every page, because it decides what
 the timeline may do (15 s or 30 s, pins or no pins). Click the chip to switch;
 the prompt does not change, the checks use the other engine's limits. A check
 that the other engine would resolve — a 20 s clip on H3, a pinned shot on H3 —
-carries a **Switch to LTX-2.5** button of its own. The LTX chip sends the *same compiled
-prompt, verbatim* to Lightricks' model through its own distilled pipeline
+carries a **Switch to LTX-2.5** button of its own. The LTX chip compiles the *same
+timeline* the way Lightricks' prompting guide asks — one chronological paragraph, no
+timestamps or shot numbers, each cut named in prose (`a hard cut transitions to …`,
+`the image dissolves into …`) with the audio continuity stated, the sound described
+at the end — and sends it to Lightricks' model through its own distilled pipeline
 (Two-stage 8+3 or Single-stage 8-step, cfg 1, no LoRAs). Same canvases, the
 frame counts move to LTX's 8k+1 grid, clips run to a real 30 s, and I2V pins
 the first frame with `LTXVAddGuide`. It needs the five LTX-2.5 files

@@ -45,17 +45,31 @@ test("no cut folds the row into the previous block and renumbers what follows", 
   assert.deepEqual(shotMarkers(p.shots), [1, 1, 2]);
 });
 
-test("on LTX-2.5 a plain cut is named the way Lightricks' guide names one", () => {
+test("on LTX-2.5 the prompt is Lightricks' dialect: one paragraph, cuts in prose, no markers or timestamps", () => {
   const p = three();
   p.render.engine = "ltx25";
   p.shots[1].cutVerb = "the shot switches to";
   const { text } = compilePrompt(p);
-  assert.match(text, /At 00:03\.000, a hard cut transitions to a close-up shot/);
-  assert.match(text, /At 00:06\.000, a hard cut transitions to a medium shot/);
+  assert.ok(!/\[Shot \d\]/.test(text), "no shot numbers");
+  assert.ok(!/At \d\d:\d\d/.test(text), "no timestamps");
+  assert.ok(!/integrated_multimodal_description|overall_soundscape|non_diegetic_music/.test(text), "no field labels");
+  assert.match(text, /A hard cut transitions to a close-up shot, front-facing of the baker\. The ambient sound continues across the cut\./);
+  assert.match(text, /Ambient sound throughout: a shutter rattling up\./);
   p.shots[2].cutVerb = "the shot dissolves to";
-  assert.match(compilePrompt(p).text, /At 00:06\.000, the shot dissolves to/);
+  assert.match(compilePrompt(p).text, /The image dissolves into a medium shot/);
+  p.shots[2].cutVerb = "the shot transitions to";
+  assert.match(compilePrompt(p).text, /The view cuts to a medium shot/);
   assert.equal(cutVerbFor("the camera cuts to", "minimax"), "the camera cuts to", "MiniMax keeps the guide's verb");
   assert.equal(cutVerbFor(NO_CUT, "ltx25"), NO_CUT);
+});
+
+test("on LTX-2.5 more than four shots is a warning, per Lightricks", () => {
+  const p = three();
+  p.render.engine = "ltx25";
+  for (const at of [7, 8]) { const s = newShot(); s.at = at; s.subject = "the baker"; s.beats = [newBeat("x", "")]; p.shots.push(s); }
+  assert.ok(validate(p).checks.some(c => /prefers 2–4/.test(c.msg)));
+  p.shots[4].cutVerb = NO_CUT;   // four cuts now
+  assert.ok(!validate(p).checks.some(c => /prefers 2–4/.test(c.msg)));
 });
 
 test("a dissolve is written as the guide's verb", () => {

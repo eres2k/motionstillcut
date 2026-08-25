@@ -64,7 +64,7 @@ export const DURATION_FRAMES = { 5: 124, 10: 243, 15: 362, 20: 481, 25: 600, 30:
 export const H3_DURATION = { min: 4, max: 15 };
 
 /* ── The second engine (experimental) ─────────────────────────
- * LTX-2.5 as an alternative renderer for T2V and I2V, fed the SAME compiled
+ * LTX-2.5 as an alternative renderer for T2V and I2V, fed the same timeline compiled
  * prompt. That is the whole experiment: H3's grammar is a structure the cut
  * timeline already compiles, and LTX-2.5 reads long structured prose well —
  * but it was not trained on the [Shot N] dialect, so the markers ride along
@@ -314,7 +314,7 @@ export function blankProject() {
       duration: 5,
       fps: 24,
       // Which model renders the timeline. "minimax" is the app's native
-      // engine; "ltx25" is the experimental second one — same compiled
+      // engine; "ltx25" is the experimental second one — same timeline, its own dialect;
       // prompt, a different DiT behind it. Ignored in r2v (see activeEngine).
       engine: "minimax",      // minimax | ltx25 (experimental)
       variant: "turbo",       // full | turbo | turbo4 (fl2va) · full | ref4 (ref2va) · ltx_two | ltx_single (ltx25)
@@ -357,6 +357,11 @@ export function blankProject() {
       seconds: 60,          // how long the whole thing is meant to be
       continuity: true,     // hand each clip the last frame of the one before
       audio: "keep",        // keep | mute — H3 writes audio per clip, and it does not match across a join
+      /* LTX-2.5 only: every hard cut becomes its own clip, rendered on its
+       * own and joined afterwards — a real cut instead of one the model is
+       * asked to perform inside a clip. Rows marked "no cut" stay inside
+       * their clip. Ignored on MiniMax. */
+      splitAtCuts: false,
     },
     jobs: [],                 // render history: { id, promptId, at, mode, status, outputs, prompt }
     selectedShot: null,
