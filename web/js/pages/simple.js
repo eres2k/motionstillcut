@@ -41,7 +41,7 @@ import { ingest, getBlob, delBlob, posterFor } from "../media.js";
 import { compilePrompt, validate, cameraSentence, compileSubjectDefs, taskTypeFor } from "../prompt.js";
 import { SPEEDS, SPEAKERS, LANGUAGES, LOOKS, GRADES, REF_TASK_TYPES } from "../vocab.js";
 import { estimateSeconds, humanTime } from "../workflow.js";
-import { renderNow, currentJob, onRenderChange, cancelRender } from "../render.js";
+import { renderNow, currentJob, onRenderChange, cancelRender, applyLive } from "../render.js";
 import { enhance, breakdown, polishShot } from "../llm.js";
 import { api } from "../api.js";
 import { getHealth, getSettings } from "../config.js";
@@ -1638,8 +1638,8 @@ function renderProgress(job) {
     h("div", { class: `progress${known ? "" : " indet"}` },
       h("i", { style: { width: known ? `${pct}%` : "" } })),
     h("div.rn-prog-row",
-      h("span.mono", known ? `${job.step}/${job.steps}` : job.status === "queued" ? "queued" : "starting"),
-      h("span.grow", { class: "hint" }, job.node ? `node ${job.node}` : ""),
+      h("span.mono", { "data-live": "steps" }, known ? `${job.step}/${job.steps}` : job.status === "queued" ? "queued" : "starting"),
+      h("span.grow", { class: "hint", "data-live": "node" }, job.node ? `node ${job.node}` : ""),
       h("span.mono.hint", eta != null ? `${humanTime(eta)} left` : humanTime(elapsed)),
     ),
   );
@@ -2199,7 +2199,7 @@ export function askDirector(request = "", runner = null) {
 
 export function render(el) {
   root = el;
-  if (!unsub) unsub = onRenderChange(() => { if (root && root.classList.contains("active")) draw(); });
+  if (!unsub) unsub = onRenderChange((job, kind) => { if (root && root.classList.contains("active")) applyLive(root, job, kind, draw); });
   draw();
 }
 export function refresh() { if (root) draw(); }

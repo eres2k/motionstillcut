@@ -34,7 +34,20 @@ export const $  = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 export function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); return node; }
-export function mount(node, ...kids) { clear(node); kids.flat().forEach(k => k && node.appendChild(k)); return node; }
+/* A rebuild that would put back the same <video> keeps the one that is
+ * already there — moved, not recreated — so it neither restarts nor
+ * autoplays again. Anything else is replaced as before. */
+export function mount(node, ...kids) {
+  const playing = new Map();
+  node.querySelectorAll("video[src]").forEach(v => playing.set(v.getAttribute("src"), v));
+  clear(node);
+  kids.flat().forEach(k => k && node.appendChild(k));
+  if (playing.size) node.querySelectorAll("video[src]").forEach(v => {
+    const prev = playing.get(v.getAttribute("src"));
+    if (prev && prev !== v && !prev.ended) v.replaceWith(prev);
+  });
+  return node;
+}
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));

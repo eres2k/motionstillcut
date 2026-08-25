@@ -23,7 +23,58 @@ let current = null;               // the job in flight
 const watchers = new Set();
 
 export const onRenderChange = (fn) => { watchers.add(fn); return () => watchers.delete(fn); };
-const emit = () => { for (const fn of watchers) { try { fn(current); } catch (e) { console.error(e); } } };
+/* Two kinds of news. "state" is a transition — queued, running, done, an
+ * error, outputs — and the pages rebuild for it. "live" is the bar moving,
+ * the node name, the sampler's preview frame: several a second, and a page
+ * that rebuilt for each one restarted every <video> on it, dropped the
+ * focus out of whatever was being typed, and flickered. Live news is
+ * coalesced to a few a second and patched into the page in place. */
+const emit = (kind = "state") => { for (const fn of watchers) { try { fn(current, kind); } catch (e) { console.error(e); } } };
+let liveTimer = null;
+const live = () => {
+  if (liveTimer) return;
+  liveTimer = setTimeout(() => { liveTimer = null; emit("live"); }, 120);
+};
+
+/** Patch the live parts of a page in place. Pages tag what moves:
+ *   .progress > i          width = progress; .indet while nothing is known
+ *   [data-live="deliver"]  "3/8 — node X" (Deliver's bar caption)
+ *   [data-live="steps"]    "3/8" | "queued" | "starting"
+ *   [data-live="node"]     "node X"
+ *   img.live               the sampler's latest preview frame
+ * Returns false when the page needs a real rebuild (the first preview
+ * frame has nowhere to go yet). */
+export function patchLive(root, job) {
+  if (!root || !job) return true;
+  const running = ["queued", "running"].includes(job.status);
+  const known = job.steps > 0 && job.step > 0;
+  const pct = Math.round((job.progress || 0) * 100);
+  root.querySelectorAll(".progress").forEach(el => {
+    const i = el.querySelector("i");
+    if (i) i.style.width = known ? `${pct}%` : "";
+    el.classList.toggle("indet", running && !known);
+  });
+  root.querySelectorAll('[data-live="deliver"]').forEach(el => {
+    el.textContent = job.status === "running"
+      ? `${job.step || 0}/${job.steps || "?"} — ${job.node ? `node ${job.node}` : "starting"}`
+      : job.status;
+  });
+  root.querySelectorAll('[data-live="steps"]').forEach(el => {
+    el.textContent = known ? `${job.step}/${job.steps}` : job.status === "queued" ? "queued" : "starting";
+  });
+  root.querySelectorAll('[data-live="node"]').forEach(el => { el.textContent = job.node ? `node ${job.node}` : ""; });
+  if (job.preview && running) {
+    const imgs = root.querySelectorAll("img.live");
+    if (!imgs.length) return false;
+    imgs.forEach(img => { if (img.src !== job.preview) img.src = job.preview; });
+  }
+  return true;
+}
+
+/** What a page's onRenderChange handler does: rebuild on state, patch on live. */
+export function applyLive(root, job, kind, draw) {
+  if (kind !== "live" || !patchLive(root, job)) draw();
+}
 export const currentJob = () => current;
 
 /* A finished render outlives its render. `current` is never cleared once a job
@@ -180,9 +231,9 @@ export async function renderNow({
       if (!current) return;
       current.step = value; current.steps = max || current.steps;
       current.progress = max ? value / max : 0;
-      emit();
+      live();
     },
-    onNode: (node) => { if (current) { current.node = node || ""; emit(); } },
+    onNode: (node) => { if (current) { current.node = node || ""; live(); } },
     /* The sampler's own frames, as they come. Each replaces the last, and the
      * previous object URL is revoked immediately — a 30-second render at 4 fps
      * would otherwise leak a hundred blobs into the tab. */
@@ -192,7 +243,7 @@ export async function renderNow({
       if (current.preview) URL.revokeObjectURL(current.preview);
       current.preview = url;
       current.previewAt = Date.now();
-      emit();
+      live();
     },
     onError: (d) => {
       if (!current) return;

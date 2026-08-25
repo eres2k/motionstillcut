@@ -16,7 +16,7 @@ import { setEngine as switchEngine } from "../state.js";
 import { validate, compilePrompt } from "../prompt.js";
 import { buildWorkflow, estimateSeconds, humanTime, randomSeed, LTX_MAX_ANCHORS } from "../workflow.js";
 import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js";
-import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending } from "../render.js";
+import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending, applyLive } from "../render.js";
 import * as downloads from "../downloads.js";
 import { variablesFor, variableById, valuesFor, labelOf, runSweep, sweepCost } from "../experiments.js";
 import { api, SERVER_BACKED } from "../api.js";
@@ -181,7 +181,7 @@ function renderPanel(p) {
 
   const bar = h(`div.progress${running && !job.progress ? ".indet" : ""}`,
     h("i", { style: { width: `${Math.round((job?.progress || 0) * 100)}%` } }),
-    h("span", job
+    h("span", { "data-live": "deliver" }, job
       ? job.status === "running"
         ? `${job.step || 0}/${job.steps || "?"} — ${job.node ? `node ${job.node}` : "starting"}`
         : job.status
@@ -958,7 +958,7 @@ function draw() {
 
 export function render(el) {
   root = el;
-  if (!unsub) unsub = onRenderChange(() => { if (root && root.classList.contains("active")) draw(); });
+  if (!unsub) unsub = onRenderChange((job, kind) => { if (root && root.classList.contains("active")) applyLive(root, job, kind, draw); });
   // The queue is filled from other pages, so this page has to hear about it.
   if (!unsubQueue) unsubQueue = onQueueChange(() => { if (root && root.classList.contains("active")) draw(); });
   draw();

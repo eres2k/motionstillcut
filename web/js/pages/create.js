@@ -29,7 +29,7 @@ import { renderPrompt } from "../prompttext.js";
 import { citeLooseReferences } from "./simple.js";
 import { createPreviz } from "../previz.js";
 import { estimateSeconds, humanTime } from "../workflow.js";
-import { renderNow, currentJob, onRenderChange, cancelRender } from "../render.js";
+import { renderNow, currentJob, onRenderChange, cancelRender, applyLive } from "../render.js";
 import { library } from "../library.js";
 import { api } from "../api.js";
 import { getHealth } from "../config.js";
@@ -730,7 +730,7 @@ function draw() {
 
 export function render(el) {
   root = el;
-  if (!unsub) unsub = onRenderChange(() => { if (root?.classList.contains("active")) draw(); });
+  if (!unsub) unsub = onRenderChange((job, kind) => { if (root?.classList.contains("active")) applyLive(root, job, kind, draw); });
   draw();
 }
 export function refresh() { if (root) draw(); }
