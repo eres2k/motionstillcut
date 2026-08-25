@@ -86,3 +86,14 @@ test("no cut is not an unapproved verb, and the cut-time checks still see the ro
   p.shots[1].at = 6;   // the same instant as shot 3 — a row that continues the take is still a moment in time
   assert.ok(validate(p).checks.some(c => /must strictly increase/.test(c.msg)));
 });
+
+test("on LTX-2.5 dialogue is quoted prose with the voice named, no tags", () => {
+  const p = three();
+  p.render.engine = "ltx25";
+  p.shots[0].dialogue = [{ id: "d1", speaker: "S1", identity: "the woman with the short grey hair", voice: "warm, unhurried voice", delivery: "says", text: "We cut it four ways." }];
+  p.shots[1].dialogue = [{ id: "d2", speaker: "S1", text: "And every cut is real." }];
+  const { text } = compilePrompt(p);
+  assert.ok(!/<d>|\(S1\)/.test(text), text);
+  assert.match(text, /The woman with the short grey hair says in a warm, unhurried voice: "We cut it four ways\."/);
+  assert.match(text, /The woman with the short grey hair says: "And every cut is real\."/);
+});

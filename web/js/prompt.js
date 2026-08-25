@@ -144,6 +144,16 @@ export function cameraSentence(camera = {}) {
  * line unpunctuated, that is what the checker is for — it is not this
  * function's business to put words in their mouth.
  */
+/** The identifying phrase a speaker was introduced with, wherever it was. */
+export function identityOf(project, speaker) {
+  for (const sh of orderedShots(project)) {
+    for (const l of sh.dialogue || []) {
+      if ((l.speaker || "S1") === speaker && (l.identity || "").trim()) return l.identity.trim().replace(/[.,;:]\s*$/, "");
+    }
+  }
+  return "the speaker";
+}
+
 export function dialogueSentence(line, opts = {}) {
   const text = (line.text || "").trim();
   if (!text) return "";
@@ -154,6 +164,20 @@ export function dialogueSentence(line, opts = {}) {
   const first = opts.first !== false;
   const identity = first ? (line.identity || "").trim().replace(/[.,;:]\s*$/, "") : "";
   const lead = identity ? `${identity} (${speaker})` : `(${speaker})`;
+
+  /* LTX-2.5 (docs.ltx.io): exact words in quotes, the speaker and the voice
+   * named in prose — "The man says in an excited voice: 'You won't believe
+   * what I just saw!'" — no tags, no speaker ids. Mentioning speech without
+   * the words makes the model invent lines, so the words are always there. */
+  if (opts.ltx) {
+    const who = identity || (opts.identityFallback || "the speaker");
+    const voice = (line.voice || "").trim();
+    const deliveryWord = (line.delivery || "").trim() || "says";
+    const how = line.voiceover ? "in an off-screen voiceover" : voice ? `in ${/^(a|an|the)\b/i.test(voice) ? voice : `a ${voice}`}` : "";
+    const clean = text.replace(/^["'“”]+|["'“”]+$/g, "");
+    const quoted = /[.!?…]$/.test(clean) ? `"${clean}"` : `"${clean}."`;
+    return `${who.charAt(0).toUpperCase()}${who.slice(1)} ${deliveryWord}${how ? ` ${how}` : ""}: ${quoted}${line.voiceover ? " Their lips stay closed." : ""}`;
+  }
 
   if (line.voiceover) {
     // §4.4: "For voiceover, use the exact phrase `says in an off-screen
@@ -389,7 +413,10 @@ export function shotProse(shot, index, project, opts = {}) {
       const spk = line.speaker || "S1";
       const firstTime = !seen.has(spk);
       if ((line.text || "").trim()) seen.add(spk);
-      return dialogueSentence(line, { first: firstTime });
+      /* LTX reuses the speaker's identifier at every line — the guide asks
+       * for recurring elements to keep their visual identifiers across cuts,
+       * and a bare "the speaker" would be a new person to it. */
+      return dialogueSentence(line, { first: firstTime, ltx, identityFallback: ltx ? identityOf(project, spk) : null });
     }),
     shot.sfx,
   ];
@@ -441,7 +468,9 @@ export function compileDescription(project) {
       /* After the shot's opening clause, which is where Case 1 puts it — not at
        * the end, where it would read as happening after everything else in the
        * shot including any line the clip cuts off. */
-      const carry = `<scenetrans> The line from (${line.speaker || "S1"}) ${how}.`;
+      const carry = activeEngine(project) === "ltx25"
+        ? `The line ${how}.`
+        : `<scenetrans> The line from (${line.speaker || "S1"}) ${how}.`;
       parts[i + 1] = /\.\s/.test(parts[i + 1])
         ? parts[i + 1].replace(/\.\s/, `. ${carry} `)
         : `${parts[i + 1]} ${carry}`;
