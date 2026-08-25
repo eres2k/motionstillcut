@@ -648,6 +648,20 @@ render previews** turns them off if you would rather not pay the bandwidth.
 
 ---
 
+### Between two shots
+
+Each shot after the first carries a **Cut** — in the Inspector, on the shot
+strip (`✂ Hard cut`, `⟶ same take`), and in the node view as the little
+selector on the wire that joins one shot node to the next. The first five
+choices are the guide's approved cut verbs, written as `[Shot 2] At 00:03.000,
+the camera cuts to …`; **Dissolve** and **Fade** exist but the guide asks for
+them only on explicit request, so they are labelled. **No cut — same take**
+is the one the guide has no word for, because it is not a cut: the row
+continues the previous shot, and compiles *into* its `[Shot N]` block —
+`At 00:03.000, without a cut, the camera reframes to a close-up …` — with no
+new marker, and the markers after it renumber. That is how one long take gets
+several moments without pretending to be several shots.
+
 ## 11 · Deliver
 
 - **⬇ Workflow JSON** — the ComfyUI API graph, stock nodes only. The Input files

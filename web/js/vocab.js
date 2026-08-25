@@ -166,6 +166,24 @@ export const CUT_VERBS = [
   ["the shot fades to",   "fades to (ask first)"],
 ];
 
+/* What happens between two shots. The verbs are the guide's; "none" is the
+ * one thing the guide has no word for because it is not a cut: the next row
+ * of the timeline continues the same take — a reframe, a move, a new beat —
+ * and compiles INTO the previous [Shot N] block, with no new marker. That is
+ * how a single-shot clip can still be authored as a list of moments. */
+export const NO_CUT = "none";
+export const TRANSITIONS = [
+  ["the camera cuts to",       "Hard cut",              "The guide's default: a straight cut"],
+  ["the shot cuts to",         "Shot cut",              "Same as a hard cut, the guide's other wording"],
+  ["the shot transitions to",  "Transition",            "An unspecified transition — the model decides"],
+  ["the shot changes to",      "Change",                "Approved cut verb"],
+  ["the shot switches to",     "Switch",                "Approved cut verb"],
+  ["the shot dissolves to",    "Dissolve (ask first)",  "Exists, but the guide asks for it only on explicit request"],
+  ["the shot fades to",        "Fade (ask first)",      "Exists, but the guide asks for it only on explicit request"],
+  [NO_CUT,                     "No cut — same take",    "Continues the previous shot without a cut: no new [Shot N] marker, the reframe and beats are written into the same block"],
+];
+export const transitionLabel = (v) => (TRANSITIONS.find(t => t[0] === (v || "the camera cuts to")) || TRANSITIONS[0])[1];
+
 /* Overall style — the first thing [Shot 1] has to establish. */
 export const LOOKS = [
   "live-action cinematic",

@@ -13,6 +13,7 @@
  * tag the model will silently ignore.
  */
 
+import { TRANSITIONS, NO_CUT, transitionLabel } from "./vocab.js";
 import { h, clear } from "./util.js";
 import { orderedShots, referenceInventory, shotActionText } from "./state.js";
 import { shotProse } from "./prompt.js";
@@ -52,7 +53,7 @@ function nodeBox({ x, y, w, title, subtitle, color, className = "", onclick, tit
  * Build the graph.
  * @returns {HTMLElement} a scrollable strip
  */
-export function renderNodeGraph(project, { selectedShotId = null, onSelectShot = () => {}, onSelectSource = () => {} } = {}) {
+export function renderNodeGraph(project, { selectedShotId = null, onSelectShot = () => {}, onSelectSource = () => {}, onCutChange = null } = {}) {
   const shots = orderedShots(project);
   const inv = referenceInventory(project);
 
@@ -140,10 +141,20 @@ export function renderNodeGraph(project, { selectedShotId = null, onSelectShot =
     }));
 
     // The cut chain: shot N feeds shot N+1 in time, which is what a [Shot N]
-    // marker actually is.
+    // marker actually is — and the wire carries what happens at the seam:
+    // a cut verb, or no cut at all (the row continues the same take, and is
+    // drawn as one solid line into the block above).
     if (i > 0) {
-      wire(COL.shot + NODE_W.shot / 2, TOP + (i - 1) * ROW_H + 44,
-           COL.shot + NODE_W.shot / 2, y + 6, "#5a6a7a", { dashed: true, title: "cuts to" });
+      const same = shot.cutVerb === NO_CUT;
+      const x = COL.shot + NODE_W.shot / 2;
+      const y1 = TOP + (i - 1) * ROW_H + 44, y2 = y + 6;
+      wire(x, y1, x, y2, same ? "#7fb2e5" : "#5a6a7a", { dashed: !same, title: same ? "same take — no cut" : transitionLabel(shot.cutVerb) });
+      const pick = h("select.nv-cut", {
+        title: "What happens between these two shots",
+        onclick: (e) => e.stopPropagation(),
+        onchange: (e) => onCutChange?.(shot.id, e.target.value),
+      }, ...TRANSITIONS.map(([v, label]) => h("option", { value: v, selected: v === (shot.cutVerb || "the camera cuts to") }, label.replace(/ \(ask first\)/, ""))));
+      canvas.appendChild(h("div.nv-cutwrap", { class: `nv-cutwrap${same ? " same" : ""}`, style: { left: `${x}px`, top: `${(y1 + y2) / 2}px` } }, pick));
     }
   });
 

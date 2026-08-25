@@ -17,7 +17,7 @@
  */
 
 import { shotTime, words } from "./util.js";
-import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION } from "./vocab.js";
+import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION, NO_CUT } from "./vocab.js";
 import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS, ltxGuideTime } from "./state.js";
 /* film.js imports state.js and nothing else, so reaching for the planner here
  * is a leaf dependency rather than a cycle. The checker needs it because a
@@ -306,7 +306,9 @@ export function shotProse(shot, index, project, opts = {}) {
     ? (styleInHead
         ? `${article(look)} ${look} ${shotType} shot, ${viewpoint}`
         : `${article(shotType)} ${shotType} shot, ${viewpoint}`)
-    : `${shot.cutVerb || "the camera cuts to"} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
+    : continuesTake(shot, index)
+      ? `without a cut, the camera reframes to ${article(shotType)} ${shotType} shot, ${viewpoint}`
+      : `${shot.cutVerb || "the camera cuts to"} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
 
   /* I2V opens FROM the picture. §3.1: "The description should first establish
    * the style, subjects, composition, and scene anchors in the image, then
@@ -377,7 +379,10 @@ export function shotProse(shot, index, project, opts = {}) {
     shot.sfx,
   ];
 
-  return `[Shot ${index + 1}] ${joinSentences(body)}`.trim();
+  /* A row that continues the take has no marker: it is the rest of the
+   * previous block, and compileDescription joins it on. */
+  if (continuesTake(shot, index)) return joinSentences(body).trim();
+  return `[Shot ${opts.marker || index + 1}] ${joinSentences(body)}`.trim();
 }
 
 /**
@@ -404,7 +409,8 @@ export function compileDescription(project) {
    * where the whole shot list is in hand — shotProse sees one shot at a time. */
   const seen = new Set();
   const styleAhead = project.mode === "r2v";
-  const parts = shots.map((s, i) => shotProse(s, i, project, { seen, styleAhead }));
+  const markers = shotMarkers(shots);
+  const parts = shots.map((s, i) => shotProse(s, i, project, { seen, styleAhead, marker: markers[i] }));
   /* A line flagged as crossing the cut needs its second half at the head of the
    * following shot. Only compileDescription can do that — shotProse sees one
    * shot at a time, which is why this was unrepresentable. */
@@ -460,15 +466,26 @@ export function compileMusic(project) {
 /** Which shots actually name a tag. retention_analysis wants it — the guide's
  *  entry shape is "<Subject 1> (appears in [Shot 1], [Shot 3]): fully_preserved
  *  - …" — and it is also the only honest answer to "where is this used". */
+/** Which [Shot N] marker each timeline row falls under. A row that continues
+ *  the previous take (cutVerb "none") has no marker of its own — it is part
+ *  of the block before it — so markers count cuts, not rows. */
+export function shotMarkers(shots) {
+  let n = 0;
+  return shots.map((s, i) => (i === 0 || s.cutVerb !== NO_CUT) ? ++n : n);
+}
+export const continuesTake = (shot, index) => index > 0 && shot?.cutVerb === NO_CUT;
+
 function shotsCiting(project, tag) {
   if (!tag) return [];
-  return orderedShots(project)
+  const shots = orderedShots(project);
+  const markers = shotMarkers(shots);
+  return [...new Set(shots
     .map((shot, i) => {
       const hay = [shot.subject, shot.setting, shot.details, shot.sfx, shot.lighting,
         ...(shot.beats || []).map(b => b.text)].join(" ");
-      return hay.includes(tag) ? i + 1 : 0;
+      return hay.includes(tag) ? markers[i] : 0;
     })
-    .filter(Boolean);
+    .filter(Boolean))];
 }
 
 /**
@@ -1044,7 +1061,7 @@ export function validate(project) {
     // request, which the vocabulary already labels.
     const APPROVED = /^(the camera cuts to|the shot (cuts|transitions|changes|switches) to)$/i;
     shots.forEach((sh, i) => {
-      if (i === 0 || !sh.cutVerb) return;
+      if (i === 0 || !sh.cutVerb || sh.cutVerb === NO_CUT) return;
       if (!APPROVED.test(sh.cutVerb) && !/dissolve|fade|wipe/i.test(sh.cutVerb)) {
         add("warn", `Shot ${i + 1} cuts with "${sh.cutVerb}", which is not one of the five approved cut verbs.`);
       }
