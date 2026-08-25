@@ -14,8 +14,10 @@ Web    → the Netlify link · nothing to install · everything stays in your br
 Local  → git clone …/motionstillcut && node server/server.js   (Node 18+, zero deps)
 ```
 
-**New here?** Press `F1` in the app — the guide has worked examples, recipes
-and a searchable manual — or read [QUICKGUIDE.md](QUICKGUIDE.md).
+**New here?** Press `F1` in the app — the guide has worked examples, recipes,
+real screenshots and a searchable manual — or read [QUICKGUIDE.md](QUICKGUIDE.md).
+
+![The Studio — previz with the framing box, the timeline with its dialogue lane, and the shot inspector](web/assets/help/studio.webp)
 
 ---
 
@@ -76,6 +78,8 @@ LLM server speaks. A render in flight is never interrupted.
   text lighting up clause by clause. Previz shows the framing, the move at
   its real amplitude, even the lighting. A wrong prompt is minutes of GPU
   time; three ways to be wrong are free.
+
+  ![The readthrough mid-play — the plate, the compiled text with the live clause lit, and every channel as a lane](web/assets/help/readthrough.webp)
 - **Controlled experiments.** Pin the seed, sweep one variable across N
   renders, diff two takes word by word in the Library, and turn the finding
   into a house rule.

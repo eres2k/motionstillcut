@@ -16,6 +16,7 @@ import {
   duplicateProject, openProjectId,
 } from "../projects.js";
 import { STARTERS } from "../starters.js";
+import { SERVER_BACKED } from "../api.js";
 import { validate } from "../prompt.js";
 
 let root = null;
@@ -173,7 +174,9 @@ function draw() {
   mount(root, h("div.pm",
     h("div.pm-head",
       h("h1.pm-title", "Projects"),
-      h("div.pm-sub", "Saved on the server, media and all — so a project is something you can come back to, and open somewhere else."),
+      h("div.pm-sub", SERVER_BACKED
+        ? "Saved on the local app, media and all — so a project is something you can come back to, and open somewhere else."
+        : "Saved in this browser, media and all — so a project is something you can come back to. Setup has a one-click backup of everything."),
     ),
 
     h("div.pm-cols",

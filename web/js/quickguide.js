@@ -15,9 +15,47 @@ import { h, modal, closeModal, $$, copyText, toast } from "./util.js";
 const SEEN_KEY = "mscut.guide.seen";
 
 /* ── The manual ──────────────────────────────────────────────
- * card: { n, title, page?, body: [..], code?: {label, text}, keys?: [[k,v]] }
+ * card: { n, title, page?, body: [..], code?: {label, text}, keys?: [[k,v]],
+ *         img?: {src, alt, caption?} }
  * A `code` block is real compiled output — what the encoder reads — with a
- * copy button. `keys` renders the two-column keyboard grid. */
+ * copy button. `keys` renders the two-column keyboard grid. `img` is a real
+ * screenshot of the app (web/assets/help/*.webp, captured from the
+ * two-people-talking starter), lazy-loaded and click-to-zoom. */
+
+const helpImg = (name) => new URL(`../assets/help/${name}.webp`, import.meta.url).href;
+
+/** The zoomed view: one image over everything, any click or Esc closes it. */
+function openLightbox(src, alt) {
+  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  const overlay = h("div", {
+    style: {
+      position: "fixed", inset: "0", zIndex: "9999", background: "rgba(10,10,10,.92)",
+      display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out", padding: "18px",
+    },
+    onclick: close,
+  },
+    h("img", { src, alt, style: { maxWidth: "96vw", maxHeight: "94vh", borderRadius: "5px", border: "1px solid #3a3a3a", boxShadow: "0 18px 60px rgba(0,0,0,.7)" } }),
+  );
+  document.addEventListener("keydown", onKey, true);
+  document.body.appendChild(overlay);
+}
+
+function imgBlock(img) {
+  const src = helpImg(img.src);
+  return h("figure", { style: { margin: "8px 0 2px" } },
+    h("img", {
+      src, alt: img.alt, loading: "lazy",
+      title: "Click to zoom",
+      style: {
+        width: "100%", maxWidth: img.narrow ? "420px" : "100%", display: "block", borderRadius: "5px",
+        border: "1px solid var(--line)", cursor: "zoom-in", background: "#101010",
+      },
+      onclick: () => openLightbox(src, img.alt),
+    }),
+    img.caption ? h("figcaption.hint", { style: { fontSize: "10.5px", opacity: ".75", marginTop: "4px" } }, img.caption) : null,
+  );
+}
 
 const SECTIONS = [
   {
@@ -30,6 +68,11 @@ const SECTIONS = [
           "The unusual part is the pairing: a LOCAL LLM sits inside the editor as a director — it interviews you, captions your references, rewrites shots, reads your compiled prompt back like a stranger, and learns from how you rate your renders. Nothing leaves your machine: the model that writes and the model that renders are both yours, and they share your GPU by taking turns (VRAM saver).",
           "Neither engine is required to WRITE: without them the app is still a full prompt editor with previz and checks, and the workflow downloads as a ComfyUI graph.",
         ],
+        img: {
+          src: "studio",
+          alt: "The Studio view: shot list, previz viewer with the framing box, timeline with dialogue lanes, and the inspector",
+          caption: "The Studio — the “Two people talking” starter as it opens: previz with the framing box, the timeline with its dialogue lane, and the shot inspector. Click any picture in this guide to zoom.",
+        },
       },
       {
         n: "▤", page: "projects", title: "Projects — the app opens on a shelf, not on a blank timeline",
@@ -38,6 +81,11 @@ const SECTIONS = [
           "⌘S saves, media and all. Five starting points sit beside your projects — an empty one, a single take, two people talking, a wide/medium/close cut, a voiceover over a still scene. They are real, editable projects and each compiles with no errors: worked examples of the grammar.",
           "The last project you had open comes back on reload. Duplicate makes a copy to experiment on.",
         ],
+        img: {
+          src: "projects",
+          alt: "The Projects page: five starting points on the left, saved projects on the right",
+          caption: "The shelf: five worked starting points beside your saved projects.",
+        },
       },
       {
         n: "1", title: "Create → Canvas → Studio",
@@ -47,6 +95,11 @@ const SECTIONS = [
           "Studio is everything below: per-beat timing, dialogue, retention markers, lens and height, the framing box, the seed ladder. The two views edit the SAME fields — the same editor drawn twice, so they cannot disagree.",
           "` opens Create, 0 the Canvas, 2 the Cut page.",
         ],
+        img: {
+          src: "canvas",
+          alt: "The node canvas: two shot nodes with their camera pads, two voice nodes wired to them, steering, look, sound and director nodes on the shelf, the render at the end",
+          caption: "The Canvas — the same project as a graph: shots left to right, each voice wired to the shots it speaks in, the clip-wide nodes on the shelf, the render at the end.",
+        },
       },
       {
         n: "◱", title: "The mode is not a choice",
@@ -75,6 +128,11 @@ const SECTIONS = [
           "Turn is pan and tilt, Move is truck and pedestal, Orbit is an arc around the subject. Depth is its own control with a body/lens toggle — a push and a zoom are different shots. The sentence the model will read is printed under the pad as you drag.",
           "Steering is the CLIP (six dials, whole clip). Fine-tuning is the SHOT (Distance, Energy, Light — folded under the camera pad). Each fine-tune dial follows the clip until you move it, turns amber when it is the shot's own, and has a ↺ back.",
         ],
+        img: {
+          src: "camera", narrow: true,
+          alt: "The camera group in the Studio inspector: motion, amplitude, speed and target compiled to the sentence the model reads",
+          caption: "The same camera in Studio: motion + amplitude + speed + target, and underneath — in green — the exact sentence the model will read.",
+        },
       },
       {
         n: "❝", title: "Voices are people, not properties of a shot",
@@ -117,6 +175,11 @@ const SECTIONS = [
           "You cannot see a prompt, and you cannot afford to render every guess. Press ⇧Space and the instructions play back in real time: the plate showing where the frame is going, every channel as a lane — shots, action, camera, speech, sound, music, references — and the compiled text with the clause in effect lit up.",
           "It catches the mistakes that only exist in time: six beats crammed into five seconds, a shot where nothing happens, a camera move that never ends, dialogue with no room to be said, a reference no shot ever cites.",
         ],
+        img: {
+          src: "readthrough",
+          alt: "The readthrough mid-play: the plate on the left, the compiled prompt with the live clause highlighted on the right, and every channel as a lane below the playhead",
+          caption: "The readthrough, mid-play: the plate, the compiled text with the clause in effect lit up, and every channel — shots, action, camera, speech, sound — as a lane under the playhead.",
+        },
       },
       {
         n: "5", page: "cut", title: "Previz — the frame, lit and moving",
@@ -132,6 +195,11 @@ const SECTIONS = [
           "The compiled prompt is the shape MiniMax's rewriter emits, documented in the guides that ship inside the model repo — and `npm test` holds it there: golden files freeze the exact output, and the app's own warnings are run over MiniMax's canonical examples. Any rule that fires on the guide's own output is a rule this app invented, and it gets deleted.",
           "What the checker enforces is all from the guides: strictly increasing cut times, the five approved cut verbs, <d> tags closed and opening with a supported language, a described speaker at first appearance, no music repeated in the soundscape, retention markers from the right vocabulary — and more.",
         ],
+        img: {
+          src: "checks",
+          alt: "The Checks tab reporting one error: an empty soundscape exports as N/A, which renders the clip silent",
+          caption: "A real finding, in terms of the thing to change: an empty soundscape is an instruction to render SILENCE, and the checker says so before a GPU second is spent.",
+        },
       },
     ],
   },
@@ -185,6 +253,11 @@ const SECTIONS = [
           "Workflow JSON downloads the ComfyUI API graph — drop it on ComfyUI, or POST it to /prompt yourself. Render sends the same graph, uploads whatever media it references first, and follows the job to the end — with the sampler's own preview frames streaming in while it runs.",
           "×N Variations queues the same prompt on a ladder of seeds, which is how you find out whether a prompt is good or whether one seed was. The build row picks the trade: Full is the official template, Turbo is a step-distill — its step count and flow shifts come with it.",
         ],
+        img: {
+          src: "deliver",
+          alt: "The Deliver page: engine chips, canvas and length, the build ladder, seed row, film and queue panels, and the API-format workflow graph",
+          caption: "Deliver: the engine and build on the left, the queue and film on the right, and the exact stock-node graph — 16 nodes — that will be sent, readable before anything runs.",
+        },
       },
       {
         n: "≡", page: "deliver", title: "The render queue",
@@ -391,6 +464,7 @@ function card(c) {
         }, `go to ${c.page} ↗`) : null,
       ),
       ...(c.body || []).map(t => h("div.hint", { style: { marginBottom: "4px", lineHeight: "1.55" } }, t)),
+      c.img ? imgBlock(c.img) : null,
       c.code ? codeBlock(c.code) : null,
       ...(c.after || []).map(t => h("div.hint", { style: { margin: "4px 0", lineHeight: "1.55" } }, t)),
       c.list ? h("div", { style: { marginTop: "2px" } },
