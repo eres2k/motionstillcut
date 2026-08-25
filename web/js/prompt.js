@@ -18,7 +18,7 @@
 
 import { shotTime, words } from "./util.js";
 import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION } from "./vocab.js";
-import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS } from "./state.js";
+import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS, ltxGuideTime } from "./state.js";
 /* film.js imports state.js and nothing else, so reaching for the planner here
  * is a leaf dependency rather than a cycle. The checker needs it because a
  * film's real error is never "this clip is too long" — it is where the clips
@@ -890,9 +890,47 @@ export function validate(project) {
    * nothing is exactly the kind of thing someone re-renders four times
    * before questioning. */
   {
-    const pins = shotKeyframes(project).length;
+    const pinned = shotKeyframes(project);
+    const pins = pinned.length;
     if (pins && activeEngine(project) !== "ltx25") {
       add("warn", `${pins} shot${pins === 1 ? " has" : "s have"} a pinned keyframe, and pins only apply on the LTX-2.5 engine — the ${project.mode === "r2v" ? "Ref2V graph (always MiniMax)" : "MiniMax graph"} ignores them. Switch the Engine row on Deliver, or remove the pins.`);
+    } else if (pins) {
+      /* — The same picture pinned more than once —
+       * A guide says "the frame looks like THIS at this time". Pin one
+       * picture at several times and the guides agree with each other:
+       * the model is told the pose does not change, and the character
+       * holds still between them. It is the intuitive thing to do with a
+       * cast sheet — the same @anna at every cut — and it is exactly what
+       * produces a frozen clip. (Reported by testers of multi-point
+       * guidance on LTX-2.5; ComfyUI cannot see it, this app can.) */
+      const shots = orderedShots(project);
+      const byImage = new Map();
+      const first = project.mode === "i2v" ? project.frames?.first : null;
+      const keyOf = (m) => m?.id || m?.comfyName || m?.name || "";
+      if (first) byImage.set(keyOf(first), ["the first frame"]);
+      for (const s of pinned) {
+        const k = keyOf(s.keyframe);
+        if (!k) continue;
+        const strong = (Number(s.keyframeStrength) || 1) >= 0.7;
+        if (!strong) continue;
+        const list = byImage.get(k) || [];
+        list.push(`shot ${shots.indexOf(s) + 1}`);
+        byImage.set(k, list);
+      }
+      for (const [, where] of byImage) {
+        if (where.length < 2) continue;
+        add("warn", `The same picture is pinned at ${where.join(", ")}. Identical guides at several times tell the model the pose does not change, and the character freezes between them. Pin a different frame at each cut, or lower the strength below 0.7 on all but one.`);
+      }
+      /* — Where the pins actually land —
+       * The guide sits on the video VAE's 8-frame stride (a third of a
+       * second at 24 fps). ComfyUI rounds to it without saying so, and a
+       * pin that lands 0.15 s off its cut looks like drift, not rounding. */
+      const moved = pinned
+        .map(s => ({ i: shots.indexOf(s) + 1, at: Number(s.at) || 0, to: ltxGuideTime(s.at, project) }))
+        .filter(x => Math.abs(x.to - x.at) > 0.02);
+      if (moved.length) {
+        add("ok", `Pins land on LTX's 8-frame grid (every ⅓ s): ${moved.map(x => `shot ${x.i} ${x.at.toFixed(2)}s → ${x.to.toFixed(2)}s`).join(", ")}. Set the cut on the grid if the exact frame matters.`);
+      }
     }
   }
 

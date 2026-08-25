@@ -33,7 +33,7 @@
  */
 
 import { compilePrompt } from "./prompt.js";
-import { dimensions, frameCount, activeEngine, orderedShots } from "./state.js";
+import { dimensions, frameCount, activeEngine, orderedShots, ltxGuideIdx } from "./state.js";
 import { variantFor } from "./vocab.js";
 
 export const randomSeed = () => Math.floor(Math.random() * 0xffffffffff);
@@ -339,7 +339,7 @@ function buildLtxWorkflow(project, settings) {
    * earliest-wins — a shot pinned at 0 in I2V loses to the first frame,
    * which IS the frame at 0. Strength is per pin (the first frame is always
    * 1.0: it is a fact of the clip, not a suggestion). */
-  const snapIdx = (seconds) => Math.max(0, Math.min(numFrames - 1, Math.round((Number(seconds) || 0) * fps / 8) * 8));
+  const snapIdx = (seconds) => ltxGuideIdx(seconds, project);
   const anchors = [];
   if (firstFrame) anchors.push({ media: firstFrame, at: 0, idx: 0, strength: 1.0, label: "First Frame" });
   const pinnedShots = orderedShots(project).filter(s => s?.keyframe);

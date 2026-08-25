@@ -15,7 +15,7 @@ import {
   getProject, update, orderedShots, selectedShot, selectShot, newShot, newBeat,
   duplicateShot, shotActionText, referenceInventory,
   dimensions, frameCount, DURATION_FRAMES, MODES, H3_DURATION, overLength, durationFrames,
- onProjectSwap} from "../state.js";
+ onProjectSwap, ltxGuideIdx, ltxGuideTime } from "../state.js";
 import { TEMPLATES } from "../templates.js";
 import { getBlob, ingest } from "../media.js";
 import { compilePrompt, validate, wordBudget, cameraSentence, framingSentence } from "../prompt.js";
@@ -947,6 +947,9 @@ function inspector(p) {
         row("Pin (LTX)", shot.keyframe
           ? h("div.flex", { style: { gap: "5px" } },
               h("span.hint.mono.grow", { title: shot.keyframe.name }, shot.keyframe.name),
+              h("span.hint.mono", {
+                title: "LTXVAddGuide anchors on the video VAE's 8-frame stride (⅓ s at 24 fps). This is where the pin actually lands.",
+              }, `→ f${ltxGuideIdx(shot.at, p)} · ${shotTime(ltxGuideTime(shot.at, p))}`),
               h("button.btn.sm.ghost", {
                 title: "Remove the pin (the image stays in the media pool)",
                 onclick: () => { set({ keyframe: null }, "shots"); refresh(); },
