@@ -87,7 +87,7 @@ it is the step *before* them and not a third peer alongside them.
 
 **Create** is where a new project opens, and where the **model** is chosen — **Which model?**, above **How long?**: MiniMax H3 and LTX-2.5 read different prompts, so it is asked before anything is written for it; the title-bar chip switches it later. Paste a rough idea, drop your pictures
 and audio, and it interviews you — reading the images — then steers the result
-with six dials in plain language. Its job is to hand you a working canvas, so
+with seven dials in plain language. Its job is to hand you a working canvas, so
 the last step is **Build the canvas →**.
 
 **Canvas** is where most of the work happens. It is laid out as a timeline:
@@ -132,7 +132,7 @@ says so, until you press **release**.
 **Steering is the clip. Fine-tuning is the shot.**
 
 The **Steering** node — and the **Steering** group in Studio's inspector, the
-same panel drawn in two places — sets the whole clip, all six dials, always.
+same panel drawn in two places — sets the whole clip, all seven dials, always.
 There is no scope switch and nothing is ever greyed out, because everything on
 it applies: pace decides how many shots there **are**, sound is one continuous
 track H3 generates for the whole clip, and faithfulness is a marker per
@@ -172,7 +172,7 @@ Everything the project has, as a node. Reading roughly top to bottom:
 | **Shot** | one idea: subject, beats, where, light, camera, fine-tune | the cut, left to right |
 | **Render** | length, canvas, the button | at the end of the cut |
 | **(S1)…(S4)** | a speaking part — who they are, how they sound, and every line in order | under the first shot it speaks in |
-| **Steering** | the six dials, for the whole clip | the shelf underneath |
+| **Steering** | the seven dials, for the whole clip | the shelf underneath |
 | **Look** | the medium, the grade, anything true of the whole clip | the shelf |
 | **Cast sheet** | Ref2V only: what each tag *is*, the task type, the summary | the shelf |
 | **Sound** | the soundscape and the score | the shelf |
@@ -677,6 +677,19 @@ clip, so a long take with several moments is still one render. With
 The film may be as short as a single render here; the planner uses LTX's own
 lengths (5–30 s). MiniMax ignores the row — its planner packs shots into
 15 s clips as before.
+
+### The Detail dial
+
+**Detail** (spare → exhaustive) is the one dial that steers the *writer*
+rather than the frame: it sets how much each shot says, in four bands —
+spare (~25 words a shot: a phrase per thing), measured (~45), rich (~70:
+clothing, colour, a key object, two or three anchors in the setting, one
+sentence on the background) and exhaustive (~100: materials, textures,
+weather, what only someone who was there would notice). Read my material,
+Polish and Enhance all write to it; the dial's own line says the target so
+the word counter has something to be measured against. It never rewrites
+what you typed by itself. The model invents whatever is not written, so
+spare is a choice to let it.
 
 ## 11 · Deliver
 

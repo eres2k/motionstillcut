@@ -67,9 +67,46 @@ export const DIALS = [
     hint: "How closely the render must match the pictures you gave it.",
     icon: "⧉", needsRefs: true,
   },
+  {
+    id: "detail", label: "Detail", low: "spare", high: "exhaustive",
+    hint: "How much each shot says: a phrase per thing, or clothing, materials, background and what the hands are doing. "
+      + "It steers the writer (Read my material, Polish, Enhance), not the render — the model reads what is written and invents the rest, "
+      + "so spare hands it more to invent.",
+    icon: "✎",
+  },
 ];
 
-export const DEFAULT_DIALS = { distance: 50, energy: 30, pace: 40, light: 45, sound: 55, faithfulness: 80 };
+export const DEFAULT_DIALS = { distance: 50, energy: 30, pace: 40, light: 45, sound: 55, faithfulness: 80, detail: 50 };
+
+/* ── Detail: how much each shot says ─────────────────────────
+ * The dial does not touch the render graph and it does not rewrite text on
+ * its own — a dial may propose, not bin work. It sets the target the LLM
+ * writes to, and the explain line says the target in words per shot so the
+ * word counter has something to be measured against. */
+export const DETAIL_BANDS = [
+  { max: 20, name: "spare", wordsPerShot: 25,
+    rules: "SPARE. The subject in one short phrase (no more than eight words). One short clause per beat. The setting as a single phrase. "
+      + "Lighting as one named source. No details field. Nothing about texture, background or clothing unless it is the point of the shot." },
+  { max: 45, name: "measured", wordsPerShot: 45,
+    rules: "MEASURED. The subject with two or three identifiers (one of them clothing or a key object). Beats as short clauses. "
+      + "The setting in one sentence with one concrete anchor. Lighting as a named source. A details field only when something in frame would otherwise be invented." },
+  { max: 70, name: "rich", wordsPerShot: 70,
+    rules: "RICH. The subject with clothing, colour and one key object. Beats as clauses that say what the hands and the eyes do. "
+      + "The setting with two or three concrete anchors (a named surface, a light, an object). Lighting as source plus how it falls. One details sentence about the frame's edges or background." },
+  { max: 100, name: "exhaustive", wordsPerShot: 100,
+    rules: "EXHAUSTIVE. Everything RICH asks for, plus materials and textures, what is in the background and how far away it is, weather or air (dust, steam, rain), "
+      + "and one thing per shot that only a person who was there would notice. Still concrete — no adjectives of quality, no mood words." },
+];
+export const detailBand = (v) => DETAIL_BANDS.find(b => clamp(Number(v) || 0, 0, 100) <= b.max) || DETAIL_BANDS[DETAIL_BANDS.length - 1];
+/** The writing rule the LLM is handed, and the word target per shot. */
+export function detailToWriting(v) {
+  const b = detailBand(v);
+  return { name: b.name, wordsPerShot: b.wordsPerShot, rules: b.rules };
+}
+export const detailSays = (v, shots = 1) => {
+  const w = detailToWriting(v);
+  return `${w.name} · about ${w.wordsPerShot} words a shot${shots > 1 ? `, ~${w.wordsPerShot * shots} in all` : ""}`;
+};
 
 /** The dials that describe one shot rather than the whole clip. */
 export const PER_SHOT_DIALS = DIALS.filter(d => d.perShot).map(d => d.id);
@@ -480,5 +517,6 @@ export function explainDials(project, scopeShotId = null) {
     { id: "light", text: lightSays(dials.light) },
     { id: "sound", text: dials.sound <= 8 ? "deliberate silence" : dials.sound <= 60 ? "ambience only, no score" : "ambience and a score" },
     ...(hasRefs ? [{ id: "faithfulness", text: `${faith.note} (${faith.visual})` }] : []),
+    { id: "detail", text: detailSays(dials.detail, Math.max(1, orderedShots(project).length)) },
   ];
 }

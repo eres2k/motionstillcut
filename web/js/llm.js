@@ -10,6 +10,7 @@
  * unloads the LLM, automatically and in that order.
  */
 
+import { detailToWriting, DEFAULT_DIALS } from "./steer.js";
 import { api } from "./api.js";
 import { getBlob } from "./media.js";
 import { compilePrompt } from "./prompt.js";
@@ -141,6 +142,12 @@ function projectBrief(project) {
       : "",
     inv.length ? `Attached references — cite EXACTLY these tags and no others: ${inv.map(e => `${e.tag} (${e.ref?.label || e.ref?.name || e.kind})`).join(", ")}. A tag with no media behind it is silently ignored.` : "",
     project.mode === "i2v" && project.frames?.first?.caption ? `The fixed first frame shows: ${project.frames.first.caption}` : "",
+    /* How much to say per shot — the Detail dial. It is a target for the
+     * writer, so it rides on every call that writes: breakdown, polish, enhance. */
+    (() => {
+      const w = detailToWriting((project.creative?.dials || {}).detail ?? DEFAULT_DIALS.detail);
+      return `Level of detail per shot — ${w.name.toUpperCase()}, about ${w.wordsPerShot} words a shot across its fields: ${w.rules}`;
+    })(),
   ].filter(Boolean).join("\n");
 }
 
