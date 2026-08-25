@@ -85,7 +85,7 @@ The title bar says exactly that: Create is numbered, sits on its own, and has
 an arrow pointing into the pair. The pair dims while you are in Create, because
 it is the step *before* them and not a third peer alongside them.
 
-**Create** is where a new project opens. Paste a rough idea, drop your pictures
+**Create** is where a new project opens, and where the **model** is chosen — **Which model?**, above **How long?**: MiniMax H3 and LTX-2.5 read different prompts, so it is asked before anything is written for it; the title-bar chip switches it later. Paste a rough idea, drop your pictures
 and audio, and it interviews you — reading the images — then steers the result
 with six dials in plain language. Its job is to hand you a working canvas, so
 the last step is **Build the canvas →**.
