@@ -1,292 +1,484 @@
-/* MOTIONSTILL CUT — the quick guide.
+/* MOTIONSTILL CUT — the help center.
  *
- * Shown once on the first visit and from the ? button (or F1) after that. It
- * is deliberately short: seven steps, each one naming the page it happens on,
- * so a first-time user can get from an empty timeline to a rendered clip
- * without reading the README. */
+ * F1 or the ? button. It used to be one long modal; now it is a small manual:
+ * sections down the left, live search across everything, worked EXAMPLES with
+ * the real compiled output (copyable), a tips page, and the keyboard map.
+ * Every card that belongs to a page still has its "go to" button, so the help
+ * is a way INTO the app rather than a wall in front of it.
+ *
+ * Everything here is hand-written data plus one renderer — no markdown, no
+ * dependencies, and the search is a substring match because that is enough.
+ */
 
-import { h, modal, closeModal, $, $$ } from "./util.js";
+import { h, modal, closeModal, $$, copyText, toast } from "./util.js";
 
 const SEEN_KEY = "mscut.guide.seen";
 
-const STEPS = [
-  {
-    n: "▤", page: "projects", title: "Projects — the app opens on a shelf, not on a blank timeline",
-    body: [
-      "Work lives in a named project on the server, the way it does in an NLE. Starting fresh means starting a NEW project, so it is never the same gesture as overwriting what you had — and opening one with unsaved work asks first.",
-      "⌘S saves. Saving carries the media with it: the pictures, clips and audio a project cites are uploaded once and re-used, so re-saving a project with a 40 MB reference video costs nothing. Opening it on another browser brings them back.",
-      "Five starting points sit beside your projects: an empty one, a single take, two people talking, a wide/medium/close cut, and a voiceover over a still scene. They are real projects rather than read-only samples — open one and edit it. Each compiles with no errors and no warnings, which is the point of shipping them: they are worked examples of the grammar.",
-      "The last project you had open comes back on reload. Duplicate makes a copy to experiment on.",
-    ],
-  },
-  {
-    n: "0", page: null, title: "Create → Canvas → Studio",
-    body: [
-      "Create is where a new project opens. Paste a rough idea, drop your pictures and audio, and it interviews you — reading the images — then steers the result with six dials in plain language. Its job is to hand you a working canvas, so its last step is Build the canvas.",
-      "Canvas is where most of the work happens, laid out as a timeline: shots run LEFT TO RIGHT, the pictures each shot cites sit directly above it, what governs the whole clip — steering, sound, the director — is on a shelf underneath, and the render is at the end of the cut. Material nothing cites yet waits in an inbox at the far left, flagged in amber.",
-      "One graph: nodes are the project's own pieces — your material, the steering dials, the shots, the sound, the director, the render — and wiring one to another edits the same fields the studio edits. The generation mode is not even a choice here, it follows from what you connect.",
-      "Connecting is meant to be guessable: drag from anywhere on a node onto a shot, or press Link and then click a shot. Valid targets light up while you drag and a label says what the drop will do. Click a wire or its ✕ to disconnect. Drag the background to pan, wheel to zoom, Fit to frame everything, Tidy to put the nodes back in their lanes.",
-      "Studio is everything below: per-beat timing, dialogue, retention markers, lens and height, the framing box, the seed ladder — everything too detailed to belong on a node. The Director and the Steering dials are there too, at the top of the inspector, so switching view never costs you a tool.",
-      "The two views edit the same fields, not two versions of them: a shot's subject is one input and each beat is its own row with its connective, on the node exactly as in the inspector — the same editor drawn twice, so they cannot disagree about what a shot says. Enter at the end of a beat starts the next one; Backspace in an empty one removes it.",
-      "Create is a STEP and the title bar says so: it is numbered 1, sits outside the pair, and has an arrow into it. Canvas and Studio are two views of the same project — switch between them as often as you like, nothing is lost either way.",
-      "The switch is in the title bar. ` opens Create, 0 the Canvas, 2 goes to Cut.",
-    ],
-  },
-  {
-    n: "◎", page: null, title: "The camera, on the node",
-    body: [
-      "Every shot node has a camera pad. The angle you drag picks the move, the distance from centre picks the amplitude, and the centre is \"the camera remains static\" — which H3 wants said out loud rather than left unstated, because an unstated camera is one the model invents.",
-      "The segmented control above the pad says what a direction MEANS: Turn is pan and tilt (the camera pivots where it stands), Move is truck and pedestal (the camera travels), Orbit is an arc around the subject. Depth is its own control beside the pad, with a body/lens toggle — a push and a zoom are different shots. Underneath: speed, and a feel (track, handheld, shake, roll) that becomes the second half of a compound move.",
-      "The sentence the model will actually read is printed under the pad as you drag. A camera you set by hand is yours: the Energy dial stops driving that shot and says so, until you press release.",
-      "Steering is the CLIP. The Steering node — and the Steering group in Studio's inspector, the same panel drawn twice — sets all six dials for the whole thing, with no scope switch and nothing greyed out, because everything on it applies. Pace decides how many shots there ARE, sound is one continuous track, and faithfulness is a marker per reference: none of those were ever per-shot.",
-      "Fine-tuning is the SHOT. When one shot needs to differ, open Fine-tune this shot — folded under the camera pad on its node, and under the shot group in Studio. Three dials, Distance, Energy and Light, because three is how many of the six honestly describe a frame. Each follows the clip until you move it, turns amber when it is the shot's own, and has a ↺ back. Steering the clip afterwards moves everything still following and leaves the fine-tuned shots alone.",
-    ],
-  },
-  {
-    n: "❝", page: null, title: "Voices are people, not properties of a shot",
-    body: [
-      "A line belongs to a shot — that is where H3 reads it — but (S1) in shot 1 and (S1) in shot 4 are the same person and the model keeps the voice between them. So each speaking part is its own node, showing its lines in order through the cut and wired to every shot it speaks in. That wire is the only thing in the app that answers \"who is in this scene\" at a glance.",
-      "＋ Voice in the toolbar adds a speaking part. Drag its node onto a shot, or press a numbered chip on it, to give it a line there. The words are verbatim inside <d>[Language] … </d> — never translated, and nothing is added around them, so a line you leave without a full stop stays that way and the checker tells you instead of writing one for you.",
-      "SAY WHO A VOICE IS, once. The box at the top of the node is the speaker's identifying phrase — \"the young woman with a quiet, breathy voice\" — and it is what H3 builds the voice out of. The guide asks for character type, age, whether they are on screen, pitch, timbre, pace or accent, outside the tag; without it the model picks a voice, and in a two-person frame nothing tells it whose mouth to move. It is written into the prompt at that speaker's first line only. Each line also has a delivery: the verb and its manner — says, shouts, replies quietly.",
-      "\"off screen\" writes H3's exact voiceover phrasing, ending in the statement that the lips stay closed — anything else and the mouth moves. \"carries over the cut\" writes <scenetrans> on both sides of the cut and says the line continues; on the last shot the same box becomes \"cut off by the end\", which writes <cutoff>.",
-      "The rest of the project is on the canvas too, each node where its relationship puts it: material above the shot that cites it, the cut left to right with the render at the end, and on the shelf underneath — Steering (the six dials), Look (medium, grade, anything true of the whole clip), the Cast sheet (Ref2V only: what each tag IS, the task type, the summary), Sound, and the Director last because it reads all of them.",
-    ],
-  },
-  {
-    n: "▣", page: null, title: "A picture the prompt never names does nothing",
-    body: [
-      "MiniMax H3 only uses a reference the prompt actually cites. A picture that is attached but never named is ignored completely — which is invisible until the render comes back without it. The canvas flags it in amber on the node itself, says the model will ignore it, and offers a one-click fix.",
-      "Create and the Idea button are told the tags and cite them themselves, and wire up anything the model left loose before handing the canvas over.",
-      "Improve rewrites the SHOTS rather than the compiled paragraph, so you can see what changed and the camera pad, beats and dials keep working. Each shot node has its own ✎ for one shot at a time.",
-    ],
-  },
-  {
-    n: "▶", page: null, title: "Watch the prompt play — the readthrough",
-    body: [
-      "You cannot see a prompt, and you cannot afford to render every guess. Press ⇧Space (or Read through) and the instructions play back in real time: the plate showing where the frame is going, every channel as a lane on one timeline — shots, action, camera, speech, sound, music, references — and the compiled text with the clause in effect right now lit up, scrolling itself as the playhead moves.",
-      "It is built to catch the mistakes that only exist in time: six beats crammed into five seconds, a shot where nothing happens, a camera move that never ends, dialogue with no room to be said, a reference you attached that no shot ever cites. Click anywhere in the lanes to scrub.",
-    ],
-  },
-  {
-    n: "✦", page: null, title: "The director — the LLM operates the app",
-    body: [
-      "The assistant does not hand you text to paste, it edits the project and shows you the edit first. Ask in plain words — \"bring her closer\", \"why does it keep adding music?\" — and it answers with a sentence and a plan: concrete changes, each written out with the model's own reason, each with a checkbox.",
-      "Nothing lands until you press Apply, clearing a box declines that part, and the whole plan applies as one step so a single ⌘Z takes all of it back. Suggestions it cannot make are rejected and listed with the reason rather than silently dropped. It reads your shot list, the compiled prompt, the checks, your references as pictures, and how you rated past renders.",
-      "⌘J from anywhere, and it answers where you are: on the Canvas as a node, in Studio as the first group in the inspector. One conversation either way — a plan you have not accepted yet is still sitting there after you switch.",
-      "The Director needs no wire — it reads the whole graph and says so. Narrow it to one shot by dragging the node onto that shot on the Canvas, or by clicking its number in Studio.",
-      "If the model will not answer, the cause is usually thinking, not size. A reasoning model (Qwen3, DeepSeek-R1, gpt-oss, GLM) can spend its whole token budget deliberating before it writes anything — so thinking does NOT need to be on for this app, and is usually what breaks it. Setup ▸ Thinking is Off by default and asks the backend to skip it in every dialect at once; the reasoning is stripped from the answer either way, and a reply that ran out of room is retried with a bigger budget. Setup ▸ Test structured answers shows exactly what came back.",
-    ],
-  },
-  {
-    n: "◱", page: null, title: "The mode is not a choice",
-    body: [
-      "There is no T2V / I2V / Ref2V switch. Nothing attached is Text to Video; exactly one picture is Image to Video, and that picture anchors the first frame; anything more is Reference to Video. The title bar shows which one you are in, and adding or removing media is how you change it.",
-      "The picture also moves to the slot that mode reads from, so <Picture 1> keeps meaning the same picture whichever side of the line you are on — a project can no longer sit in I2V with six references it silently ignores.",
-    ],
-  },
-  {
-    n: "⇔", page: null, title: "The layout is yours",
-    body: [
-      "Every seam between two panels can be dragged, on every page. Sidebars keep their width when the window changes and the middle absorbs it, exactly as before — dragging changes the number, not the behaviour. Double-click a seam to put that one back; Setup ▸ Reset panel sizes puts all of them back.",
-      "The sizes are remembered per window shape. This app lays itself out differently at 1420, 1180 and 880 pixels wide — sometimes with a different number of panels — so a width you dragged on a big screen is not applied to a layout it was never about.",
-      "On a phone the same seams run horizontally: the pages stack, and you drag the boundary between the viewer, the timeline and the inspector to give whichever one you are working in the room it needs.",
-      "ZOOM. The node canvas takes two fingers — pinch to zoom, and the same gesture pans with it. It needs its own handler because the canvas claims the one-finger drag for panning the graph, which switches off the browser's pinch over it; everywhere else you can still pinch the page normally. The interface itself also has a size: ⌘+ and ⌘− scale the whole app, a phone starts at 125% rather than making you do it, and Setup has the four sizes. That is the app scaling itself rather than the browser scaling the page, which for a full-height grid would leave you panning around with the chrome half off screen.",
-    ],
-  },
-  {
-    n: "⌸", page: null, title: "What this machine remembers",
-    body: [
-      "The render settings you choose last are what your next project starts from — canvas, length, checkpoint variant, precision, tiled decode. They describe the machine you are on, not the clip you are making, and picking them again on every project was busywork.",
-      "The checkpoint variant is remembered once per family: fl2va (text and image to video) offers full/turbo/turbo4 and ref2va (reference to video) offers full/ref4, so one slot could only ever hold half the answer. Attach a second picture and come back — your Turbo is still Turbo.",
-      "The seed is deliberately NOT remembered. A seed belongs to a take, not to a setup. Setup lists everything that is remembered and has the button that forgets it.",
-    ],
-  },
-  {
-    n: "✓", page: null, title: "The format is checked against MiniMax's own guide",
-    body: [
-      "The compiled prompt is not this app's idea of what H3 wants — it is the shape MiniMax's rewriter emits, documented in the two prompt guides that ship inside the model repo. `npm test` holds it there: test/golden freezes the exact compiled output of six projects so a change to the compiler arrives as a reviewable diff, and test/guide.test.js runs this app's own warnings over MiniMax's canonical examples.",
-      "That second one is the important half. Anything that fires on the guide's own output is a rule this app invented, and it is steering you away from the format that works. It has deleted three so far — including a word-count minimum that every one of the four official examples failed.",
-      "What the checker enforces is all from the guides: strictly increasing cut times inside the clip, the five approved cut verbs, [Shot 1] present and without a timestamp, the I2VA alignment line verbatim, <d> tags closed and opening with a supported language, speaker ids assigned in the order people actually speak, a described speaker at first appearance, no dialogue or music repeated in overall_soundscape, N/A only where silence was asked for, no mood words or purpose statements in non_diegetic_music, and retention markers from the right one of the two vocabularies.",
-    ],
-  },
-  {
-    n: "1", page: "setup", title: "Point it at your box",
-    body: [
-      "Setup has one job: two addresses. ComfyUI (usually http://127.0.0.1:8188) does the rendering; an OpenAI-compatible LLM server (LM Studio, Ollama, llama.cpp) does the prompt writing. Auto-detect finds either one if it is already running, and both badges in the title bar go green when they answer.",
-      "No custom nodes are needed anywhere. Every node this editor emits ships with ComfyUI, which is what makes the downloaded workflow run on someone else's install.",
-      "Neither server is required to write a prompt and download a graph — only to render and to rewrite.",
-    ],
-  },
-  {
-    n: "2", page: null, title: "Pick a mode",
-    body: [
-      "T2V — the prompt alone.",
-      "I2V — the prompt plus a fixed first frame. The opening of the description has to match that frame exactly, or the model cuts away from it in the first second.",
-      "Ref2V — separate ref2va weights that read up to 9 images, 3 clips and 3 audio files. The prompt addresses them as <Picture 1>, <Video 1>, <Audio 1>.",
-    ],
-  },
-  {
-    n: "3", page: "media", title: "Fill the pool (I2V / Ref2V)",
-    body: [
-      "Drop files anywhere in the window — an image lands in the bin your mode uses, a clip and a sound file always land in theirs.",
-      "Each reference gets a tag and a retention marker: fully_preserved keeps a face, attribute_transfer takes only a style, fully_copy on audio means lip-sync to it and keep it as the soundtrack. A reference clip's own soundtrack gets its own marker.",
-      "\"Describe with the LLM\" captions an image so the rewriter cites it for what it actually shows.",
-    ],
-  },
-  {
-    n: "4", page: "cut", title: "Write the shots",
-    body: [
-      "Type one line into the box on the left and press Auto-shots, or start from a shot structure under Templates. The timeline is a real timeline: drag a cut, split at the playhead with S, duplicate with ⌘D, delete with ⌫, undo with ⌘Z.",
-      "A shot is a list of BEATS, not a paragraph. H3 renders roughly one beat per 2–3 seconds, and the badge next to Action beats counts yours against the shot's own length.",
-      "Framing and Camera move are separate: lens, height and where the subject sits hold for the whole shot; the move is what changes during it. Two moves can run at once, or you can write the move yourself.",
-    ],
-  },
-  {
-    n: "5", page: "cut", title: "Watch it before you render",
-    body: [
-      "Viewer ▸ Previz plays the prompt back in real time — the cuts where they actually fall, each shot's framing, the camera move at its own amplitude and speed, the beats as they would happen, the dialogue as captions. Space plays it.",
-      "The strip along the bottom of the frame is the clip: one block per shot at its real length, a tick where each beat starts, the playhead sweeping across it, and the seconds to the next cut in the corner. Six ticks inside three seconds is what a crowded shot looks like.",
-      "It is lit, too. The key goes where the shot's Lighting line puts it, as hard as the words ask, and the grade tints the frame — so the Light dial is something you watch rather than something you read.",
-      "While it plays, a faint blue box shows where the move leaves the subject and a line shows the path there: an amplitude is a distance you can see. A fast move is over halfway through its shot, and the camera line says so when the frame starts holding.",
-      "Paused, the frame carries two boxes: orange where the subject starts, blue where the move leaves it. Drag the orange one to place the subject, its corner to change the shot size, and the blue one (or the ↔ chip) to set the move — the camera vocabulary is read back out of the drag.",
-      "Viewer ▸ Board (B) is the same clip as a storyboard: one card per beat in render order, each with a miniature of its frame.",
-      "It simulates the prompt, not the model: what it tells you is whether the timing, the framing and the structure are what you meant. That is the part a render cannot tell you cheaply.",
-      "Viewer ▸ Prompt is exactly what the encoder will read. Viewer ▸ Checks lists everything wrong with it before a GPU second is spent — and Second opinion there has the LLM read the finished prompt back and say what it would render.",
-      "Nodes (N) is the strip between viewer and timeline: sources, shots in cut order, the render. An edge exists where a shot actually cites a reference, so a reference nobody mentions is flagged — that is the failure Ref2V hides best.",
-    ],
-  },
-  {
-    n: "6", page: "sound", title: "Sound is three separate things",
-    body: [
-      "Dialogue goes in the shot it belongs to, verbatim, with a stable speaker id. Ambience goes in overall_soundscape. Score goes in non_diegetic_music. They must never overlap — saying music twice is the most common way to get two competing tracks.",
-      "Mentioning that someone talks without giving the words makes the model invent dialogue.",
-    ],
-  },
-  {
-    n: "7", page: "deliver", title: "Deliver, two ways",
-    body: [
-      "Workflow JSON downloads the ComfyUI API graph — drop it on ComfyUI, or POST it to /prompt yourself.",
-      "Render sends the same graph, uploads whatever media it references first, and follows the job to the end. ×N Variations queues the same prompt on a ladder of seeds, which is how you find out whether a prompt is good or whether one seed was.",
-      "The build row picks the trade: Full is the official template, Turbo is a step-distill — its step count and flow shifts come with it, they are not preferences.",
-    ],
-  },
-  {
-    n: "≡", page: "deliver", title: "The render queue",
-    body: [
-      "One GPU renders one clip at a time. The queue is where the next one waits instead of in your head — fill it from Deliver, from the canvas's Render node, or at the end of Create, and run the lot from the Queue panel on Deliver.",
-      "A queued clip is a SNAPSHOT. You queue what the project looks like now and carry on editing it; what comes out of the queue is what you queued. The queue lives outside any one project, because the point is to line up several different clips — seed variations of one are what ×N Seeds already does.",
-      "What a snapshot does not copy is the media. Pictures live in the media pool and the snapshot points at them, so deleting one before its render runs fails that item, and only that item — a failure never stops the queue, and the error stays on the row. Rows can be reordered, removed, re-run, or opened back into the editor.",
-    ],
-  },
-  {
-    n: "8", page: "library", title: "The Library — the half after the render",
-    body: [
-      "Every render is saved here automatically with the exact prompt, settings and seed that made it. That much needs nothing from you.",
-      "The star rating is the only thing that feeds back: when you rate a clip, the director reads it and weighs your own results over general advice. Rate nothing and it works from the vendor's guide alone. Two stars means it did not work; four or five means do more of this.",
-      "The tags name the failure so it can be counted — and each one knows the house rule it implies. Tag a clip \"camera did its own thing\" and the app offers you the rule that prevents it. One click adopts it, and every rewrite from then on carries it.",
-      "Cast & phrases is for recurring subjects: write Anna once, type @anna anywhere, and the same words describe her every time. Import from ComfyUI shelves renders made before this editor existed.",
-    ],
-  },
-  {
-    n: "🎭", page: "library", title: "Who H3 already knows",
-    body: [
-      "There is a second way to hold a face: not describing it, but naming someone the model was trained on. For some characters the name alone is enough — write \u201cWalter White\u201d and Walter White turns up. For most it is not, and the name renders a stranger.",
-      "Which is which is not guessable, so it is looked up. 1293 characters were generated one clip at a time and judged by eye: 405 came back recognisable, 53 half the time, 835 not at all. Browse them under Cast & phrases, from \u2318K, or from the 🎭 beside a shot\u2019s Subject in the studio \u2014 searchable by character, by actor or by show.",
-      "The checker reads it too. Name someone from the bottom two buckets and it says so, with what to do instead: describe them concretely, or pin the face with a reference image. It is a warning, never an error \u2014 with a picture attached the name is only a label and the reference is doing the work.",
-      "The index is community testing by malcolmrey, not an official MiniMax list, and it is one person\u2019s read of a handful of clips per name. Treat it as a strong hint. Names that are also ordinary English \u2014 Angel, Data, Driver, Eleven \u2014 are left out of the automatic scan so \u201cthe driver pulls away\u201d is never mistaken for a casting decision.",
-    ],
-  },
-  {
-    n: "⏱", page: "deliver", title: "H3 renders 4–15 seconds — and cuts do not buy more",
-    body: [
-      "MiniMax's model card gives H3's output duration as 4–15 seconds at 24 fps. ComfyUI accepts a longer latent without complaining and the model has nothing trained past 15 s, so the extra time comes back as a repeat of what you already have.",
-      "20, 25 and 30 s stay selectable — other H3 tooling renders with that table — but they are marked ⚠ repeats wherever a length is chosen, and the checks call a clip past 15 s an error.",
-      "A shot list is prompt syntax, not a longer window: \u201c[Shot 3] At 00:08.000\u201d says when to cut, not how much to generate. A six-shot 30 s clip repeats exactly as a one-shot 30 s clip does. This guide used to say the opposite. For something longer, render separate clips and join them.",
-      "The frame counts are on the model's own grid — the VAE's clip_length is 17, so every offered length is \u2261 5 (mod 17) and anything else is rounded inside the node.",
-    ],
-  },
-  {
-    n: "⇉", page: "cut", title: "Carrying state across a cut",
-    body: [
-      "H3 has no memory between shots, and the prompt repeats the subject line at every cut because that is all the model gets. Which means a subject introduced as \u201ca courier in a heavy canvas jacket\u201d is described that way again at 00:08 — after the beats spent eight seconds taking the jacket off. The model believes the most recent description, so the jacket comes back.",
-      "Every shot after the first has a Changed since line: \u201cin shirtsleeves, the jacket over the chair behind him\u201d. It compiles immediately after the clause it corrects, which is the only position where it reliably wins.",
-      "The checks find it for you. Beats that change something — removes, puts on, opens, draws, picks up — followed by a later shot that repeats the subject word for word with nothing in its Changed since line, and you get a warning naming both shots.",
-    ],
-  },
-  {
-    n: "9", page: null, title: "VRAM saver",
-    body: [
-      "H3's DiT is around 20 GB and a 32B text encoder is another 20. On one card they do not co-fit, and the failure mode is silent: the driver spills to shared memory and the render crawls.",
-      "With VRAM saver on, one engine holds the GPU at a time. Rewriting unloads ComfyUI; rendering unloads the LLM. The badge in the title bar says who has it, and a render in flight is never interrupted.",
-    ],
-  },
-  {
-    n: "10", page: null, title: "Everything is on ⌘K",
-    body: [
-      "The command palette is the menu bar this app doesn't have: modes, pages, templates, renders, GPU controls, project import and export. Type a few letters of what you want.",
-    ],
-  },
-];
+/* ── The manual ──────────────────────────────────────────────
+ * card: { n, title, page?, body: [..], code?: {label, text}, keys?: [[k,v]] }
+ * A `code` block is real compiled output — what the encoder reads — with a
+ * copy button. `keys` renders the two-column keyboard grid. */
 
-const KEYS = [
-  ["⌘K / Ctrl+K", "Command palette"],
-  ["⌘J", "Ask the director"],
-  ["⇧Space", "The readthrough — watch the prompt play"],
-  ["`", "Create"],
-  ["0", "The Canvas"],
-  ["1 – 6", "Media · Cut · Sound · Deliver · Library · Setup"],
-  ["Space", "Play the previz"],
-  ["← →", "Nudge the playhead"],
-  ["S", "Split the shot at the playhead"],
-  ["N", "Show / hide the node view"],
-  ["B", "Storyboard ⇄ previz"],
-  ["⌘D", "Duplicate the selected shot"],
-  ["⌫", "Delete the selected shot"],
-  ["⌘Z / ⇧⌘Z", "Undo · redo"],
-  ["⌘⏎", "Render"],
-  ["⌘S", "Export the project file"],
-  ["F1", "This guide"],
-];
-
-function stepCard(step) {
-  return h("div", { style: { display: "grid", gridTemplateColumns: "26px 1fr", gap: "10px", marginBottom: "14px" } },
-    h("div", {
-      style: {
-        width: "22px", height: "22px", borderRadius: "2px", display: "flex",
-        alignItems: "center", justifyContent: "center", background: "#2f4058",
-        border: "1px solid #16283a", color: "#cfe2f4", fontFamily: "var(--mono)", fontSize: "11px",
+const SECTIONS = [
+  {
+    id: "start", icon: "▶", label: "Start here",
+    cards: [
+      {
+        n: "✦", title: "What this is — a whole studio, all on your machine",
+        body: [
+          "Motionstill Cut is a prompt-engineering suite for one video model: MiniMax H3 — text, image and reference to video, with native audio. It looks like an NLE, writes prompts in the exact grammar H3's own rewriter emits, plays them back BEFORE you spend GPU time, and renders through your own ComfyUI.",
+          "The unusual part is the pairing: a LOCAL LLM sits inside the editor as a director — it interviews you, captions your references, rewrites shots, reads your compiled prompt back like a stranger, and learns from how you rate your renders. Nothing leaves your machine: the model that writes and the model that renders are both yours, and they share your GPU by taking turns (VRAM saver).",
+          "Neither engine is required to WRITE: without them the app is still a full prompt editor with previz and checks, and the workflow downloads as a ComfyUI graph.",
+        ],
       },
-    }, step.n),
+      {
+        n: "▤", page: "projects", title: "Projects — the app opens on a shelf, not on a blank timeline",
+        body: [
+          "Work lives in a named project, the way it does in an NLE. Starting fresh means starting a NEW project, so it is never the same gesture as overwriting what you had — and opening one with unsaved work asks first.",
+          "⌘S saves, media and all. Five starting points sit beside your projects — an empty one, a single take, two people talking, a wide/medium/close cut, a voiceover over a still scene. They are real, editable projects and each compiles with no errors: worked examples of the grammar.",
+          "The last project you had open comes back on reload. Duplicate makes a copy to experiment on.",
+        ],
+      },
+      {
+        n: "1", title: "Create → Canvas → Studio",
+        body: [
+          "Create is where a new project opens. Paste a rough idea, drop pictures and audio, and it interviews you — reading the images — then steers the result with six dials in plain language. Its last step is Build the canvas.",
+          "Canvas is a node graph laid out as a timeline: shots left to right, the pictures each shot cites above it, the clip-wide things — steering, sound, the director — on a shelf underneath, the render at the end. Uncited material waits in an amber inbox.",
+          "Studio is everything below: per-beat timing, dialogue, retention markers, lens and height, the framing box, the seed ladder. The two views edit the SAME fields — the same editor drawn twice, so they cannot disagree.",
+          "` opens Create, 0 the Canvas, 2 the Cut page.",
+        ],
+      },
+      {
+        n: "◱", title: "The mode is not a choice",
+        body: [
+          "There is no T2V / I2V / Ref2V switch. Nothing attached is Text to Video; exactly one picture is Image to Video, and that picture anchors the first frame; anything more is Reference to Video. The title bar shows which one you are in, and adding or removing media is how you change it.",
+          "T2V — the prompt alone. I2V — the prompt plus a fixed first frame; the opening of the description has to match that frame exactly, or the model cuts away from it in the first second. Ref2V — separate weights that read up to 9 images, 3 clips and 3 audio files, addressed as <Picture 1>, <Video 1>, <Audio 1>.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "compose", icon: "✎", label: "Compose",
+    cards: [
+      {
+        n: "4", page: "cut", title: "Write the shots",
+        body: [
+          "Type one line into the box on the left and press Auto-shots, or start from a shot structure under Templates. The timeline is a real timeline: drag a cut, split at the playhead with S, duplicate with ⌘D, delete with ⌫, undo with ⌘Z.",
+          "A shot is a list of BEATS, not a paragraph. H3 renders roughly one beat per 2–3 seconds, and the badge next to Action beats counts yours against the shot's own length.",
+          "Framing and Camera move are separate: lens, height and where the subject sits hold for the whole shot; the move is what changes during it.",
+        ],
+      },
+      {
+        n: "◎", title: "The camera, on the node",
+        body: [
+          "Every shot node has a camera pad. The angle you drag picks the move, the distance from centre picks the amplitude, and the centre is \"the camera remains static\" — which H3 wants said out loud, because an unstated camera is one the model invents.",
+          "Turn is pan and tilt, Move is truck and pedestal, Orbit is an arc around the subject. Depth is its own control with a body/lens toggle — a push and a zoom are different shots. The sentence the model will read is printed under the pad as you drag.",
+          "Steering is the CLIP (six dials, whole clip). Fine-tuning is the SHOT (Distance, Energy, Light — folded under the camera pad). Each fine-tune dial follows the clip until you move it, turns amber when it is the shot's own, and has a ↺ back.",
+        ],
+      },
+      {
+        n: "❝", title: "Voices are people, not properties of a shot",
+        body: [
+          "(S1) in shot 1 and (S1) in shot 4 are the same person, and the model keeps the voice between them. So each speaking part is its own node, wired to every shot it speaks in — the only thing in the app that answers \"who is in this scene\" at a glance.",
+          "SAY WHO A VOICE IS, once: \"the young woman with a quiet, breathy voice\". That phrase is what H3 builds the voice out of; without it the model picks one, and in a two-person frame nothing says whose mouth moves.",
+          "The words inside <d>[Language] … </d> are verbatim — never translated, never punctuated for you. \"Off screen\" writes H3's exact voiceover phrasing ending in \"the lips stay closed\"; \"carries over the cut\" writes <scenetrans> on both sides.",
+        ],
+      },
+      {
+        n: "▣", page: "media", title: "References — a picture the prompt never names does nothing",
+        body: [
+          "MiniMax H3 only uses a reference the prompt actually cites. A picture attached but never named is ignored completely — invisible until the render comes back without it. The canvas flags it in amber and offers a one-click fix.",
+          "Each reference gets a tag and a retention marker: fully_preserved keeps a face, attribute_transfer takes only a style, fully_copy on audio means lip-sync to it and keep it as the soundtrack.",
+          "\"Describe with the LLM\" captions an image so the rewriter cites it for what it actually shows — one of the places the local vision model earns its keep.",
+        ],
+      },
+      {
+        n: "⇉", page: "cut", title: "Carrying state across a cut",
+        body: [
+          "H3 has no memory between shots: the subject line repeats at every cut, and the model believes the most recent description. Take the jacket off in shot 2 and the repeated line brings it back in shot 3.",
+          "Every shot after the first has a Changed since line — \"in shirtsleeves, the jacket over the chair behind him\" — compiled immediately after the clause it corrects, the only position where it reliably wins. The checks find the beats that change something and warn when a later shot forgets.",
+        ],
+      },
+      {
+        n: "6", page: "sound", title: "Sound is three separate things",
+        body: [
+          "Dialogue goes in the shot it belongs to, verbatim, with a stable speaker id. Ambience goes in overall_soundscape. Score goes in non_diegetic_music. They must never overlap — saying music twice is the most common way to get two competing tracks.",
+          "Mentioning that someone talks without giving the words makes the model invent dialogue.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "preview", icon: "▷", label: "Preview & checks",
+    cards: [
+      {
+        n: "▶", title: "The readthrough — watch the prompt play",
+        body: [
+          "You cannot see a prompt, and you cannot afford to render every guess. Press ⇧Space and the instructions play back in real time: the plate showing where the frame is going, every channel as a lane — shots, action, camera, speech, sound, music, references — and the compiled text with the clause in effect lit up.",
+          "It catches the mistakes that only exist in time: six beats crammed into five seconds, a shot where nothing happens, a camera move that never ends, dialogue with no room to be said, a reference no shot ever cites.",
+        ],
+      },
+      {
+        n: "5", page: "cut", title: "Previz — the frame, lit and moving",
+        body: [
+          "Viewer ▸ Previz plays the clip back as frames: the cuts where they actually fall, each shot's framing, the camera move at its own amplitude and speed, the dialogue as captions. It is lit — the key goes where the Lighting line puts it and the grade tints the frame, so the Light dial is something you watch.",
+          "Paused, the frame carries two boxes: orange where the subject starts, blue where the move leaves it. Drag them and the camera vocabulary is read back out of the drag. Viewer ▸ Board (B) is the same clip as a storyboard.",
+          "It simulates the PROMPT, not the model: whether the timing, framing and structure are what you meant — the part a render cannot tell you cheaply. Viewer ▸ Checks lists everything wrong before a GPU second is spent; Second opinion has the LLM read the finished prompt as a stranger would.",
+        ],
+      },
+      {
+        n: "✓", title: "Checked against MiniMax's own guide",
+        body: [
+          "The compiled prompt is the shape MiniMax's rewriter emits, documented in the guides that ship inside the model repo — and `npm test` holds it there: golden files freeze the exact output, and the app's own warnings are run over MiniMax's canonical examples. Any rule that fires on the guide's own output is a rule this app invented, and it gets deleted.",
+          "What the checker enforces is all from the guides: strictly increasing cut times, the five approved cut verbs, <d> tags closed and opening with a supported language, a described speaker at first appearance, no music repeated in the soundscape, retention markers from the right vocabulary — and more.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "director", icon: "✦", label: "The local LLM",
+    cards: [
+      {
+        n: "✦", title: "The director — the LLM operates the app",
+        body: [
+          "The assistant does not hand you text to paste, it edits the project and shows you the edit first. Ask in plain words — \"bring her closer\", \"why does it keep adding music?\" — and it answers with a sentence and a plan: concrete changes, each with the model's reason and a checkbox.",
+          "Nothing lands until you press Apply; the whole plan applies as one step so a single ⌘Z takes all of it back. It reads your shot list, the compiled prompt, the checks, your references as pictures, and how you rated past renders.",
+          "⌘J from anywhere. It needs no wire — it reads the whole graph; narrow it to one shot by dragging its node onto that shot.",
+        ],
+      },
+      {
+        n: "◆", title: "Which model? Gemma 3 12B is the sweet spot",
+        body: [
+          "Any OpenAI-compatible local server works — LM Studio, Ollama, llama.cpp. What the app needs from the model: follow instructions, answer with JSON, write plain prose. What makes it shine: vision, so the interview and \"Describe with the LLM\" can actually read your references.",
+          "VRAM saver means the LLM and the video model take TURNS on the card — so run the best model your card fits, not the one that co-fits with a DiT.",
+        ],
+        list: [
+          ["Recommended — Gemma 3 12B (instruct/QAT).", "Strong prose, reliable JSON, and it has vision — one model covers the director, the rewriter AND image captioning. ~8 GB in Q4/QAT."],
+          ["Small cards (≤8 GB) — Gemma 3 4B or Llama 3.1 8B.", "Fine for rewrites and captions; second opinions get shallower."],
+          ["Big cards (24 GB+) — Gemma 3 27B or Qwen3 32B.", "The best director plans and critiques. Keep Thinking Off for Qwen3 — the app's default."],
+          ["Vision on a budget — Qwen2.5-VL 7B as the separate Vision model,", "with anything you like as the text model. Setup has both fields."],
+        ],
+      },
+      {
+        n: "✚", title: "If the model will not answer",
+        body: [
+          "The cause is usually thinking, not size. A reasoning model (Qwen3, DeepSeek-R1, gpt-oss, GLM) can spend its whole token budget deliberating before it writes anything — so thinking does NOT need to be on for this app, and is usually what breaks it.",
+          "Setup ▸ Thinking is Off by default and asks the backend to skip it in every dialect at once; the reasoning is stripped from the answer either way, and a reply that ran out of room is retried with a bigger budget. Setup ▸ Test structured answers shows exactly what came back — and the error names the setting to change, not \"try a larger model\".",
+        ],
+      },
+    ],
+  },
+  {
+    id: "render", icon: "⚙", label: "Render & engines",
+    cards: [
+      {
+        n: "⚑", page: "setup", title: "Point it at your box",
+        body: [
+          "Setup has one job: two addresses. ComfyUI (usually http://127.0.0.1:8188) does the rendering; an OpenAI-compatible LLM server (LM Studio, Ollama, llama.cpp) does the prompt work. Auto-detect finds either one if it is running, and both badges in the title bar go green when they answer.",
+          "In the hosted version the page talks to both DIRECTLY, so each needs CORS on once: start ComfyUI with --enable-cors-header; LM Studio has a CORS switch under Developer; Ollama takes OLLAMA_ORIGINS=*. The local app with server saving proxies both instead — no flags anywhere.",
+          "No custom nodes are needed. Every node this editor emits ships with ComfyUI, which is what makes the downloaded workflow run on someone else's install.",
+        ],
+      },
+      {
+        n: "7", page: "deliver", title: "Deliver, two ways",
+        body: [
+          "Workflow JSON downloads the ComfyUI API graph — drop it on ComfyUI, or POST it to /prompt yourself. Render sends the same graph, uploads whatever media it references first, and follows the job to the end — with the sampler's own preview frames streaming in while it runs.",
+          "×N Variations queues the same prompt on a ladder of seeds, which is how you find out whether a prompt is good or whether one seed was. The build row picks the trade: Full is the official template, Turbo is a step-distill — its step count and flow shifts come with it.",
+        ],
+      },
+      {
+        n: "≡", page: "deliver", title: "The render queue",
+        body: [
+          "One GPU renders one clip at a time; the queue is where the next one waits instead of in your head. A queued clip is a SNAPSHOT — you queue what the project looks like now and carry on editing. A failure never stops the queue, and the error stays on the row.",
+        ],
+      },
+      {
+        n: "⏱", page: "deliver", title: "H3 renders 4–15 seconds — and cuts do not buy more",
+        body: [
+          "MiniMax's model card gives H3's output as 4–15 seconds at 24 fps. ComfyUI accepts a longer latent without complaining, and the extra time comes back as a repeat of what you already have. A shot list is prompt syntax, not a longer window: \"[Shot 3] At 00:08.000\" says when to cut, not how much to generate.",
+          "For something longer, tick The Film: it cuts the writing into clips that each fit, renders them in order — each continuing from the previous clip's final frame — and joins them at the end (the join runs on the local app; the hosted version hands you the clips).",
+        ],
+      },
+      {
+        n: "9", title: "VRAM saver — two engines, one card",
+        body: [
+          "H3's DiT is around 20 GB and a 32B text encoder is another 20. On one card they do not co-fit, and the failure is silent: the driver spills to shared memory and the render crawls.",
+          "With VRAM saver on, one engine holds the GPU at a time: rewriting unloads ComfyUI, rendering unloads the LLM — in whichever dialect your LLM server speaks (LM Studio, Ollama, llama.cpp router, llama-swap, Nexus). The badge in the title bar says who has the card, and a render in flight is never interrupted.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "learn", icon: "★", label: "Learn & library",
+    cards: [
+      {
+        n: "8", page: "library", title: "The Library — the half after the render",
+        body: [
+          "Every render is saved automatically with the exact prompt, settings and seed that made it. The star rating is the only thing that feeds back: rate a clip and the director weighs YOUR results over general advice. Two stars means it did not work; four or five means do more of this.",
+          "The tags name the failure so it can be counted — and each knows the house rule it implies. Tag a clip \"camera did its own thing\" and the app offers the rule that prevents it; one click adopts it, and every rewrite from then on carries it.",
+          "Compare puts two takes side by side with a word-level diff of their prompts. Import from ComfyUI shelves renders made before this editor existed — the graph carries its own prompt, canvas and seed.",
+        ],
+      },
+      {
+        n: "🎭", page: "library", title: "Who H3 already knows",
+        body: [
+          "There is a second way to hold a face: naming someone the model was trained on. For some characters the name alone is enough; for most it renders a stranger. Which is which is not guessable, so it is looked up: 1293 characters community-tested one clip at a time — 405 recognisable, 53 half the time, 835 not at all.",
+          "Browse them under Cast & phrases, from ⌘K, or from the 🎭 beside a shot's Subject. The checker warns on the bottom two buckets, with what to do instead: describe them concretely, or pin the face with a reference image.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "examples", icon: "❐", label: "Examples",
+    cards: [
+      {
+        n: "1", title: "Two shots, one cut — the grammar at its smallest",
+        body: [
+          "What the encoder actually reads for a 10-second, two-shot clip. Notice: the cut timestamp on shot 2 only, one of the five approved cut verbs, the camera stated even when static, and beats as short verb clauses — not prose.",
+        ],
+        code: {
+          label: "compiled by the app · t2v · 10 s",
+          text: "integrated_multimodal_description: [Shot 1] A live-action cinematic medium shot, front-facing: a woman in a charcoal coat. The setting is a rain-streaked cafe window at night. Teal-and-orange grade with cool shadows and warm skin tones. The camera remains static. Lowers her cup, then looks up. [Shot 2] At 00:04.500, the camera cuts to a close-up shot, front-facing of her hands. The camera tilts down with small amplitude at slow speed. Twist the portafilter free.",
+        },
+        after: ["You never type this shape by hand — the shots, beats and camera pad compile it. But being able to READ it is what previz and the checks are teaching you."],
+      },
+      {
+        n: "2", title: "Dialogue that keeps its voices",
+        body: [
+          "Two speakers over one image anchor. The words inside <d> are verbatim; (S1) and (S2) are stable people, not labels per shot:",
+        ],
+        code: {
+          label: "the dialogue clauses · i2v",
+          text: "(S1) says, <d>[English] Please help us</d> (S2) says, <d>[English] I am sorry</d>",
+        },
+        after: [
+          "The checks on this exact project flag what is still missing — \"(S1) speaks in shot 1 with no description. Say who they are and how they sound — 'a young woman with a quiet, breathy voice' — or the model picks a voice for you.\" That description compiles at the speaker's first line only, and the voice holds for every later line.",
+        ],
+      },
+      {
+        n: "3", title: "Recipe — a product orbit from one photo",
+        list: [
+          ["Drop the photo anywhere.", "The mode flips to I2V by itself and the picture anchors the first frame."],
+          ["Open the shot and describe the opening to MATCH the photo", "— what is in frame, on what surface, in what light. I2V cuts away from a first frame the words contradict."],
+          ["On the camera pad pick Orbit,", "drag a small amplitude at slow speed. The sentence under the pad should read like \"the camera arcs right around the subject with small amplitude at slow speed\"."],
+          ["Give the soundscape one line", "— \"quiet studio room tone\" — or tick deliberate silence; an empty field renders the clip SILENT and the checks say so."],
+          ["⇧Space to watch it, then ×3 seed variations on Deliver.", "Rate the best one in the Library."],
+        ],
+      },
+      {
+        n: "4", title: "Recipe — the same character next week",
+        list: [
+          ["Write her once, under Cast & phrases:", "\"@anna — a wiry woman in her 30s, cropped grey hair, a scar through the left eyebrow, olive field jacket\"."],
+          ["Type @anna in any subject line", "and the same words compile every time — H3 has no memory between clips; that text IS the character."],
+          ["For a real face lock, go Ref2V:", "attach her portrait, cite <Picture 1> in the shots that show her, retention fully_preserved."],
+          ["Rate the renders where she drifted", "and tag them — the tag offers the house rule, and the rewriter carries it from then on."],
+        ],
+      },
+      {
+        n: "5", title: "Recipe — find out what actually matters",
+        list: [
+          ["Pin the seed", "on Deliver (any number beats -1) so the only thing changing is the thing you change."],
+          ["Sweep ONE variable:", "render the same prompt at three Light settings, or three camera speeds — ×N with the seed held is the app's version of a controlled experiment."],
+          ["Compare two takes in the Library", "— the word-level diff shows exactly which words moved."],
+          ["Write the conclusion down as a house rule.", "\"Handheld reads as panic above medium energy — keep it small for domestic scenes.\" Every rewrite now knows."],
+        ],
+      },
+    ],
+  },
+  {
+    id: "tips", icon: "◈", label: "Tips",
+    cards: [
+      {
+        n: "◈", title: "Ten things people find out late",
+        list: [
+          ["An empty soundscape renders SILENCE.", "N/A is an instruction, not an omission — describe the room, or mean the silence."],
+          ["The camera must be told to hold still.", "\"The camera remains static\" is a sentence H3 wants; an unstated camera is one the model invents."],
+          ["One beat per 2–3 seconds.", "Six beats in a five-second shot is a slideshow; the readthrough makes it visible before the GPU does."],
+          ["A reference the prompt never cites does nothing.", "Amber on the canvas means the model will ignore that picture entirely."],
+          ["Thinking OFF is the fix, not the compromise.", "Reasoning models fail this app by deliberating past their token budget, not by being too small."],
+          ["The seed is a take, not a setting.", "-1 rolls fresh; pin it only to compare — and sweep one variable at a time."],
+          ["Rate your renders.", "The director reads your stars and weighs your box's results over the vendor's guide. Unrated libraries teach it nothing."],
+          ["Say what changed since the last shot.", "The subject line repeats at every cut and the model believes it — the Changed since line is how clothes stay off."],
+          ["15 seconds is the ceiling per clip.", "More time repeats; more SHOTS is syntax, not duration. Longer pieces are films — several clips, chained and joined."],
+          ["⌘K knows everything.", "Modes, pages, templates, GPU controls, import/export — type a few letters of what you want."],
+        ],
+      },
+      {
+        n: "⌦", title: "In the hosted version, your browser IS the disk",
+        body: [
+          "Everything you make lives in this browser's own storage — nothing is uploaded, and nothing follows you to another machine by itself. Setup ▸ Where your work lives has one-click Export backup (settings, projects, library, media — one JSON file) and Restore.",
+          "Want files on disk, engine access without CORS flags, and ffmpeg film joins? Run the local app: node server/server.js — same interface, plus a data/ folder.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "interface", icon: "⌘", label: "Interface & keys",
+    cards: [
+      {
+        n: "⇔", title: "The layout is yours",
+        body: [
+          "Every seam between two panels drags, on every page; double-click a seam to reset it, Setup ▸ Reset panel sizes resets all. Sizes are remembered per window shape — a width you dragged on a big screen is not applied to a phone layout it was never about.",
+          "⌘+ and ⌘− scale the whole interface; a phone starts at 125%. The node canvas pinches to zoom with two fingers.",
+        ],
+      },
+      {
+        n: "⌸", title: "What this machine remembers",
+        body: [
+          "The render settings you chose last are what your next project starts from — canvas, precision, checkpoint variant (kept once per family), tiled decode. They describe the machine, not the clip. The seed and the clip length are deliberately NOT remembered; those belong to a take.",
+        ],
+      },
+      {
+        n: "⌘", title: "Keyboard",
+        keys: [
+          ["⌘K / Ctrl+K", "Command palette — everything is on it"],
+          ["⌘J", "Ask the director"],
+          ["⇧Space", "The readthrough — watch the prompt play"],
+          ["`", "Create"],
+          ["0", "The Canvas"],
+          ["1 – 6", "Media · Cut · Sound · Deliver · Library · Setup"],
+          ["Space", "Play the previz"],
+          ["← →", "Nudge the playhead"],
+          ["S", "Split the shot at the playhead"],
+          ["N", "Show / hide the node view"],
+          ["B", "Storyboard ⇄ previz"],
+          ["⌘D", "Duplicate the selected shot"],
+          ["⌫", "Delete the selected shot"],
+          ["⌘Z / ⇧⌘Z", "Undo · redo"],
+          ["⌘⏎", "Render"],
+          ["⌘S", "Save the project"],
+          ["F1", "This guide"],
+        ],
+      },
+    ],
+  },
+];
+
+/* ── Rendering ─────────────────────────────────────────────── */
+
+function badge(n) {
+  return h("div", {
+    style: {
+      width: "22px", height: "22px", borderRadius: "2px", display: "flex", flex: "none",
+      alignItems: "center", justifyContent: "center", background: "#2f4058",
+      border: "1px solid #16283a", color: "#cfe2f4", fontFamily: "var(--mono)", fontSize: "11px",
+    },
+  }, n);
+}
+
+function codeBlock(code) {
+  return h("div", { style: { margin: "6px 0 2px", border: "1px solid var(--line)", borderRadius: "4px", background: "#161616", overflow: "hidden" } },
+    h("div", { style: { display: "flex", alignItems: "center", gap: "8px", padding: "4px 8px", borderBottom: "1px solid var(--line)" } },
+      h("span.hint", { style: { fontSize: "10px", letterSpacing: ".06em", textTransform: "uppercase" } }, code.label || "compiled output"),
+      h("span", { style: { flex: "1" } }),
+      h("button.btn.sm.ghost", {
+        onclick: async () => { await copyText(code.text); toast("Copied", "", "ok"); },
+      }, "⧉ copy")),
+    h("div.mono", {
+      style: { padding: "8px 10px", fontSize: "11px", lineHeight: "1.6", whiteSpace: "pre-wrap", color: "#b8c7b8", maxHeight: "180px", overflow: "auto" },
+    }, code.text),
+  );
+}
+
+function card(c) {
+  return h("div", { style: { display: "grid", gridTemplateColumns: "26px 1fr", gap: "10px", marginBottom: "16px" } },
+    badge(c.n),
     h("div",
-      h("div.flex", { style: { marginBottom: "3px" } },
-        h("b", { style: { color: "var(--fg-bright)" } }, step.title),
-        step.page ? h("button.btn.sm.ghost", {
-          onclick: () => {
-            closeModal(null);
-            $$(`.page-btn[data-page="${step.page}"]`)[0]?.click();
-          },
-        }, `go to ${step.page} ↗`) : null,
+      h("div.flex", { style: { marginBottom: "3px", gap: "8px" } },
+        h("b", { style: { color: "var(--fg-bright)" } }, c.title),
+        c.page ? h("button.btn.sm.ghost", {
+          onclick: () => { closeModal(null); $$(`.page-btn[data-page="${c.page}"]`)[0]?.click(); },
+        }, `go to ${c.page} ↗`) : null,
       ),
-      ...step.body.map(t => h("div.hint", { style: { marginBottom: "3px" } }, t)),
+      ...(c.body || []).map(t => h("div.hint", { style: { marginBottom: "4px", lineHeight: "1.55" } }, t)),
+      c.code ? codeBlock(c.code) : null,
+      ...(c.after || []).map(t => h("div.hint", { style: { margin: "4px 0", lineHeight: "1.55" } }, t)),
+      c.list ? h("div", { style: { marginTop: "2px" } },
+        ...c.list.map(([lead, rest], i) => h("div.hint", { style: { marginBottom: "5px", lineHeight: "1.55" } },
+          h("span.mono", { style: { color: "var(--fg-dim, #888)", marginRight: "7px" } }, String(i + 1)),
+          h("b", { style: { color: "var(--fg-bright)" } }, lead + " "), rest))) : null,
+      c.keys ? h("div", { style: { display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 12px", marginTop: "4px" } },
+        ...c.keys.flatMap(([k, v]) => [h("span.mono", { style: { color: "var(--fg-bright)" } }, k), h("span.hint", v)])) : null,
     ),
   );
 }
 
-export function showQuickGuide() {
-  const body = h("div",
-    h("div.note.info", { style: { marginTop: "0" } },
-      h("b", "Motionstill Cut"),
-      " is a prompt-engineering suite for one model: MiniMax H3, in its three conditioning modes. It writes prompts in the exact format H3's own rewriter emits, plays them back before you spend GPU time on them, lets a local LLM edit them with you, and hands the result to ComfyUI as a graph — or to you as a JSON file."),
-    ...STEPS.map(stepCard),
-    h("h4.sec", "Keyboard"),
-    h("div", { style: { display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 12px" } },
-      ...KEYS.flatMap(([k, v]) => [h("span.mono", { style: { color: "var(--fg-bright)" } }, k), h("span.hint", v)])),
+function cardText(c) {
+  return [c.title, ...(c.body || []), ...(c.after || []),
+    ...(c.list || []).flat(), ...(c.keys || []).flat(), c.code?.text || ""].join(" ").toLowerCase();
+}
+
+export function showQuickGuide(sectionId = "start") {
+  let active = SECTIONS.some(s => s.id === sectionId) ? sectionId : "start";
+  let query = "";
+
+  const nav = h("div");
+  const content = h("div", {
+    style: { overflowY: "auto", padding: "14px 18px 8px", minWidth: "0" },
+  });
+
+  const navBtn = (s) => h("button", {
+    "data-sec": s.id,
+    style: {
+      display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
+      background: s.id === active && !query ? "var(--accent-dim, #2f4058)" : "transparent",
+      color: s.id === active && !query ? "#cfe2f4" : "var(--fg, #c9c9c9)",
+      border: "none", borderRadius: "4px", padding: "6px 9px", cursor: "pointer",
+      font: "inherit", fontSize: "12px", marginBottom: "1px",
+    },
+    onclick: () => { query = ""; search.value = ""; active = s.id; draw(); },
+  }, h("span", { style: { width: "14px", textAlign: "center", opacity: ".8" } }, s.icon), s.label);
+
+  const search = h("input", {
+    type: "search", placeholder: "Search the guide…",
+    style: {
+      width: "100%", marginBottom: "10px", background: "#161616", border: "1px solid var(--line)",
+      borderRadius: "4px", color: "var(--fg-bright)", padding: "6px 8px", font: "inherit", fontSize: "12px",
+    },
+    oninput: (e) => { query = e.target.value.trim().toLowerCase(); draw(); },
+  });
+
+  function draw() {
+    nav.replaceChildren(search, ...SECTIONS.map(navBtn));
+    if (query) {
+      const hits = [];
+      for (const s of SECTIONS) {
+        for (const c of s.cards) if (cardText(c).includes(query)) hits.push([s, c]);
+      }
+      content.replaceChildren(
+        h("div.hint", { style: { marginBottom: "10px" } },
+          hits.length ? `${hits.length} match${hits.length === 1 ? "" : "es"} for “${query}”` : `Nothing matches “${query}”.`),
+        ...hits.flatMap(([s, c]) => [
+          h("div.hint", { style: { fontSize: "10px", textTransform: "uppercase", letterSpacing: ".08em", opacity: ".7", margin: "2px 0 4px 36px" } }, `${s.icon} ${s.label}`),
+          card(c),
+        ]),
+      );
+    } else {
+      const s = SECTIONS.find(x => x.id === active);
+      const intro = active === "start" ? [h("div.note.info", { style: { marginTop: "0" } },
+        h("b", "Motionstill Cut"),
+        " pairs a local LLM with your own ComfyUI: one writes and critiques the prompt with you, the other renders it — same GPU, taking turns, nothing leaving your machine.")] : [];
+      content.replaceChildren(...intro, ...s.cards.map(card));
+    }
+    content.scrollTop = 0;
+  }
+
+  draw();
+
+  const shell = h("div", {
+    style: {
+      display: "grid", gridTemplateColumns: "185px 1fr", gap: "0",
+      height: "min(74vh, 780px)", margin: "-6px", minWidth: "0",
+    },
+  },
+    h("div", { style: { borderRight: "1px solid var(--line)", padding: "10px 10px 10px 4px", overflowY: "auto" } }, nav),
+    content,
   );
 
   return modal({
-    title: "Quick guide",
-    wide: true,
-    body,
+    title: "Guide",
+    full: true,
+    body: shell,
     actions: [
       {
         label: "Don't show this again",
