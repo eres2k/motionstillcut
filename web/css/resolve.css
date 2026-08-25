@@ -261,6 +261,9 @@ input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent);
   background: #232323; border: 1px solid #111; border-radius: var(--radius);
   font-size: var(--fs-sm); color: var(--fg-dim); white-space: nowrap;
 }
+button.badge { cursor: pointer; font: inherit; font-size: var(--fs-sm); }
+button.badge:hover:not(:disabled) { color: var(--fg); border-color: #333; }
+button.badge:disabled { cursor: default; opacity: .7; }
 .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--fg-faint); flex: none; }
 .badge.ok .dot { background: var(--green); box-shadow: 0 0 5px #4b9b58; }
 .badge.bad .dot { background: var(--red); }

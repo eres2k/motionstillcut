@@ -104,3 +104,26 @@ test("none of it fires on the MiniMax engine, which has no guides", () => {
   assert.ok(!m.some(x => /freezes|8-frame grid/.test(x)));
   assert.ok(m.some(x => /pins only apply on the LTX-2.5 engine/.test(x)));
 });
+
+/* ── The checks name the switch ───────────────────────────── */
+
+test("a clip past H3's ceiling offers the LTX switch, where LTX can render it", () => {
+  const p = ltxProject();
+  p.render.engine = "minimax";
+  p.render.duration = 20;
+  const c = validate(p).checks.find(x => /past H3's/.test(x.msg));
+  assert.ok(c, "the ceiling check fires");
+  assert.equal(c.action?.kind, "engine");
+  assert.equal(c.action?.engine, "ltx25");
+});
+
+test("pins on the MiniMax engine offer the switch — but not in Ref2V, which has no LTX", () => {
+  const p = ltxProject();
+  p.render.engine = "minimax";
+  p.shots[1].keyframe = img("a");
+  const c = validate(p).checks.find(x => /pins only apply/.test(x.msg));
+  assert.equal(c?.action?.engine, "ltx25");
+  p.mode = "r2v";
+  const r = validate(p).checks.find(x => /pins only apply/.test(x.msg));
+  assert.ok(r && !r.action, "Ref2V gets the warning without a switch it cannot make");
+});

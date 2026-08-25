@@ -718,7 +718,12 @@ together or the motion degrades without erroring anywhere.
 ### The Engine row (experimental)
 
 On T2V and I2V an **Engine** row sits above the build picker: **MiniMax H3**
-(native) or **LTX-2.5 · experimental**. The LTX chip sends the *same compiled
+(native) or **LTX-2.5 · experimental** — and the same choice sits in the
+title bar as a chip beside the mode, on every page, because it decides what
+the timeline may do (15 s or 30 s, pins or no pins). Click the chip to switch;
+the prompt does not change, the checks use the other engine's limits. A check
+that the other engine would resolve — a 20 s clip on H3, a pinned shot on H3 —
+carries a **Switch to LTX-2.5** button of its own. The LTX chip sends the *same compiled
 prompt, verbatim* to Lightricks' model through its own distilled pipeline
 (Two-stage 8+3 or Single-stage 8-step, cfg 1, no LoRAs). Same canvases, the
 frame counts move to LTX's 8k+1 grid, clips run to a real 30 s, and I2V pins

@@ -878,7 +878,12 @@ export function validate(project) {
       add("warn", `A ${duration}s clip is under the ${LTX25_DURATION.min}s floor LTX-2.5 generates.`);
     }
   } else if (duration > H3_DURATION.max) {
-    add("err", `A ${duration}s clip is past H3's ${H3_DURATION.max}s ceiling — MiniMax specifies 4–15 seconds of output. The node will render ${duration}s without complaining and the model repeats itself to fill the extra ${(duration - H3_DURATION.max).toFixed(0)}s. Adding shots does not help: a cut is prompt syntax, not a longer window. Render at ${H3_DURATION.max}s or less${shots.length > 1 ? ", and make the rest a second clip" : ""}.`);
+    add("err", `A ${duration}s clip is past H3's ${H3_DURATION.max}s ceiling — MiniMax specifies 4–15 seconds of output. The node will render ${duration}s without complaining and the model repeats itself to fill the extra ${(duration - H3_DURATION.max).toFixed(0)}s. Adding shots does not help: a cut is prompt syntax, not a longer window. Render at ${H3_DURATION.max}s or less${shots.length > 1 ? ", and make the rest a second clip" : ""}.`,
+      /* The other engine genuinely renders it. Offer the switch here, where
+       * the problem is read, instead of sending people to Deliver. */
+      project.mode !== "r2v" && duration <= LTX25_DURATION.max
+        ? { action: { kind: "engine", engine: "ltx25", label: `Switch to LTX-2.5 (renders up to ${LTX25_DURATION.max} s)` } }
+        : {});
   } else if (duration < H3_DURATION.min) {
     add("warn", `A ${duration}s clip is under the ${H3_DURATION.min}s floor MiniMax specifies for H3.`);
   }
@@ -893,7 +898,8 @@ export function validate(project) {
     const pinned = shotKeyframes(project);
     const pins = pinned.length;
     if (pins && activeEngine(project) !== "ltx25") {
-      add("warn", `${pins} shot${pins === 1 ? " has" : "s have"} a pinned keyframe, and pins only apply on the LTX-2.5 engine — the ${project.mode === "r2v" ? "Ref2V graph (always MiniMax)" : "MiniMax graph"} ignores them. Switch the Engine row on Deliver, or remove the pins.`);
+      add("warn", `${pins} shot${pins === 1 ? " has" : "s have"} a pinned keyframe, and pins only apply on the LTX-2.5 engine — the ${project.mode === "r2v" ? "Ref2V graph (always MiniMax)" : "MiniMax graph"} ignores them. ${project.mode === "r2v" ? "Ref2V is MiniMax-only: remove the pins, or leave Ref2V." : "Switch the engine, or remove the pins."}`,
+        project.mode !== "r2v" ? { action: { kind: "engine", engine: "ltx25", label: "Switch to LTX-2.5" } } : {});
     } else if (pins) {
       /* — The same picture pinned more than once —
        * A guide says "the frame looks like THIS at this time". Pin one
