@@ -148,10 +148,18 @@ export function cameraSentence(camera = {}) {
 export function identityOf(project, speaker) {
   for (const sh of orderedShots(project)) {
     for (const l of sh.dialogue || []) {
-      if ((l.speaker || "S1") === speaker && (l.identity || "").trim()) return l.identity.trim().replace(/[.,;:]\s*$/, "");
+      if ((l.speaker || "S1") === speaker && (l.identity || "").trim()) return shortIdentity(l.identity);
     }
   }
   return "the speaker";
+}
+/** The identifier reused after a first appearance: the phrase up to its
+ *  first comma, "and" or "in" clause — "the woman with short grey hair", not
+ *  the whole introduction again. */
+export function shortIdentity(identity) {
+  const full = String(identity || "").trim().replace(/[.,;:]\s*$/, "");
+  const cut = full.split(/,| and | in (?:her|his|their) | wearing | seated | standing /i)[0].trim();
+  return cut || full;
 }
 
 export function dialogueSentence(line, opts = {}) {
@@ -175,8 +183,11 @@ export function dialogueSentence(line, opts = {}) {
     const deliveryWord = (line.delivery || "").trim() || "says";
     const how = line.voiceover ? "in an off-screen voiceover" : voice ? `in ${/^(a|an|the)\b/i.test(voice) ? voice : `a ${voice}`}` : "";
     const clean = text.replace(/^["'“”]+|["'“”]+$/g, "");
-    const quoted = /[.!?…]$/.test(clean) ? `"${clean}"` : `"${clean}."`;
-    return `${who.charAt(0).toUpperCase()}${who.slice(1)} ${deliveryWord}${how ? ` ${how}` : ""}: ${quoted}${line.voiceover ? " Their lips stay closed." : ""}`;
+    /* The period sits outside the quote so the sentence ends in one — the
+     * joiner adds a stop to anything that does not, and a stop after a
+     * closing quote is what produced ." ." */
+    const quoted = `"${clean.replace(/[.]+$/, "")}"`;
+    return `${who.charAt(0).toUpperCase()}${who.slice(1)} ${deliveryWord}${how ? ` ${how}` : ""}: ${quoted}.${line.voiceover ? " Their lips stay closed." : ""}`;
   }
 
   if (line.voiceover) {
@@ -1125,8 +1136,11 @@ export function validate(project) {
     // The markers themselves: one per shot, numbered from 1, none on shot 1.
     const markers = (compiled.description.match(/\[Shot (\d+)\]/g) || []);
     if (!project.prompt?.manual) {
-      if (markers.length !== shots.length) {
-        add("warn", `${markers.length} [Shot N] marker${markers.length === 1 ? "" : "s"} for ${shots.length} shot${shots.length === 1 ? "" : "s"}.`);
+      // Rows that continue the take have no marker of their own, so the
+      // expected count is the number of cuts, not the number of rows.
+      const expected = shotMarkers(shots)[shots.length - 1] || 0;
+      if (markers.length !== expected && activeEngine(project) !== "ltx25") {
+        add("warn", `${markers.length} [Shot N] marker${markers.length === 1 ? "" : "s"} for ${expected} cut${expected === 1 ? "" : "s"} across ${shots.length} shot${shots.length === 1 ? "" : "s"}.`);
       }
       if (/\[Shot 1\]\s*At \d/.test(compiled.description)) {
         add("err", "Shot 1 carries a cut time. The opening shot has no timestamp — it starts at 0.");

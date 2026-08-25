@@ -14,7 +14,7 @@ import { detailToWriting, DEFAULT_DIALS } from "./steer.js";
 import { api } from "./api.js";
 import { getBlob } from "./media.js";
 import { compilePrompt } from "./prompt.js";
-import { referenceInventory, orderedShots, shotActionText, filmSpan } from "./state.js";
+import { referenceInventory, orderedShots, shotActionText, filmSpan, activeEngine } from "./state.js";
 import { CLIP_MAX } from "./film.js";
 import { CAMERA_TYPES, SHOT_TYPES, VIEWPOINTS } from "./vocab.js";
 
@@ -241,7 +241,9 @@ export async function enhance(project, { instruction = "", useVision = true } = 
 
 You are rewriting a draft into the final MiniMax H3 prompt.
 Return exactly: ${schema}
-- The description field is ${budget}, one flowing paragraph that keeps the [Shot N] markers and their cut timestamps EXACTLY as given. A single-shot clip still opens with [Shot 1] and carries no timestamp.
+- The description field is ${budget}, one flowing paragraph that ${activeEngine(project) === "ltx25"
+    ? "keeps every cut named in prose EXACTLY as given (\"A hard cut transitions to…\", \"The image dissolves into…\") with the audio continuity stated after each — no [Shot N] markers, no timestamps, no field labels."
+    : "keeps the [Shot N] markers and their cut timestamps EXACTLY as given. A single-shot clip still opens with [Shot 1] and carries no timestamp."}
 - Keep every concrete detail the draft gives: names, wardrobe, props, locations, quoted dialogue,
   camera moves and their amplitude/speed. Add only what is implied. Invent no new camera motion.
 - Keep every <d>[Language] … </d> tag and every (S1)/(S2) speaker id byte-for-byte.

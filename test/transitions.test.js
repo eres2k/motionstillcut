@@ -94,6 +94,6 @@ test("on LTX-2.5 dialogue is quoted prose with the voice named, no tags", () => 
   p.shots[1].dialogue = [{ id: "d2", speaker: "S1", text: "And every cut is real." }];
   const { text } = compilePrompt(p);
   assert.ok(!/<d>|\(S1\)/.test(text), text);
-  assert.match(text, /The woman with the short grey hair says in a warm, unhurried voice: "We cut it four ways\."/);
-  assert.match(text, /The woman with the short grey hair says: "And every cut is real\."/);
+  assert.match(text, /The woman with the short grey hair says in a warm, unhurried voice: "We cut it four ways"\./);
+  assert.match(text, /The woman with the short grey hair says: "And every cut is real"\./);
 });
