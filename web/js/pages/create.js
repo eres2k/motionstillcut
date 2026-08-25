@@ -4,7 +4,7 @@
  * and an idea they cannot yet say precisely. Three moves:
  *
  *   MATERIAL   drop what you have; the app reads it and proposes a first pass
- *   STEER      answer a few questions, move six dials in your own language
+ *   STEER      answer a few questions, move seven dials in your own language
  *   TAKES      two renders, side by side, because one clip from H3 is a sample
  *
  * The timeline, the inspector and the compiler are all still here — underneath,
