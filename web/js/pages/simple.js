@@ -29,7 +29,7 @@
  */
 
 import {
-  h, mount, clear, toast, uid, clamp, timecode, download, copyText, modal,
+  h, mount, clear, toast, uid, clamp, timecode, download, copyText, modal, select,
 } from "../util.js";
 import {
   getProject, update, orderedShots, newShot, newBeat, newDialogue, nextUnusedSpeaker,
@@ -39,7 +39,7 @@ import {
  onProjectSwap} from "../state.js";
 import { ingest, getBlob, delBlob, posterFor } from "../media.js";
 import { compilePrompt, validate, cameraSentence, compileSubjectDefs, taskTypeFor } from "../prompt.js";
-import { SPEEDS, SPEAKERS, LANGUAGES, LOOKS, GRADES, REF_TASK_TYPES } from "../vocab.js";
+import { SPEEDS, SPEAKERS, LANGUAGES, LOOKS, GRADES, REF_TASK_TYPES, TRANSITIONS, NO_CUT } from "../vocab.js";
 import { estimateSeconds, humanTime } from "../workflow.js";
 import { renderNow, currentJob, onRenderChange, cancelRender, applyLive } from "../render.js";
 import { enhance, breakdown, polishShot } from "../llm.js";
@@ -1265,6 +1265,15 @@ function shotNode(p, shot, index, shots) {
           refresh();
         },
       }) : null,
+      /* What happens between the previous shot and this one. The same field
+       * the studio's Cut row and the node view's wire selector set. */
+      index > 0 ? h("div.sn-cut",
+        h("span.sn-cut-lbl", { title: "How the clip gets from the previous shot to this one" }, "✂ Cut"),
+        select(TRANSITIONS, shot.cutVerb || "the camera cuts to", (v) => {
+          update((draft) => { const s2 = draft.shots.find(x => x.id === shot.id); if (s2) s2.cutVerb = v; }, "shots");
+          refresh();
+        }, { class: "sn-cut-sel", title: shot.cutVerb === NO_CUT ? "Continues the previous take — no new [Shot N] marker" : "" }),
+      ) : null,
       beatEditor(p, shot, index, shots, { refresh, compact: true }),
       /* Where and how it is lit. The director and Improve both write these, and
        * with nowhere to show them their changes were invisible — which is what
@@ -1884,7 +1893,7 @@ async function askIdea(btn) {
   btn.classList.add("disabled");
   try {
     const p = getProject();
-    const { shots } = await breakdown(idea, p);
+    const { shots, split } = await breakdown(idea, p);
     let wired = 0;
     update((draft) => {
       draft.shots = shots.map((s, i) => ({
@@ -1895,6 +1904,9 @@ async function askIdea(btn) {
         beats: (Array.isArray(s.beats) && s.beats.length ? s.beats : [s.action || ""])
           .map((b, bi) => newBeat(typeof b === "string" ? b : (b?.text || ""), bi === 0 ? "" : "then")),
         setting: s.setting || "",
+        lighting: s.lighting || "",
+        details: s.details || "",
+        ...(i > 0 && s.cutVerb ? { cutVerb: s.cutVerb } : {}),
         camera: { ...newShot(0).camera, ...(s.camera || {}) },
       }));
       // A fresh layout, because the old positions describe shots that are gone.
@@ -1904,7 +1916,7 @@ async function askIdea(btn) {
       wired = citeLooseReferences(draft);
     }, "shots");
     toast("Shot list written",
-      `${shots.length} shots${wired ? ` · ${wired} picture${wired === 1 ? "" : "s"} wired into shot 1` : ""}`, "ok");
+      `${shots.length} shots${split ? ` · ${split} cut${split === 1 ? "" : "s"} the model wrote as beats made into shots` : ""}${wired ? ` · ${wired} picture${wired === 1 ? "" : "s"} wired into shot 1` : ""}`, "ok");
     refresh();
   } catch (err) { toast("Could not write the shots", err.message, "err"); }
   finally { busy = false; btn.classList.remove("disabled"); btn.textContent = label; }

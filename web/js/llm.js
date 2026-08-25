@@ -11,6 +11,7 @@
  */
 
 import { detailToWriting, DEFAULT_DIALS } from "./steer.js";
+import { splitCutBeats } from "./shotlist.js";
 import { api } from "./api.js";
 import { getBlob } from "./media.js";
 import { compilePrompt } from "./prompt.js";
@@ -180,15 +181,20 @@ Return: {"shots":[{"at":0,"shotType":"medium","viewpoint":"front-facing","subjec
 - "subject" is a noun phrase; "setting" is where it happens.
 - "beats" are the shot's action, in order, present tense, ONE PER 2–3 SECONDS OF THAT SHOT and no more.
   A 4-second shot gets 1–2 beats. Each beat is a short clause, not a sentence with its own subject.
+- A CUT IS A NEW SHOT, NEVER A BEAT. Never write "cut to", "hard cut to", "the view cuts to" or "dissolve to" inside a beat —
+  start a new entry in "shots" with its own "at", framing and subject instead. One shot with cuts written as beats is wrong.
 - camera.type must be one of: ${CAMERA_TYPES.map(c => c[0]).join(", ")}.
 ${tagRules(project)}`,
     prompt: `${projectBrief(project)}\n\nThe idea:\n${idea}`,
     temperature: 0.8,
     maxTokens: 2000,
   });
-  const shots = Array.isArray(data.shots) ? data.shots : [];
-  if (!shots.length) throw new Error("The model returned no shots.");
-  return { shots, model, ms };
+  const raw = Array.isArray(data.shots) ? data.shots : [];
+  if (!raw.length) throw new Error("The model returned no shots.");
+  /* Whatever the rule above says, a model will sometimes hand back one shot
+   * with the cuts written as beats. A cut is a new shot: promote them. */
+  const shots = splitCutBeats(raw, duration);
+  return { shots, model, ms, split: shots.length - raw.length };
 }
 
 /**

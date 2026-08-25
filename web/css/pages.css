@@ -1290,3 +1290,8 @@ body.sz-busy .sz-grid.sz-dragging > .sz-gut.sz-col ~ * { cursor: col-resize; }
 @media (hover: none) {
   .kc-row .btn { opacity: 1; }
 }
+
+/* Canvas shot node: the cut from the previous shot */
+.sn-cut { display: flex; align-items: center; gap: 6px; margin: 2px 0 4px; }
+.sn-cut-lbl { font-size: var(--fs-sm); color: var(--fg-dim); white-space: nowrap; }
+.sn-cut-sel { flex: 1; min-width: 0; font-size: var(--fs-sm); height: 22px; }
