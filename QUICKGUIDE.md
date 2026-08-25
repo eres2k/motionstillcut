@@ -85,7 +85,7 @@ The title bar says exactly that: Create is numbered, sits on its own, and has
 an arrow pointing into the pair. The pair dims while you are in Create, because
 it is the step *before* them and not a third peer alongside them.
 
-**Create** is where a new project opens. Paste a rough idea, drop your pictures
+**Create** is where a new project opens, and where the **model** is chosen — **Which model?**, above **How long?**: MiniMax H3 and LTX-2.5 read different prompts, so it is asked before anything is written for it; the title-bar chip switches it later. Paste a rough idea, drop your pictures
 and audio, and it interviews you — reading the images — then steers the result
 with six dials in plain language. Its job is to hand you a working canvas, so
 the last step is **Build the canvas →**.
@@ -648,6 +648,36 @@ render previews** turns them off if you would rather not pay the bandwidth.
 
 ---
 
+### Between two shots
+
+Each shot after the first carries a **Cut** — in the Inspector, on the shot
+strip (`✂ Cut`, `✂ Dissolve`, `⟶ same take`), and in the node view as the
+little selector on the wire that joins one shot node to the next. **Cut** and
+the four after it are the guide's approved cut verbs, written as `[Shot 2] At
+00:03.000, the camera cuts to …`. On the **LTX-2.5** engine every plain cut
+is written the way Lightricks' 2.5 prompt guide names one — `a hard cut
+transitions to a close-up …` — because LTX reads cuts as prose, not as
+markers; **Dissolve** and **Fade** exist but the guide asks for
+them only on explicit request, so they are labelled. **No cut — same take**
+is the one the guide has no word for, because it is not a cut: the row
+continues the previous shot, and compiles *into* its `[Shot N]` block —
+`At 00:03.000, without a cut, the camera reframes to a close-up …` — with no
+new marker, and the markers after it renumber. That is how one long take gets
+several moments without pretending to be several shots.
+
+### One render per cut (LTX-2.5)
+
+On the LTX-2.5 engine the **Film** panel gains a **Cuts** row: *Every hard
+cut is its own clip, joined afterwards.* Each cut in the timeline then
+becomes a separate render — a real cut between two files instead of one the
+model is asked to perform inside a clip — and the clips are joined on
+Deliver as any film is. Rows marked **No cut — same take** stay inside their
+clip, so a long take with several moments is still one render. With
+**Continuity** on, each clip starts from the last frame of the one before.
+The film may be as short as a single render here; the planner uses LTX's own
+lengths (5–30 s). MiniMax ignores the row — its planner packs shots into
+15 s clips as before.
+
 ## 11 · Deliver
 
 - **⬇ Workflow JSON** — the ComfyUI API graph, stock nodes only. The Input files
@@ -723,8 +753,11 @@ title bar as a chip beside the mode, on every page, because it decides what
 the timeline may do (15 s or 30 s, pins or no pins). Click the chip to switch;
 the prompt does not change, the checks use the other engine's limits. A check
 that the other engine would resolve — a 20 s clip on H3, a pinned shot on H3 —
-carries a **Switch to LTX-2.5** button of its own. The LTX chip sends the *same compiled
-prompt, verbatim* to Lightricks' model through its own distilled pipeline
+carries a **Switch to LTX-2.5** button of its own. The LTX chip compiles the *same
+timeline* the way Lightricks' prompting guide asks — one chronological paragraph, no
+timestamps or shot numbers, each cut named in prose (`a hard cut transitions to …`,
+`the image dissolves into …`) with the audio continuity stated, the sound described
+at the end — and sends it to Lightricks' model through its own distilled pipeline
 (Two-stage 8+3 or Single-stage 8-step, cfg 1, no LoRAs). Same canvases, the
 frame counts move to LTX's 8k+1 grid, clips run to a real 30 s, and I2V pins
 the first frame with `LTXVAddGuide`. It needs the five LTX-2.5 files

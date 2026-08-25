@@ -98,7 +98,7 @@ export const SWEEP_VARIABLES = [
     set: (draft, v) => { draft.style.grade = v; },
   },
   {
-    /* THE engine experiment: the same compiled prompt, the same seed, H3 and
+    /* THE engine experiment: the same timeline (each model's dialect), the same seed, H3 and
      * LTX-2.5 side by side in the library. This sweep is most of the reason
      * the second engine exists — folklore about which model "listens better"
      * is exactly the kind of claim a pinned-seed pair answers. */

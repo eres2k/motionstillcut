@@ -27,9 +27,18 @@ export const NO_FFMPEG = () => Object.assign(
   { status: 503, code: "no-ffmpeg" },
 );
 
-const once = (el, ev) => new Promise((resolve, reject) => {
-  el.addEventListener(ev, resolve, { once: true });
-  el.addEventListener("error", () => reject(new Error(`the browser could not decode the clip (${ev})`)), { once: true });
+/* A browser that cannot decode the clip does not always say so: some
+ * codecs and some decoders simply never fire the event, and never fire
+ * "error" either. A wait with no end here left a film run sitting at
+ * "taking its last frame…" after clip 1 forever, with nothing to report —
+ * which read as "it only rendered the first clip". So every wait has a
+ * deadline; a miss rejects, and the runner carries on with the next clip
+ * started fresh, which it already knew how to do. */
+const DECODE_DEADLINE_MS = 20000;
+const once = (el, ev, ms = DECODE_DEADLINE_MS) => new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error(`the browser did not decode the clip within ${Math.round(ms / 1000)} s (${ev})`)), ms);
+  el.addEventListener(ev, () => { clearTimeout(timer); resolve(); }, { once: true });
+  el.addEventListener("error", () => { clearTimeout(timer); reject(new Error(`the browser could not decode the clip (${ev})`)); }, { once: true });
 });
 
 /** The final frame of a rendered clip, as a PNG data URL. */

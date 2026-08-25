@@ -15,13 +15,13 @@ import {
   getProject, update, orderedShots, selectedShot, selectShot, newShot, newBeat,
   duplicateShot, shotActionText, referenceInventory,
   dimensions, frameCount, DURATION_FRAMES, MODES, H3_DURATION, overLength, durationFrames,
- onProjectSwap, ltxGuideIdx, ltxGuideTime, setEngine, ENGINES } from "../state.js";
+ onProjectSwap, ltxGuideIdx, ltxGuideTime, setEngine, ENGINES, activeEngine } from "../state.js";
 import { TEMPLATES } from "../templates.js";
 import { getBlob, ingest } from "../media.js";
 import { compilePrompt, validate, wordBudget, cameraSentence, framingSentence } from "../prompt.js";
 import { pickCharacter, castLine } from "../knowncast.js";
 import {
-  SHOT_TYPES, VIEWPOINTS, CAMERA_TYPES, AMPLITUDES, SPEEDS, CUT_VERBS,
+  SHOT_TYPES, VIEWPOINTS, CAMERA_TYPES, AMPLITUDES, SPEEDS, CUT_VERBS, TRANSITIONS, NO_CUT, transitionLabel,
   LOOKS, GRADES, LIGHTING, LENSES, CAMERA_HEIGHTS, FRAMINGS, SECONDARY_MOVES, DEPTH_CUES,
 } from "../vocab.js";
 import { createPreviz, shotAt, framingOrigin, subjectHeightPct } from "../previz.js";
@@ -89,6 +89,7 @@ function nodePanel(p) {
         selectedShotId: selectedShot(p)?.id || null,
         onSelectShot: (id) => { selectShot(id); refresh(); },
         onSelectSource: () => { document.querySelector('.page-btn[data-page="media"]')?.click(); },
+        onCutChange: (id, v) => { update(proj => { const sh = proj.shots.find(x => x.id === id); if (sh) sh.cutVerb = v; }, "shots"); refresh(); },
       }),
     ),
   );
@@ -175,7 +176,7 @@ function shotList(p) {
       h("div.idx", String(i + 1)),
       h("div.txt",
         h("div.line1", (s.subject || shotActionText(s) || "— empty shot —").slice(0, 60)),
-        h("div.line2", `${shotTime(s.at)} · ${len.toFixed(1)}s · ${s.shotType}${beats ? ` · ${beats} beat${beats > 1 ? "s" : ""}` : ""}`),
+        h("div.line2", `${i > 0 ? `${s.cutVerb === NO_CUT ? "⟶ same take" : `✂ ${transitionLabel(s.cutVerb).replace(/ \(ask first\)/, "")}`} · ` : ""}${shotTime(s.at)} · ${len.toFixed(1)}s · ${s.shotType}${beats ? ` · ${beats} beat${beats > 1 ? "s" : ""}` : ""}`),
       ),
       h("span", {
         title: empty ? "empty" : dense ? "too many beats" : "ok",
@@ -925,7 +926,12 @@ function inspector(p) {
         }, "✨ Polish this shot"),
       ),
       more("Setting, viewpoint and detail",
-        index > 0 ? row("Cut verb", select(CUT_VERBS, shot.cutVerb, (v) => set({ cutVerb: v }))) : null,
+        index > 0 ? row("Cut", select(TRANSITIONS, shot.cutVerb || "the camera cuts to", (v) => set({ cutVerb: v })),
+          shot.cutVerb === NO_CUT
+            ? "No cut: this row continues the previous take — its reframe and beats are written into the same [Shot N] block, with no new marker. Use it to give one long shot several moments."
+            : activeEngine(p) === "ltx25"
+              ? "How the clip gets from the previous shot to this one. On LTX-2.5 every plain cut is written the way Lightricks' guide names one — \"a hard cut transitions to …\"; a dissolve or fade keeps its name."
+              : "How the clip gets from the previous shot to this one. The first five are MiniMax's approved cut verbs; dissolve and fade exist but the guide asks for them only on explicit request.") : null,
         row("Viewpoint", select(VIEWPOINTS, shot.viewpoint, (v) => set({ viewpoint: v }))),
         row("Setting", h("input", {
           type: "text", value: shot.setting || "", placeholder: "a narrow café counter by a rain-streaked window",

@@ -260,7 +260,7 @@ function buildMinimaxWorkflow(project, settings) {
 
 /* ── LTX-2.5 — the experimental second engine ─────────────────
  *
- * The same compiled prompt, a different model behind it. That is the whole
+ * The same timeline, compiled in LTX's own dialect (docs.ltx.io: one paragraph, cuts in prose, no markers). That is the whole
  * experiment: H3's prompt is a structure this editor already compiles —
  * named fields, [Shot N] markers, camera prose, dialogue tags — and LTX-2.5
  * reads long structured prose well, but it was never trained on that dialect

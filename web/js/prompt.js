@@ -17,7 +17,7 @@
  */
 
 import { shotTime, words } from "./util.js";
-import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION } from "./vocab.js";
+import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION, NO_CUT, cutVerbFor } from "./vocab.js";
 import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS, ltxGuideTime } from "./state.js";
 /* film.js imports state.js and nothing else, so reaching for the planner here
  * is a leaf dependency rather than a cycle. The checker needs it because a
@@ -306,7 +306,9 @@ export function shotProse(shot, index, project, opts = {}) {
     ? (styleInHead
         ? `${article(look)} ${look} ${shotType} shot, ${viewpoint}`
         : `${article(shotType)} ${shotType} shot, ${viewpoint}`)
-    : `${shot.cutVerb || "the camera cuts to"} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
+    : continuesTake(shot, index)
+      ? `without a cut, the camera reframes to ${article(shotType)} ${shotType} shot, ${viewpoint}`
+      : `${cutVerbFor(shot.cutVerb, activeEngine(project))} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
 
   /* I2V opens FROM the picture. §3.1: "The description should first establish
    * the style, subjects, composition, and scene anchors in the image, then
@@ -322,7 +324,10 @@ export function shotProse(shot, index, project, opts = {}) {
    * themselves — two mentions of <Picture 1> is worse than one. */
   const anchors = first && project.mode === "i2v" && project.frames?.first
     && !`${subject} ${action} ${setting}`.includes("<Picture 1>");
-  const anchored = anchors && subject ? `${phrase(subject)}, shown in <Picture 1>` : phrase(subject);
+  const ltx = activeEngine(project) === "ltx25";
+  // LTX has no <Picture N> label; the guide simply wants the opening image
+  // matched exactly, so the anchor names it in plain words.
+  const anchored = anchors && subject ? `${phrase(subject)}, shown in ${ltx ? "the opening image" : "<Picture 1>"}` : phrase(subject);
 
   /* What is different about the subject now.
    *
@@ -342,7 +347,18 @@ export function shotProse(shot, index, project, opts = {}) {
   const changed = first ? "" : expandTokens((shot.continuity || "").trim());
   const head = first
     ? `${opening.charAt(0).toUpperCase()}${opening.slice(1)}${subject ? `: ${anchored}` : ""}`
-    : `At ${shotTime(shot.at || 0)}, ${opening}${subject ? ` of ${phrase(subject)}` : ""}${changed ? `, now ${phrase(changed)}` : ""}`;
+    : ltx
+      /* Lightricks: no timestamps, no shot numbers — the cut is named in
+       * prose and the new shot re-established (scale, angle, subject). */
+      ? `${opening.charAt(0).toUpperCase()}${opening.slice(1)}${subject ? ` of ${phrase(subject)}` : ""}${changed ? `, now ${phrase(changed)}` : ""}`
+      : `At ${shotTime(shot.at || 0)}, ${opening}${subject ? ` of ${phrase(subject)}` : ""}${changed ? `, now ${phrase(changed)}` : ""}`;
+  /* "State audio continuity explicitly" at every cut — the guide's own
+   * example: "the piano score continues across the cut". */
+  const audioAcross = ltx && !first && !continuesTake(shot, index) && !project.sound?.silent
+    ? (project.sound?.musicOff || !(project.sound?.music || "").trim()
+        ? "The ambient sound continues across the cut."
+        : "The ambient sound and the score continue across the cut.")
+    : "";
 
   /* Order matters, because this IS the timeline the model reads.
    *
@@ -358,8 +374,9 @@ export function shotProse(shot, index, project, opts = {}) {
    * conditions the shot opens in; the beats are what happens next. */
   const body = [
     head,
+    audioAcross,
     // What the first frame fixes, said once, where the model reads it.
-    anchors ? "The opening preserves the appearance, clothing and spatial arrangement established in <Picture 1>." : "",
+    anchors ? `The opening preserves the appearance, clothing and spatial arrangement established in ${ltx ? "the opening image" : "<Picture 1>"}.` : "",
     framingSentence(shot.camera, shotType),
     setting ? (/^(in|on|at|inside|outside|under|behind|beside)\b/i.test(setting) ? sentence(setting) : `The setting is ${phrase(setting)}.`) : "",
     shot.lighting,
@@ -377,7 +394,10 @@ export function shotProse(shot, index, project, opts = {}) {
     shot.sfx,
   ];
 
-  return `[Shot ${index + 1}] ${joinSentences(body)}`.trim();
+  /* A row that continues the take has no marker: it is the rest of the
+   * previous block, and compileDescription joins it on. */
+  if (continuesTake(shot, index) || ltx) return joinSentences(body).trim();
+  return `[Shot ${opts.marker || index + 1}] ${joinSentences(body)}`.trim();
 }
 
 /**
@@ -404,7 +424,8 @@ export function compileDescription(project) {
    * where the whole shot list is in hand — shotProse sees one shot at a time. */
   const seen = new Set();
   const styleAhead = project.mode === "r2v";
-  const parts = shots.map((s, i) => shotProse(s, i, project, { seen, styleAhead }));
+  const markers = shotMarkers(shots);
+  const parts = shots.map((s, i) => shotProse(s, i, project, { seen, styleAhead, marker: markers[i] }));
   /* A line flagged as crossing the cut needs its second half at the head of the
    * following shot. Only compileDescription can do that — shotProse sees one
    * shot at a time, which is why this was unrepresentable. */
@@ -460,15 +481,26 @@ export function compileMusic(project) {
 /** Which shots actually name a tag. retention_analysis wants it — the guide's
  *  entry shape is "<Subject 1> (appears in [Shot 1], [Shot 3]): fully_preserved
  *  - …" — and it is also the only honest answer to "where is this used". */
+/** Which [Shot N] marker each timeline row falls under. A row that continues
+ *  the previous take (cutVerb "none") has no marker of its own — it is part
+ *  of the block before it — so markers count cuts, not rows. */
+export function shotMarkers(shots) {
+  let n = 0;
+  return shots.map((s, i) => (i === 0 || s.cutVerb !== NO_CUT) ? ++n : n);
+}
+export const continuesTake = (shot, index) => index > 0 && shot?.cutVerb === NO_CUT;
+
 function shotsCiting(project, tag) {
   if (!tag) return [];
-  return orderedShots(project)
+  const shots = orderedShots(project);
+  const markers = shotMarkers(shots);
+  return [...new Set(shots
     .map((shot, i) => {
       const hay = [shot.subject, shot.setting, shot.details, shot.sfx, shot.lighting,
         ...(shot.beats || []).map(b => b.text)].join(" ");
-      return hay.includes(tag) ? i + 1 : 0;
+      return hay.includes(tag) ? markers[i] : 0;
     })
-    .filter(Boolean);
+    .filter(Boolean))];
 }
 
 /**
@@ -616,6 +648,16 @@ export function compilePrompt(project) {
   }
   fields.push(["overall_soundscape", soundscape]);
   fields.push(["non_diegetic_music", music]);
+
+  /* LTX-2.5 reads one chronological paragraph (docs.ltx.io, "Multi-shot
+   * prompts"): no field labels, no alignment line, the sound described in
+   * prose at the end. The fields are still returned for the library. */
+  if (activeEngine(project) === "ltx25") {
+    const sound = soundscape !== "N/A" ? sentence(`Ambient sound throughout: ${soundscape}`) : (project.sound?.silent ? "There is no ambient sound." : "");
+    const score = music !== "N/A" ? sentence(`A non-diegetic score: ${music}`) : "";
+    const text = [description, sound, score].filter(Boolean).join(" ");
+    return { text, fields: Object.fromEntries(fields), align: "", description, soundscape, music, dialect: "ltx25" };
+  }
 
   const align = alignmentLine(project);
   /* A blank line between the fields. §2.2's template has them, all four cases
@@ -855,7 +897,7 @@ export function validate(project) {
     if (span > FILM_LIMITS.max) {
       add("err", `A ${span}s film is past this app's ${FILM_LIMITS.max}s ceiling. That is a policy, not the model's — but ${Math.ceil(span / CLIP_MAX)} `
         + `renders is already a long unattended run. Shorten it, or make the rest a second film.`);
-    } else if (span < FILM_LIMITS.min) {
+    } else if (span < FILM_LIMITS.min && !(project.film?.splitAtCuts && activeEngine(project) === "ltx25")) {
       add("warn", `A ${span}s film is short enough to be one or two clips. Below ${FILM_LIMITS.min}s, plain single-clip renders are less work.`);
     }
     const plan = planFilm(project, { span });
@@ -872,6 +914,8 @@ export function validate(project) {
      * ceiling must not fire here: an error about a repeat that will not
      * happen teaches people to ignore the counter. The dropdown cannot
      * exceed 30 s, but a hand-edited or imported project can. */
+    const cuts = shotMarkers(shots)[shots.length - 1] || 1;
+    if (cuts > 4) add("warn", `${cuts} shots in one LTX-2.5 generation. Lightricks' guide prefers 2–4 — more cuts need clearer, shorter beats per shot, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
     if (duration > LTX25_DURATION.max) {
       add("err", `A ${duration}s clip is past LTX-2.5's ${LTX25_DURATION.max}s window.`);
     } else if (duration < LTX25_DURATION.min) {
@@ -1044,7 +1088,7 @@ export function validate(project) {
     // request, which the vocabulary already labels.
     const APPROVED = /^(the camera cuts to|the shot (cuts|transitions|changes|switches) to)$/i;
     shots.forEach((sh, i) => {
-      if (i === 0 || !sh.cutVerb) return;
+      if (i === 0 || !sh.cutVerb || sh.cutVerb === NO_CUT) return;
       if (!APPROVED.test(sh.cutVerb) && !/dissolve|fade|wipe/i.test(sh.cutVerb)) {
         add("warn", `Shot ${i + 1} cuts with "${sh.cutVerb}", which is not one of the five approved cut verbs.`);
       }

@@ -8,7 +8,7 @@ import {
 import {
   getProject, update, dimensions, frameCount, DURATION_FRAMES, RESOLUTIONS, MODES, selectedShot,
   H3_DURATION, LTX25_DURATION, overLength, FILM_LIMITS, filmSpan, activeEngine, durationFrames,
- onProjectSwap} from "../state.js";
+ onProjectSwap, LTX_DURATION_FRAMES } from "../state.js";
 import { planFilm, describePlan, canChain } from "../film.js";
 import { runFilm, assembleFilm } from "../filmrun.js";
 import { variantsFor, variantFor } from "../vocab.js";
@@ -57,7 +57,7 @@ function settingsPanel(p) {
         p.mode !== "r2v" ? group("Engine", {
           id: "d-engine", icon: "◉", accordion: false, defaultOpen: ltx,
           badge: ltx ? "LTX-2.5" : "H3",
-          help: "The experiment: LTX-2.5 gets the SAME compiled prompt as MiniMax H3, verbatim. H3's grammar is a structure, and LTX reads long structured prose well — but it has no [Shot N] dialect of its own, so the markers ride along as prose and how well the timeline carries over is exactly what a sweep here can measure.",
+          help: "The same timeline, each model in its own dialect. MiniMax gets the [Shot N] grammar its guide specifies; LTX-2.5 gets what Lightricks' prompting guide asks for — one chronological paragraph, no timestamps or shot numbers, every cut named in prose (\"a hard cut transitions to …\") with the audio continuity stated. A sweep here compares the two models on the same cut.",
         },
           segmented([["minimax", "MiniMax H3"], ["ltx25", "LTX-2.5 · experimental"]],
             p.render.engine === "ltx25" ? "ltx25" : "minimax", (v) => setEngine(v)),
@@ -299,6 +299,12 @@ function filmPanel(p) {
   const on = !!p.film?.enabled;
   const span = filmSpan(p);
   const plan = on ? planFilm(p, { span }) : null;
+  const ltx = activeEngine(p) === "ltx25";
+  /* Splitting at cuts is worth doing on a piece no longer than one render,
+   * so on LTX the film may be as short as a single clip. */
+  const lengthChoices = ltx && p.film.splitAtCuts
+    ? [...new Set([...Object.keys(LTX_DURATION_FRAMES).map(Number), ...FILM_LENGTHS])].sort((a, b) => a - b)
+    : (FILM_LENGTHS.includes(p.film.seconds) ? FILM_LENGTHS : [...FILM_LENGTHS, p.film.seconds].sort((a, b) => a - b));
   const busy = !!filmRun?.running;
   const health = getHealth();
   // undefined = an older Cut server with no probe. Offer the join and let the
@@ -337,9 +343,15 @@ function filmPanel(p) {
     h("div.bd",
       h("div", { style: { padding: "9px 10px", borderBottom: "1px solid var(--line)" } },
         checkbox("Make this a film — several clips, cut together", on, (v) => set({ enabled: v }),
-          `H3 generates ${H3_DURATION.min}–${H3_DURATION.max} seconds. Anything longer is several renders joined afterwards, not a longer render.`),
+          ltx
+            ? `LTX-2.5 renders up to ${LTX25_DURATION.max} seconds in one go. A film is several renders joined afterwards — or, below, one render per hard cut.`
+            : `H3 generates ${H3_DURATION.min}–${H3_DURATION.max} seconds. Anything longer is several renders joined afterwards, not a longer render.`),
         on ? h("div", { style: { marginTop: "8px" } },
-          row("Length", select(FILM_LENGTHS.map(v => [String(v), `${v}s${v >= 60 ? ` · ${(v / 60).toFixed(v % 60 ? 1 : 0)} min` : ""}`]),
+          ltx ? row("Cuts", checkbox("Every hard cut is its own clip, joined afterwards", !!p.film.splitAtCuts,
+            (v) => set({ splitAtCuts: v }),
+            "A real cut between two renders instead of one the model performs inside a clip. Rows marked \"no cut — same take\" stay inside their clip. With Continuity on, each clip starts from the last frame of the one before."),
+            "LTX-2.5 only — the MiniMax planner packs shots into 15 s clips.") : null,
+          row("Length", select(lengthChoices.map(v => [String(v), `${v}s${v >= 60 ? ` · ${(v / 60).toFixed(v % 60 ? 1 : 0)} min` : ""}`]),
             String(p.film.seconds), (v) => set({ seconds: Number(v) })),
             `The whole piece. Write your shots across it — the planner cuts at your cuts, never inside a shot.`),
           row("Continuity", checkbox("Start each clip on the last frame of the one before", !!p.film.continuity,

@@ -14,12 +14,13 @@
 
 import {
   h, mount, clear, toast, timecode, clamp, debounce, modal, copyText, download,
+  segmented,
 } from "../util.js";
 import {
   getProject, update, orderedShots, shotActionText, newShot, newBeat,
   DURATION_FRAMES, dimensions, MODES, referenceInventory, normaliseMedia, H3_DURATION, overLength,
   clearShotWriting,
- onProjectSwap} from "../state.js";
+ onProjectSwap, activeEngine, setEngine, durationFrames, LTX25_DURATION } from "../state.js";
 import { ingest, getBlob, delBlob, posterFor, kindOf } from "../media.js";
 import { queueLength } from "../queue.js";
 import { DIALS, DEFAULT_DIALS, applySteering, explainDials } from "../steer.js";
@@ -170,12 +171,30 @@ function materialStage(p) {
 
     materialTiles(p),
 
+    /* The model is a real authoring choice now, not a render setting: the
+     * two read different prompts — MiniMax its [Shot N] grammar, LTX-2.5 one
+     * paragraph with the cuts in prose — and they disagree about how long a
+     * clip may be. So it is asked here, before anything is written for it.
+     * Ref2V is MiniMax-only and the row says so instead of pretending. */
+    h("div.cr-row",
+      h("span.cr-label", "Which model?"),
+      p.mode === "r2v"
+        ? h("span.hint", "Reference-to-video renders on MiniMax H3 — LTX-2.5 has no reference pipeline.")
+        : segmented([
+            ["minimax", "MiniMax H3", `Native engine · ${H3_DURATION.min}–${H3_DURATION.max} s · dialogue, [Shot N] cuts with timestamps`],
+            ["ltx25", "LTX-2.5", `Experimental · ${LTX25_DURATION.min}–${LTX25_DURATION.max} s · cuts in prose, timeline pins, one render per cut`],
+          ], activeEngine(p), (v) => { setEngine(v); draw(); }),
+      h("span.hint", activeEngine(p) === "ltx25"
+        ? "Up to 30 s, cuts written the way Lightricks' guide asks, keyframe pins on the timeline. Switchable later from the title bar."
+        : "The native model: 4–15 s, the [Shot N] grammar its guide specifies, native dialogue. Switchable later from the title bar."),
+    ),
+
     h("div.cr-row",
       h("span.cr-label", "How long?"),
       h("div.seg",
-        ...Object.keys(DURATION_FRAMES).map(d => h("button", {
+        ...Object.keys(durationFrames(p)).map(d => h("button", {
           class: `${String(p.render.duration) === d ? "on" : ""}${overLength(d) ? " over" : ""}`,
-          title: overLength(d) ? `Past H3's ${H3_DURATION.max}s ceiling — the clip repeats` : "",
+          title: overLength(d, p) ? `Past H3's ${H3_DURATION.max}s ceiling — the clip repeats` : "",
           onclick: () => { update((draft) => { draft.render.duration = Number(d); }, "render"); draw(); },
         }, `${d}s`)),
       ),
