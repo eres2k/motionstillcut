@@ -12,7 +12,7 @@ import {
 import { planFilm, describePlan, canChain } from "../film.js";
 import { runFilm, assembleFilm } from "../filmrun.js";
 import { variantsFor, variantFor } from "../vocab.js";
-import { rememberedVariant } from "../renderprefs.js";
+import { setEngine as switchEngine } from "../state.js";
 import { validate, compilePrompt } from "../prompt.js";
 import { buildWorkflow, estimateSeconds, humanTime, randomSeed, LTX_MAX_ANCHORS } from "../workflow.js";
 import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js";
@@ -44,13 +44,7 @@ function settingsPanel(p) {
   /* Switching engines swaps the whole variant family — "turbo" is not a name
    * an LTX build answers to — so the switch reaches for whichever build was
    * last chosen for the target family rather than falling back silently. */
-  const setEngine = (v) => {
-    update((proj) => {
-      proj.render.engine = v;
-      proj.render.variant = rememberedVariant(proj.mode, v === "ltx25" ? "ltx_two" : "turbo", v);
-    }, "render");
-    refresh();
-  };
+  const setEngine = (v) => { switchEngine(v); refresh(); };
 
   return h("div.panel",
     h("div.hd", h("span.title", "Render settings"), h("span.spacer"),

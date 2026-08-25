@@ -109,6 +109,17 @@ export function ltxGuideIdx(seconds, p = project) {
 /** Where a pin at `seconds` actually lands, in seconds, on the guide grid. */
 export const ltxGuideTime = (seconds, p = project) => ltxGuideIdx(seconds, p) / (p?.render?.fps || 24);
 
+/** Switch the render engine. One place, because it is not one field:
+ *  the build families share no names ("turbo" is not an LTX build), so the
+ *  variant follows the engine to whichever build was last used there. */
+export function setEngine(engine) {
+  const v = engine === "ltx25" ? "ltx25" : "minimax";
+  update((proj) => {
+    proj.render.engine = v;
+    proj.render.variant = rememberedVariant(proj.mode, v === "ltx25" ? "ltx_two" : "turbo", v);
+  }, "render");
+}
+
 export const overLength = (seconds, p = project) => {
   const max = activeEngine(p) === "ltx25" ? LTX25_DURATION.max : H3_DURATION.max;
   return Number(seconds || 0) > max;

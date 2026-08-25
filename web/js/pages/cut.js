@@ -15,7 +15,7 @@ import {
   getProject, update, orderedShots, selectedShot, selectShot, newShot, newBeat,
   duplicateShot, shotActionText, referenceInventory,
   dimensions, frameCount, DURATION_FRAMES, MODES, H3_DURATION, overLength, durationFrames,
- onProjectSwap, ltxGuideIdx, ltxGuideTime } from "../state.js";
+ onProjectSwap, ltxGuideIdx, ltxGuideTime, setEngine, ENGINES } from "../state.js";
 import { TEMPLATES } from "../templates.js";
 import { getBlob, ingest } from "../media.js";
 import { compilePrompt, validate, wordBudget, cameraSentence, framingSentence } from "../prompt.js";
@@ -426,7 +426,13 @@ function checksView(p) {
   const { checks, errors, warnings, wordCount, pristine } = validate(p);
   const rows = checks.map(c => h(`div.check.${c.level}`,
     h("span.ico", c.level === "err" ? "✕" : c.level === "warn" ? "!" : "✓"),
-    h("span.msg", { html: c.msg.replace(/"([^"]+)"/g, "<b>$1</b>") }),
+    h("span.msg", { html: c.msg.replace(/"([^"]+)"/g, "<b>$1</b>") },
+      /* A check that names a fix the app can make itself offers it here,
+       * where the problem is read — not on another page. */
+      c.action?.kind === "engine" ? h("button.btn.sm", {
+        style: { marginLeft: "8px", verticalAlign: "middle" },
+        onclick: () => { setEngine(c.action.engine); toast("Engine switched", ENGINES[c.action.engine]?.label || c.action.engine, "ok"); refresh(); },
+      }, c.action.label) : null),
   ));
   return h("div", { style: { height: "100%", overflow: "auto" } },
     h("div", { style: { padding: "10px 12px", borderBottom: "1px solid var(--line)" } },

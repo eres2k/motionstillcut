@@ -8,6 +8,7 @@ import {
   loadProject, getProject, update, subscribe, replaceProject, blankProject,
   exportProject, MODES, undo, redo, canUndo, canRedo, duplicateShot, selectedShot,
   normaliseMedia, forgetUploads,
+  activeEngine, setEngine, ENGINES, H3_DURATION, LTX25_DURATION,
 } from "./state.js";
 import { loadState, refreshHealth, refreshVram, getHealth, getSettings, saveSettings } from "./config.js";
 import { currentJob, onRenderChange } from "./render.js";
@@ -123,6 +124,22 @@ function paintTitlebar() {
       : inputs === 1 && p.mode === "i2v"
         ? "one picture, which anchors the first frame"
         : `${inputs} references attached`}. The mode follows from what you attach.`;
+  }
+  /* The engine is a render setting, but it decides what the timeline may
+   * do — 15 s or 30 s, pins or no pins — so it is shown beside the mode on
+   * every page, not only on Deliver. */
+  const eng = $("#engine-badge");
+  if (eng) {
+    const engine = activeEngine(p);
+    const label = ENGINES[engine]?.label || engine;
+    eng.classList.toggle("ok", engine === "ltx25");
+    eng.replaceChildren(h("span.dot"), document.createTextNode(label));
+    eng.disabled = p.mode === "r2v";
+    eng.title = p.mode === "r2v"
+      ? "Ref2V renders on MiniMax H3 only — LTX-2.5 has no reference pipeline."
+      : engine === "ltx25"
+        ? `${label} (experimental) — same compiled prompt, up to ${LTX25_DURATION.max} s, timeline pins. Click to switch to MiniMax H3.`
+        : `${label} — up to ${H3_DURATION.max} s, no timeline pins. Click to switch to LTX-2.5 (experimental).`;
   }
 }
 
@@ -460,6 +477,13 @@ async function boot() {
   });
 
   $("#project-name").addEventListener("input", (e) => update((p) => { p.name = e.target.value; }, "text"));
+  $("#engine-badge")?.addEventListener("click", () => {
+    const p = getProject();
+    if (p.mode === "r2v") return;
+    const next = activeEngine(p) === "ltx25" ? "minimax" : "ltx25";
+    setEngine(next);
+    toast("Engine switched", `${ENGINES[next].label}${next === "ltx25" ? " (experimental)" : ""} — the prompt is unchanged; the checks now use its limits.`, "ok");
+  });
   $("#btn-refresh-health").addEventListener("click", async (e) => {
     e.currentTarget.classList.add("disabled");
     await refreshHealth(); await refreshVram();
