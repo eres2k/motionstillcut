@@ -188,6 +188,8 @@ function llmPanel(s, health) {
         s.llm.model || "", (v) => saveSettings({ llm: { model: v } }), { class: "grow" }),
       h("button.btn.sm", { onclick: () => loadLlmModels() }, "⟳"),
     )),
+    h("div.hint",
+      h("b", "Recommended: Gemma 3 12B"), " (instruct) — strong prose, reliable JSON, and vision, so one model covers the director, the rewriter and image captioning, in ~8 GB at Q4. Smaller cards: Gemma 3 4B or Llama 3.1 8B. Big cards: Gemma 3 27B or Qwen3 32B with Thinking Off. VRAM saver means the LLM and the DiT take turns, so size for your card, not for co-fitting."),
     field("Vision model", select([["", "— same as above —"], ...(llmModels.length ? llmModels : (l.models || [])).map(m => [m, m])],
       s.llm.visionModel || "", (v) => saveSettings({ llm: { visionModel: v } }))),
     h("div.hint", "Used by \"Describe with the LLM\" on the Media page. A vision-capable model (Qwen3-VL, Gemma, Llava…) is what makes I2V's opening match its first frame."),
@@ -482,6 +484,10 @@ function storagePanel() {
         },
       }, "⬇ Export backup"),
       h("button.btn.sm", { title: "Restore a backup exported here — replaces what this browser holds", onclick: restore }, "⬆ Restore backup"),
+      h("button.btn.sm", {
+        title: "The first-visit conversation again: engines, CORS flags, model advice",
+        onclick: async () => { const { showFirstRunSetup } = await import("../firstrun.js"); showFirstRunSetup(); },
+      }, "↻ First-use setup"),
     ),
   );
 }

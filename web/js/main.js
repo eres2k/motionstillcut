@@ -12,6 +12,7 @@ import {
 import { loadState, refreshHealth, refreshVram, getHealth, getSettings, saveSettings } from "./config.js";
 import { currentJob, onRenderChange } from "./render.js";
 import { showQuickGuide, maybeShowOnFirstRun } from "./quickguide.js";
+import { maybeShowFirstRun, showFirstRunSetup } from "./firstrun.js";
 import { registerCommands, togglePalette, isPaletteOpen, closePalette } from "./palette.js";
 import { pickCharacter, castLine, loadKnownCast } from "./knowncast.js";
 import { api, onAuthState, signIn } from "./api.js";
@@ -377,7 +378,8 @@ function installCommands() {
         await copyText(line);
         toast(entry.name, `Copied “${line}” — paste it into a subject.`, "ok");
       } },
-    { id: "help.guide",  group: "Project", label: "Quick guide", hint: "F1", run: () => showQuickGuide() },
+    { id: "help.guide",  group: "Project", label: "Guide", hint: "F1", run: () => showQuickGuide() },
+    { id: "help.firstrun", group: "Project", label: "First-use setup", hint: "engines · storage", run: () => showFirstRunSetup() },
     { id: "edit.undo",   group: "Project", label: "Undo", hint: "⌘Z", when: () => canUndo(), run: () => { undo(); Object.values(PAGES).forEach(pg => pg.drawn && pg.mod.refresh?.()); } },
     { id: "edit.redo",   group: "Project", label: "Redo", hint: "⇧⌘Z", when: () => canRedo(), run: () => { redo(); Object.values(PAGES).forEach(pg => pg.drawn && pg.mod.refresh?.()); } },
   ]);
@@ -593,7 +595,9 @@ async function boot() {
   setInterval(() => { refreshVram().then(paintBadges); }, 20000);
   setInterval(() => { refreshHealth().then(paintBadges); }, 90000);
 
-  maybeShowOnFirstRun();
+  // The hosted version's first visit gets the setup conversation; everywhere
+  // else (and every visit after) the guide keeps its old first-run behaviour.
+  maybeShowFirstRun().then((shown) => { if (!shown) maybeShowOnFirstRun(); });
 }
 
 window.MSCUT = {
