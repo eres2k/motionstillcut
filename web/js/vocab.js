@@ -173,8 +173,7 @@ export const CUT_VERBS = [
  * how a single-shot clip can still be authored as a list of moments. */
 export const NO_CUT = "none";
 export const TRANSITIONS = [
-  ["the camera cuts to",       "Cut",                   "The guide's default: a straight cut"],
-  ["the camera hard cuts to",  "Hard cut",              "Written as \"hard cuts to\" — an abrupt cut, said in so many words"],
+  ["the camera cuts to",       "Cut",                   "The guide's default: a straight cut. On LTX-2.5 it is written the way Lightricks' guide names a cut: \"a hard cut transitions to\""],
   ["the shot cuts to",         "Shot cut",              "Same as a hard cut, the guide's other wording"],
   ["the shot transitions to",  "Transition",            "An unspecified transition — the model decides"],
   ["the shot changes to",      "Change",                "Approved cut verb"],
@@ -183,7 +182,16 @@ export const TRANSITIONS = [
   ["the shot fades to",        "Fade (ask first)",      "Exists, but the guide asks for it only on explicit request"],
   [NO_CUT,                     "No cut — same take",    "Continues the previous shot without a cut: no new [Shot N] marker, the reframe and beats are written into the same block"],
 ];
-export const HARD_CUT = "the camera hard cuts to";
+/* LTX-2.5 reads no [Shot N] dialect; Lightricks' 2.5 prompt guide names each
+ * cut in prose — "A hard cut transitions to a close-up…". Every plain cut
+ * verb becomes that phrase on the LTX engine; a dissolve or fade keeps its
+ * own name, since those are different pictures. MiniMax keeps the guide's. */
+export const LTX_HARD_CUT = "a hard cut transitions to";
+export const cutVerbFor = (verb, engine) => {
+  const v = verb || "the camera cuts to";
+  if (engine !== "ltx25" || v === NO_CUT) return v;
+  return /dissolve|fade|wipe/i.test(v) ? v : LTX_HARD_CUT;
+};
 export const transitionLabel = (v) => (TRANSITIONS.find(t => t[0] === (v || "the camera cuts to")) || TRANSITIONS[0])[1];
 
 /* Overall style — the first thing [Shot 1] has to establish. */

@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { blankProject, newShot, newBeat } from "../web/js/state.js";
 import { compilePrompt, validate, shotMarkers } from "../web/js/prompt.js";
-import { NO_CUT, TRANSITIONS, transitionLabel } from "../web/js/vocab.js";
+import { NO_CUT, TRANSITIONS, transitionLabel, cutVerbFor } from "../web/js/vocab.js";
 
 function three() {
   const p = blankProject();
@@ -24,7 +24,7 @@ function three() {
 const markers = (text) => [...text.matchAll(/\[Shot (\d+)\]/g)].map(m => Number(m[1]));
 
 test("every transition value is a cut verb the compiler writes, or no cut", () => {
-  for (const [v] of TRANSITIONS) assert.ok(v === NO_CUT || /^the (camera|shot) (hard )?\w+ to$/.test(v), v);
+  for (const [v] of TRANSITIONS) assert.ok(v === NO_CUT || /^the (camera|shot) \w+ to$/.test(v), v);
   assert.equal(transitionLabel(undefined), "Cut");
   assert.equal(transitionLabel(NO_CUT), "No cut — same take");
 });
@@ -45,13 +45,17 @@ test("no cut folds the row into the previous block and renumbers what follows", 
   assert.deepEqual(shotMarkers(p.shots), [1, 1, 2]);
 });
 
-test("a hard cut is said in so many words, and is not flagged", () => {
+test("on LTX-2.5 a plain cut is named the way Lightricks' guide names one", () => {
   const p = three();
-  p.shots[1].cutVerb = "the camera hard cuts to";
-  assert.match(compilePrompt(p).text, /\[Shot 2\] At 00:03\.000, the camera hard cuts to a close-up shot/);
-  assert.ok(!validate(p).checks.some(c => /not one of the five approved/.test(c.msg)));
-  assert.equal(transitionLabel("the camera hard cuts to"), "Hard cut");
-  assert.equal(transitionLabel("the camera cuts to"), "Cut");
+  p.render.engine = "ltx25";
+  p.shots[1].cutVerb = "the shot switches to";
+  const { text } = compilePrompt(p);
+  assert.match(text, /At 00:03\.000, a hard cut transitions to a close-up shot/);
+  assert.match(text, /At 00:06\.000, a hard cut transitions to a medium shot/);
+  p.shots[2].cutVerb = "the shot dissolves to";
+  assert.match(compilePrompt(p).text, /At 00:06\.000, the shot dissolves to/);
+  assert.equal(cutVerbFor("the camera cuts to", "minimax"), "the camera cuts to", "MiniMax keeps the guide's verb");
+  assert.equal(cutVerbFor(NO_CUT, "ltx25"), NO_CUT);
 });
 
 test("a dissolve is written as the guide's verb", () => {

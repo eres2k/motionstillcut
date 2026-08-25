@@ -15,7 +15,7 @@ import {
   getProject, update, orderedShots, selectedShot, selectShot, newShot, newBeat,
   duplicateShot, shotActionText, referenceInventory,
   dimensions, frameCount, DURATION_FRAMES, MODES, H3_DURATION, overLength, durationFrames,
- onProjectSwap, ltxGuideIdx, ltxGuideTime, setEngine, ENGINES } from "../state.js";
+ onProjectSwap, ltxGuideIdx, ltxGuideTime, setEngine, ENGINES, activeEngine } from "../state.js";
 import { TEMPLATES } from "../templates.js";
 import { getBlob, ingest } from "../media.js";
 import { compilePrompt, validate, wordBudget, cameraSentence, framingSentence } from "../prompt.js";
@@ -929,7 +929,9 @@ function inspector(p) {
         index > 0 ? row("Cut", select(TRANSITIONS, shot.cutVerb || "the camera cuts to", (v) => set({ cutVerb: v })),
           shot.cutVerb === NO_CUT
             ? "No cut: this row continues the previous take — its reframe and beats are written into the same [Shot N] block, with no new marker. Use it to give one long shot several moments."
-            : "How the clip gets from the previous shot to this one. The first five are the guide's approved cut verbs; dissolve and fade exist but the guide asks for them only on explicit request.") : null,
+            : activeEngine(p) === "ltx25"
+              ? "How the clip gets from the previous shot to this one. On LTX-2.5 every plain cut is written the way Lightricks' guide names one — \"a hard cut transitions to …\"; a dissolve or fade keeps its name."
+              : "How the clip gets from the previous shot to this one. The first five are MiniMax's approved cut verbs; dissolve and fade exist but the guide asks for them only on explicit request.") : null,
         row("Viewpoint", select(VIEWPOINTS, shot.viewpoint, (v) => set({ viewpoint: v }))),
         row("Setting", h("input", {
           type: "text", value: shot.setting || "", placeholder: "a narrow café counter by a rain-streaked window",

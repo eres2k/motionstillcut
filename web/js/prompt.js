@@ -17,7 +17,7 @@
  */
 
 import { shotTime, words } from "./util.js";
-import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION, NO_CUT } from "./vocab.js";
+import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION, NO_CUT, cutVerbFor } from "./vocab.js";
 import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS, ltxGuideTime } from "./state.js";
 /* film.js imports state.js and nothing else, so reaching for the planner here
  * is a leaf dependency rather than a cycle. The checker needs it because a
@@ -308,7 +308,7 @@ export function shotProse(shot, index, project, opts = {}) {
         : `${article(shotType)} ${shotType} shot, ${viewpoint}`)
     : continuesTake(shot, index)
       ? `without a cut, the camera reframes to ${article(shotType)} ${shotType} shot, ${viewpoint}`
-      : `${shot.cutVerb || "the camera cuts to"} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
+      : `${cutVerbFor(shot.cutVerb, activeEngine(project))} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
 
   /* I2V opens FROM the picture. §3.1: "The description should first establish
    * the style, subjects, composition, and scene anchors in the image, then
@@ -1059,9 +1059,7 @@ export function validate(project) {
     }
     // §4.2's approved cut verbs. Dissolves and fades are allowed only on
     // request, which the vocabulary already labels.
-    /* The guide's five, plus "hard cuts to" — this app's own option for an
-     * abrupt cut said in so many words; the model reads it as the cut it is. */
-    const APPROVED = /^(the camera (hard )?cuts to|the shot (cuts|transitions|changes|switches) to)$/i;
+    const APPROVED = /^(the camera cuts to|the shot (cuts|transitions|changes|switches) to)$/i;
     shots.forEach((sh, i) => {
       if (i === 0 || !sh.cutVerb || sh.cutVerb === NO_CUT) return;
       if (!APPROVED.test(sh.cutVerb) && !/dissolve|fade|wipe/i.test(sh.cutVerb)) {
