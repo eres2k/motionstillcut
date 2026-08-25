@@ -44,6 +44,10 @@ export const DEFAULT_SETTINGS = {
     previews: true,
     url: "http://127.0.0.1:8188",
     outputPrefix: "MotionstillCut",
+    /* Save "MotionstillCut_T2V_name" at the top of ComfyUI's output folder
+     * instead of "MotionstillCut/T2V_name" inside a subfolder. The fallback
+     * Deliver offers when the subfolder turns out not to be writable. */
+    flatOutput: false,
   },
   llm: {
     url: "http://127.0.0.1:1234",

@@ -117,6 +117,10 @@ function comfyPanel(s, health) {
       type: "text", value: s.comfy.outputPrefix || "",
       onchange: (e) => saveSettings({ comfy: { outputPrefix: e.target.value.trim() } }),
     })),
+    checkbox("Save flat, not in a subfolder", !!s.comfy.flatOutput, (val) => {
+      saveSettings({ comfy: { flatOutput: val } }); refresh();
+    }, `${s.comfy.outputPrefix || "MotionstillCut"}_T2V_name… at the top of ComfyUI's output folder instead of ${s.comfy.outputPrefix || "MotionstillCut"}/T2V_name…`),
+    h("div.hint", "The subfolder is tidier. The flat name is the way around a subfolder ComfyUI is not allowed to write into — one created under sudo belongs to root, ComfyUI runs as you, and the clip renders in full before the save is refused. Deliver offers this switch when that happens."),
 
     nodes ? h("div", { style: { marginTop: "10px" } },
       h("h4.sec", "Nodes this editor needs"),

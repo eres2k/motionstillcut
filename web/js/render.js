@@ -8,6 +8,8 @@
  */
 
 import { api, openComfyProgress } from "./api.js";
+import { explainRenderError } from "./rendererrors.js";
+import { saveJobOutputs } from "./downloads.js";
 import { getSettings } from "./config.js";
 import { getProject, update, onProjectSwap, activeEngine } from "./state.js";
 import { buildWorkflow, estimateSeconds } from "./workflow.js";
@@ -192,7 +194,12 @@ export async function renderNow({
       current.previewAt = Date.now();
       emit();
     },
-    onError: (d) => { if (current) { current.status = "error"; current.error = d?.exception_message || "ComfyUI reported an execution error"; emit(); } },
+    onError: (d) => {
+      if (!current) return;
+      const why = explainRenderError(d?.exception_message, { nodeType: d?.node_type });
+      current.status = "error"; current.error = why.message; current.errorKind = why.kind; current.errorInfo = why;
+      emit();
+    },
   });
 
   try {
@@ -200,12 +207,24 @@ export async function renderNow({
     if (current) {
       current.outputs = finished.outputs || [];
       current.status = finished.status?.status_str === "error" ? "error" : "done";
-      current.error = current.status === "error" ? describeError(finished) : null;
+      if (current.status === "error") {
+        const why = describeError(finished);
+        current.error = why.message; current.errorKind = why.kind; current.errorInfo = why;
+      } else {
+        current.error = null; current.errorKind = null; current.errorInfo = null;
+      }
       current.progress = 1;
       current.tookMs = Date.now() - current.at;
       // The real output is about to replace it.
       if (current.preview) { URL.revokeObjectURL(current.preview); current.preview = null; }
       emit();
+      /* Into the user's own folder, when one is chosen (Deliver ▸ Download
+       * folder). ComfyUI keeps its copy regardless; this is the one the
+       * user asked for, where they asked for it. */
+      if (current.status === "done" && current.outputs.length) {
+        const r = await saveJobOutputs(current);
+        if (current) { current.savedTo = r.saved; current.saveError = r.error; emit(); }
+      }
       const job = { ...current };
       /* Onto the project this render was FOR, not whatever happens to be open
        * when it lands. renderNow already takes a `commit` for exactly this and
@@ -231,10 +250,10 @@ function describeError(entry) {
   for (const m of msgs) {
     if (Array.isArray(m) && m[0] === "execution_error") {
       const d = m[1] || {};
-      return `${d.node_type || "node"} — ${d.exception_message || d.exception_type || "failed"}`;
+      return explainRenderError(d.exception_message || d.exception_type, { nodeType: d.node_type });
     }
   }
-  return "ComfyUI reported an execution error — check its console.";
+  return { kind: "other", message: "ComfyUI reported an execution error — check its console." };
 }
 
 async function pollHistory(promptId, tick) {

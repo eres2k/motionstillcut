@@ -15,8 +15,9 @@ import { variantsFor, variantFor } from "../vocab.js";
 import { rememberedVariant } from "../renderprefs.js";
 import { validate, compilePrompt } from "../prompt.js";
 import { buildWorkflow, estimateSeconds, humanTime, randomSeed, LTX_MAX_ANCHORS } from "../workflow.js";
-import { getSettings, getHealth, refreshVram } from "../config.js";
+import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js";
 import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending } from "../render.js";
+import * as downloads from "../downloads.js";
 import { variablesFor, variableById, valuesFor, labelOf, runSweep, sweepCost } from "../experiments.js";
 import { api, SERVER_BACKED } from "../api.js";
 import {
@@ -166,7 +167,10 @@ function settingsPanel(p) {
             type: "text", value: p.render.outputPrefix || "",
             placeholder: getSettings()?.comfy?.outputPrefix || "MotionstillCut",
             oninput: (e) => update(proj => { proj.render.outputPrefix = e.target.value; }, "text"),
-          })),
+          }), getSettings()?.comfy?.flatOutput
+            ? "Saved flat at the top of ComfyUI's output folder (Setup ▸ ComfyUI to change)."
+            : "Saved into this subfolder of ComfyUI's output folder."),
+          downloadFolderRow(),
         ),
       ),
     ),
@@ -240,6 +244,10 @@ function renderPanel(p) {
               ? `ComfyUI ${health.comfy.version || ""} on ${health.comfy.device || "?"}${health.comfy.vramFreeGB ? ` · ${health.comfy.vramFreeGB} GB free` : ""}`
               : "ComfyUI is not reachable — Setup ▸ ComfyUI. Downloading the JSON works regardless."),
         job?.error ? h("div.note.bad", { style: { marginTop: "8px" } }, job.error) : null,
+        job?.errorKind === "save-permission" && !running ? h("div.btn-row", { style: { marginTop: "6px" } },
+          h("button.btn.sm", { onclick: () => explainFailure(p, job) }, "What happened, and the way around it")) : null,
+        job?.saveError ? h("div.note.bad", { style: { marginTop: "8px" } }, `Not copied to your folder: ${job.saveError}`) : null,
+        job?.savedTo?.length ? h("div.hint", { style: { marginTop: "6px" } }, `Saved to ${folderLabel || "your folder"}: ${job.savedTo.join(", ")}`) : null,
       ),
       preview,
       lastExperiment ? h("div", { style: { padding: "8px 10px", borderTop: "1px solid var(--line)" } },
@@ -487,6 +495,32 @@ async function joinTheFilm(p) {
  * to sit here holding the second clip in your head. The queue is where it goes
  * instead, and this is where it is run.
  */
+/* ── Download folder ─────────────────────────────────────────
+ * Where finished clips are copied on THIS machine, on top of ComfyUI's own
+ * copy. Chrome and Edge let a page keep a folder the user picked; the row
+ * says so where they cannot. */
+let folderLabel = null;
+downloads.folderName().then(n => { folderLabel = n; refresh(); });
+downloads.onFolderChange(() => downloads.folderName().then(n => { folderLabel = n; refresh(); }));
+
+function downloadFolderRow() {
+  if (!downloads.supported()) {
+    return row("Download folder", h("span.hint", "Not in this browser"),
+      "Chrome and Edge can hand a page a folder to save into; here, the ⬇ button on a finished clip downloads it the ordinary way.");
+  }
+  const choose = async () => {
+    try { await downloads.chooseFolder(); toast("Download folder set", await downloads.folderName(), "ok"); }
+    catch (err) { if (err.name !== "AbortError") toast("No folder chosen", err.message, "err"); }
+  };
+  return row("Download folder", folderLabel
+    ? h("div.flex", { style: { gap: "5px" } },
+        h("span.hint.mono.grow", { title: "Every finished clip is copied here" }, folderLabel),
+        h("button.btn.sm.ghost", { title: "Pick a different folder", onclick: choose }, "Change"),
+        h("button.btn.sm.ghost", { title: "Stop copying clips here (ComfyUI keeps its own)", onclick: async () => { await downloads.clearFolder(); toast("Download folder cleared", "", "ok"); } }, "✕"))
+    : h("button.btn.sm", { onclick: choose }, "Choose a folder…"),
+    "Every clip that finishes is copied into this folder, named as ComfyUI named it. ComfyUI keeps its own copy in its output folder regardless.");
+}
+
 function queuePanel() {
   const items = listQueue();
   const running = isQueueRunning();
@@ -600,7 +634,13 @@ function historyStrip(p) {
           onclick: () => window.open(api.viewUrl(j.outputs[0]), "_blank"),
         }, "Open") : null,
         j.outputs?.[0] ? h("button.btn.sm.ghost", {
-          onclick: () => { window.location.href = api.viewUrl(j.outputs[0]); },
+          title: folderLabel ? `Save into ${folderLabel}` : "Download",
+          onclick: async () => {
+            try {
+              if (await downloads.folder()) { const name = await downloads.saveOutput(j.outputs[0]); toast("Saved", `${name} → ${folderLabel}`, "ok"); }
+              else await downloads.downloadOutput(j.outputs[0]);
+            } catch (err) { toast("Could not save the clip", err.message, "err"); }
+          },
         }, "⬇") : null,
         j.promptText ? h("button.btn.sm.ghost", {
           title: "The prompt and settings that made this clip",
@@ -722,12 +762,41 @@ async function okToSubmit(p, { verb = "Render", cost = "" } = {}) {
   }));
 }
 
+/* A failed job, read for the user. The one failure the app can route
+ * around is ComfyUI being refused at save time: the whole clip rendered,
+ * only the write into the output subfolder was denied. Offer the flat
+ * name at the top of the output folder and render again. */
+async function explainFailure(p, job) {
+  const why = job.errorInfo || { kind: "other", title: "Render failed", message: job.error };
+  if (why.kind !== "save-permission") return toast(why.title || "Render failed", why.message, "err");
+  const again = await modal({
+    title: why.title,
+    body: h("div",
+      h("div.note.bad", why.message),
+      h("div.hint", { style: { marginTop: "8px" } }, "Fix it for good in a terminal on the ComfyUI machine:"),
+      h("pre.code", why.fix),
+      h("div.hint", { style: { marginTop: "8px" } }, why.fallback),
+    ),
+    actions: [
+      { label: "Leave it", onClick: (done) => done(false) },
+      { label: "Save at top level and render again", kind: "record", onClick: (done) => done(true) },
+    ],
+  });
+  if (!again) return;
+  await saveSettings({ comfy: { flatOutput: true } });
+  refresh();
+  await doRender(p);
+}
+
 async function doRender(p) {
   if (!(await okToSubmit(p, { verb: "Render" }))) return;
   try {
     statusLine = "";
-    await renderNow({ onStep: (msg) => { statusLine = msg; refresh(); } });
-    toast("Render finished", "", "ok");
+    const job = await renderNow({ onStep: (msg) => { statusLine = msg; refresh(); } });
+    if (job?.status === "error") await explainFailure(p, job);
+    else if (job?.saveError) toast("Rendered, but not copied to your folder", job.saveError, "err");
+    else if (job?.savedTo?.length) toast("Render finished", `Saved ${job.savedTo.join(", ")} to ${await downloads.folderName()}`, "ok");
+    else toast("Render finished", "", "ok");
   } catch (err) {
     if (err.message !== "cancelled") toast("Render failed", err.message, "err");
   } finally {

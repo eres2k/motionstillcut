@@ -661,6 +661,25 @@ render previews** turns them off if you would rather not pay the bandwidth.
   one at a time; the second clip used to have to live in your head until the
   first finished.
 
+### Where the clip goes
+
+ComfyUI writes every render into its own output folder, under the **Output
+prefix** (`MotionstillCut/T2V_name…`). On top of that, the **Download
+folder** row lets you pick a folder on *this* machine — Chrome and Edge can
+hand a page a folder — and every clip that finishes is copied there, named
+as ComfyUI named it. The browser asks once per session before the first
+write. Other browsers: the ⬇ button on a finished clip downloads it the
+ordinary way.
+
+**"Permission denied" at the end of a render** means the clip rendered in
+full and only the save was refused: the output *subfolder* belongs to another
+user (a run under `sudo` leaves it owned by root) and ComfyUI runs as you.
+The app reads that error for you, prints the `chown` that fixes it for good,
+and offers **Save at top level and render again** — the flat name
+`MotionstillCut_T2V_name…` at the top of ComfyUI's output folder, which is
+always ComfyUI's own. The switch stays on (Setup ▸ ComfyUI) until you turn it
+off.
+
 ### The render queue
 
 Queue a clip from **Deliver**, from the canvas's **Render** node, or at the end

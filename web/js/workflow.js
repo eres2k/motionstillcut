@@ -62,7 +62,12 @@ function safePrefix(project, settings) {
   const custom = (project.render?.outputPrefix || settings?.comfy?.outputPrefix || "MotionstillCut").trim();
   const mode = project.mode.toUpperCase();
   const slug = (project.name || "untitled").replace(/[^\w -]+/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "untitled";
-  return `${custom}/${mode}_${slug}`;
+  /* A subfolder is tidier; a flat name is the fallback for when the
+   * subfolder belongs to someone else (a root-owned folder from a run
+   * under sudo is the usual way) and ComfyUI, running as the user, is
+   * refused at save time. The top of the output folder is always ComfyUI's
+   * own. */
+  return settings?.comfy?.flatOutput ? `${custom}_${mode}_${slug}` : `${custom}/${mode}_${slug}`;
 }
 
 /**
