@@ -1059,7 +1059,9 @@ export function validate(project) {
     }
     // §4.2's approved cut verbs. Dissolves and fades are allowed only on
     // request, which the vocabulary already labels.
-    const APPROVED = /^(the camera cuts to|the shot (cuts|transitions|changes|switches) to)$/i;
+    /* The guide's five, plus "hard cuts to" — this app's own option for an
+     * abrupt cut said in so many words; the model reads it as the cut it is. */
+    const APPROVED = /^(the camera (hard )?cuts to|the shot (cuts|transitions|changes|switches) to)$/i;
     shots.forEach((sh, i) => {
       if (i === 0 || !sh.cutVerb || sh.cutVerb === NO_CUT) return;
       if (!APPROVED.test(sh.cutVerb) && !/dissolve|fade|wipe/i.test(sh.cutVerb)) {

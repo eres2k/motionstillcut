@@ -24,8 +24,8 @@ function three() {
 const markers = (text) => [...text.matchAll(/\[Shot (\d+)\]/g)].map(m => Number(m[1]));
 
 test("every transition value is a cut verb the compiler writes, or no cut", () => {
-  for (const [v] of TRANSITIONS) assert.ok(v === NO_CUT || /^the (camera|shot) \w+ to$/.test(v), v);
-  assert.equal(transitionLabel(undefined), "Hard cut");
+  for (const [v] of TRANSITIONS) assert.ok(v === NO_CUT || /^the (camera|shot) (hard )?\w+ to$/.test(v), v);
+  assert.equal(transitionLabel(undefined), "Cut");
   assert.equal(transitionLabel(NO_CUT), "No cut — same take");
 });
 
@@ -43,6 +43,15 @@ test("no cut folds the row into the previous block and renumbers what follows", 
   assert.match(text, /\[Shot 1\][^[]*At 00:03\.000, without a cut, the camera reframes to a close-up shot[^[]*wipes flour/i);
   assert.match(text, /\[Shot 2\] At 00:06\.000, the camera cuts to/);
   assert.deepEqual(shotMarkers(p.shots), [1, 1, 2]);
+});
+
+test("a hard cut is said in so many words, and is not flagged", () => {
+  const p = three();
+  p.shots[1].cutVerb = "the camera hard cuts to";
+  assert.match(compilePrompt(p).text, /\[Shot 2\] At 00:03\.000, the camera hard cuts to a close-up shot/);
+  assert.ok(!validate(p).checks.some(c => /not one of the five approved/.test(c.msg)));
+  assert.equal(transitionLabel("the camera hard cuts to"), "Hard cut");
+  assert.equal(transitionLabel("the camera cuts to"), "Cut");
 });
 
 test("a dissolve is written as the guide's verb", () => {

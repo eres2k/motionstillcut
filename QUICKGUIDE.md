@@ -651,10 +651,11 @@ render previews** turns them off if you would rather not pay the bandwidth.
 ### Between two shots
 
 Each shot after the first carries a **Cut** — in the Inspector, on the shot
-strip (`✂ Hard cut`, `⟶ same take`), and in the node view as the little
-selector on the wire that joins one shot node to the next. The first five
-choices are the guide's approved cut verbs, written as `[Shot 2] At 00:03.000,
-the camera cuts to …`; **Dissolve** and **Fade** exist but the guide asks for
+strip (`✂ Cut`, `✂ Hard cut`, `⟶ same take`), and in the node view as the
+little selector on the wire that joins one shot node to the next. **Cut** and
+the four after it are the guide's approved cut verbs, written as `[Shot 2] At
+00:03.000, the camera cuts to …`; **Hard cut** says it in so many words —
+`the camera hard cuts to …`; **Dissolve** and **Fade** exist but the guide asks for
 them only on explicit request, so they are labelled. **No cut — same take**
 is the one the guide has no word for, because it is not a cut: the row
 continues the previous shot, and compiles *into* its `[Shot N]` block —
