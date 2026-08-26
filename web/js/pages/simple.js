@@ -1893,7 +1893,7 @@ async function askIdea(btn) {
   btn.classList.add("disabled");
   try {
     const p = getProject();
-    const { shots, split } = await breakdown(idea, p);
+    const { shots, split } = await breakdown(idea, p, Number(p.creative?.shotCount) || 0);
     let wired = 0;
     update((draft) => {
       draft.shots = shots.map((s, i) => ({

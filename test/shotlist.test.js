@@ -50,3 +50,39 @@ test("a split inside a timed list lands between its neighbours", () => {
   const shots = splitCutBeats(raw, 20);
   assert.deepEqual(shots.map(s => s.at), [0, 5, 10]);
 });
+
+/* ── The same rule on Create's path: steering, not breakdown ── */
+import { applySteering, cutSegments, DEFAULT_DIALS } from "../web/js/steer.js";
+import { blankProject } from "../web/js/state.js";
+
+test("a beat pool cut at its cuts is the shot list, whatever Pace wants", () => {
+  const p = blankProject();
+  p.render.duration = 20;
+  p.creative.dials = { ...DEFAULT_DIALS, pace: 20 };   // below 45: Pace alone would make ONE shot
+  p.creative.pool = { beats: [
+    "sits at the desk, looking into the lens", "rests both hands on the desk",
+    "Cut to close-up, glances at the laptop", "taps the trackpad once",
+    "Cut to wide shot by the window, turns to face the room",
+    "Cut to medium close-up, gives a small nod",
+  ] };
+  applySteering(p);
+  assert.equal(p.shots.length, 4);
+  assert.deepEqual(p.shots.map(s => s.shotType), [p.shots[0].shotType, "close-up", "wide", "medium close-up"]);
+  assert.deepEqual(p.shots[1].beats.map(b => b.text), ["glances at the laptop", "taps the trackpad once"]);
+  assert.equal(p.shots[1].cutVerb, "the camera cuts to");
+  assert.ok(!p.shots.some(s => s.beats.some(b => /^cut to/i.test(b.text))), "the cut phrase is not a beat");
+  assert.equal(cutSegments(["a", "b"]).length, 1, "no cuts: one segment, Pace decides");
+});
+
+test("an exact shot count from the first screen outranks Pace; written cuts outrank both", () => {
+  const p = blankProject();
+  p.render.duration = 20;
+  p.creative.dials = { ...DEFAULT_DIALS, pace: 20 };
+  p.creative.shotCount = 3;
+  p.creative.pool = { beats: ["a", "b", "c", "d", "e", "f"] };
+  applySteering(p);
+  assert.equal(p.shots.length, 3);
+  p.creative.pool = { beats: ["a", "Cut to close-up, b", "c", "Cut to wide, d", "Cut to medium, e"] };
+  applySteering(p);
+  assert.equal(p.shots.length, 4, "four written cuts beat a count of three");
+});

@@ -21,6 +21,7 @@
 import { newShot, newBeat, orderedShots, DURATION_FRAMES, H3_DURATION } from "./state.js";
 import { GRADES } from "./vocab.js";
 import { clamp } from "./util.js";
+import { cutInBeat, readFraming } from "./shotlist.js";
 
 /* The colourist's shelf, by its short name — a readout has room for "Low key"
  * and not for the sentence the model reads. */
@@ -337,6 +338,23 @@ export function faithToReferences(v) {
 /** Every beat the creator has actually written — the pool if we're re-steering
  * from one, otherwise what is already on the timeline. Pace may never delete
  * these; it may only ask for more room. */
+/** The beat pool cut at every beat that is really a cut. Each segment:
+ *  { beats, cut (verb or null), shotType (named after the cut or null),
+ *  subjectOf }. A pool with no cut-beats is one segment. */
+export function cutSegments(beatPool) {
+  const segments = [];
+  let seg = { beats: [], cut: null, shotType: null, subjectOf: "" };
+  for (const b of beatPool) {
+    const c = cutInBeat(b);
+    if (!c) { seg.beats.push(b); continue; }
+    const f = readFraming(c.remainder);
+    if (seg.beats.length || segments.length) segments.push(seg);
+    seg = { beats: f.rest ? [f.rest] : [], cut: segments.length ? c.verb : null, shotType: f.shotType, subjectOf: f.framingOf };
+  }
+  segments.push(seg);
+  return segments;
+}
+
 function writtenBeats(draft, pool) {
   const fromPool = (pool || draft.creative?.pool?.beats || []).filter(Boolean);
   if (fromPool.length) return fromPool;
@@ -349,6 +367,14 @@ export function applySteering(draft, { pool = null } = {}) {
   const dials = { ...DEFAULT_DIALS, ...(draft.creative?.dials || {}) };
   const duration = draft.render?.duration || 5;
   const beatPool = writtenBeats(draft, pool);
+  /* Cuts the writer wrote. A beat that opens "cut to close-up, …" is not
+   * an action, it is where a new shot starts — and Pace, which only counts
+   * beats, would otherwise pack it into whatever number of shots the dial
+   * happens to want (one, below 45). So the pool is cut into segments at
+   * those beats first; when there are any, the segments ARE the shots, and
+   * Pace keeps its say over camera, timing and everything else. */
+  const segments = cutSegments(beatPool);
+  const authoredCuts = segments.length > 1;
   const structure = paceToStructure(dials.pace, duration, beatPool.length);
   void distanceToShot(dials.distance);   // the clip-wide reading; each shot resolves its own below
   const subjectMoves = /\b(walk|run|turn|reach|lift|pour|step|move|ride|drive|dance|climb|swing)\w*\b/i
@@ -366,7 +392,15 @@ export function applySteering(draft, { pool = null } = {}) {
    * work the creator or the interview already did. Cutting a shot is what the
    * shot's own ✕ is for, and the explain line offers it when the pace really
    * does want fewer. */
-  const wanted = Math.max(existing.length, structure.shots);
+  /* An exact count from the first screen outranks Pace's guess; cuts the
+   * writer actually wrote outrank both, since they say where the shots are.
+   * Never fewer than exist — a shot is removed with its own ✕, not by a
+   * number changing elsewhere. */
+  const fixed = clamp(Number(draft.creative?.shotCount) || 0, 0, 8);
+  const wanted = authoredCuts
+    ? Math.max(existing.length, segments.length)
+    : Math.max(existing.length, fixed || structure.shots);
+  const bySegment = authoredCuts && segments.length === wanted;
   const shots = [];
   for (let i = 0; i < wanted; i++) {
     const base = existing[i] ? { ...existing[i] } : { ...newShot(0), subject: existing[0]?.subject || "" };
@@ -398,17 +432,29 @@ export function applySteering(draft, { pool = null } = {}) {
   /* Beats: every beat the creator wrote gets a home. Pace decides how they are
    * grouped across shots, never whether they survive — the last shot absorbs
    * the remainder rather than the remainder being dropped. */
-  const perShot = Math.max(1, Math.ceil(beatPool.length / wanted));
-  let cursor = 0;
-  for (let i = 0; i < shots.length; i++) {
-    const shot = shots[i];
-    const last = i === shots.length - 1;
-    const take = last ? beatPool.slice(cursor) : beatPool.slice(cursor, cursor + perShot);
-    cursor += take.length;
-    if (take.length) {
-      shot.beats = take.map((text, j) => newBeat(text, j === 0 ? "" : "then"));
-    } else if (!shot.beats?.length) {
-      shot.beats = [newBeat("")];
+  if (bySegment) {
+    // One shot per authored cut: the beats after the cut, the framing it
+    // named, the verb it used. The cut phrase itself is not a beat.
+    segments.forEach((seg, i) => {
+      const shot = shots[i];
+      shot.beats = seg.beats.length ? seg.beats.map((text, j) => newBeat(text, j === 0 ? "" : "then")) : [newBeat("")];
+      if (seg.shotType) shot.shotType = seg.shotType;
+      if (seg.cut) shot.cutVerb = seg.cut;
+      if (seg.subjectOf && !(shot.subject || "").trim()) shot.subject = seg.subjectOf;
+    });
+  } else {
+    const perShot = Math.max(1, Math.ceil(beatPool.length / wanted));
+    let cursor = 0;
+    for (let i = 0; i < shots.length; i++) {
+      const shot = shots[i];
+      const last = i === shots.length - 1;
+      const take = last ? beatPool.slice(cursor) : beatPool.slice(cursor, cursor + perShot);
+      cursor += take.length;
+      if (take.length) {
+        shot.beats = take.map((text, j) => newBeat(text, j === 0 ? "" : "then"));
+      } else if (!shot.beats?.length) {
+        shot.beats = [newBeat("")];
+      }
     }
   }
 

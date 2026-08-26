@@ -72,6 +72,11 @@ export async function readMaterial(project) {
     mode: project.mode,
     system: `You are a director reading a creator's raw material and proposing a first pass at a video.
 The video will be made by MiniMax H3, which renders about one action beat every 2–3 seconds, with its own audio.
+If the video needs more than one shot, the beat where a new shot begins STARTS WITH "Cut to <framing>, " — for example
+"Cut to close-up, she looks up from the letter" — and that beat is the first of the new shot. A cut is never described any other way,
+and never buried inside a beat.${(Number(project.creative?.shotCount) || 0) > 1
+  ? `\nThe creator wants EXACTLY ${project.creative.shotCount} shots: write exactly ${project.creative.shotCount - 1} "Cut to" beats, spaced through the action.`
+  : (Number(project.creative?.shotCount) || 0) === 1 ? "\nThe creator wants ONE continuous shot: no \"Cut to\" beats at all." : ""}
 ${tagLines.length ? `
 THE PICTURES HAVE NAMES, AND YOU MUST USE THEM:
 ${tagLines.join("\n")}
@@ -157,7 +162,8 @@ export async function moreBeats(project, existing, wanted) {
     mode: project.mode,
     system: `You extend a shot's action into more beats for MiniMax H3, which renders about one beat every 2–3 seconds.
 Return exactly: {"beats":["…","…"]}
-Each beat is a short present-tense clause continuing the ones given, in order, no repetition, never a new subject.`,
+Each beat is a short present-tense clause continuing the ones given, in order, no repetition, never a new subject.
+If a new shot is needed, that beat starts with "Cut to <framing>, " and nothing else marks a cut.`,
     prompt: `Subject: ${project.creative?.answers?.subject || ""}\nSetting: ${project.creative?.answers?.setting || ""}\n`
       + `So far: ${existing.join(" → ") || "(nothing yet)"}\nGive ${Math.max(1, wanted - existing.length)} more.`,
     temperature: 0.8,
