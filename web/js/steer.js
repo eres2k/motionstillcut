@@ -338,6 +338,70 @@ export function faithToReferences(v) {
 /** Every beat the creator has actually written — the pool if we're re-steering
  * from one, otherwise what is already on the timeline. Pace may never delete
  * these; it may only ask for more room. */
+/* Does the subject move in these words? Decides tracking vs a still camera.
+ * Per shot, not per clip: "she stands and turns" in shot 3 is no reason to
+ * track a woman resting her hands on a desk in shot 1 — a moving camera on
+ * a still subject is exactly what reads as jitter in a 5 s shot. */
+export const MOVES_RE = /\b(walk|run|turn|reach|lift|pour|step|move|ride|drive|dance|climb|swing|stand|cross|enter|leave|rise|spin)\w*\b/i;
+export const shotMoves = (shot) => MOVES_RE.test((shot?.beats || []).map(b => b.text || "").join(" "));
+
+/* Speech has a speed. ~2.5 words a second is conversational; a line that
+ * needs more seconds than its shot has is rushed or cut off, and on a talking
+ * head the rush is visible as jerk. */
+export const WORDS_PER_SECOND = 2.5;
+export const speechWords = (text) => String(text || "").trim().split(/\s+/).filter(Boolean).length;
+export const speechSeconds = (text) => speechWords(text) / WORDS_PER_SECOND;
+
+/**
+ * One line, spoken across the shots. Create writes the whole speech into
+ * shot 1; on a four-shot clip that is twenty seconds of words in a five-
+ * second shot. When exactly one shot carries speech and the speech overflows
+ * it, the line is cut at sentence ends and dealt across the shots by how
+ * long each one is. Speech the creator placed by hand — more than one shot
+ * with lines — is never touched.
+ */
+export function spreadDialogue(draft) {
+  const shots = orderedShots(draft);
+  if (shots.length < 2) return false;
+  const withLines = shots.filter(s => (s.dialogue || []).some(l => (l.text || "").trim()));
+  if (withLines.length !== 1) return false;
+  const src = withLines[0];
+  const line = src.dialogue.find(l => (l.text || "").trim());
+  if (line.voiceover || line.continues) return false;
+  const duration = draft.render?.duration || 5;
+  const secondsOf = (i) => Math.max(0, ((i + 1 < shots.length ? shots[i + 1].at : duration) - (shots[i].at || 0)));
+  const srcIndex = shots.indexOf(src);
+  if (speechSeconds(line.text) <= secondsOf(srcIndex) + 0.5) return false;
+
+  const sentences = String(line.text).trim().match(/[^.!?…]+[.!?…]+["'”’]?|[^.!?…]+$/g)?.map(t => t.trim()).filter(Boolean) || [];
+  if (sentences.length < 2) return false;
+  // Deal sentences to shots from the source shot onward, by each shot's
+  // capacity, but never leaving a later shot with nothing while sentences
+  // remain — a talking head that falls silent for a shot reads as a glitch.
+  const targets = shots.slice(srcIndex);
+  const groups = targets.map(() => []);
+  let gi = 0;
+  for (let si = 0; si < sentences.length; si++) {
+    const left = sentences.length - si;
+    const shotsLeft = targets.length - gi;
+    const cap = secondsOf(srcIndex + gi) * WORDS_PER_SECOND;
+    const used = speechWords(groups[gi].join(" "));
+    const next = speechWords(sentences[si]);
+    const mustMoveOn = groups[gi].length && (used + next > cap * 1.15) && gi < targets.length - 1;
+    const mustLeaveSome = left <= shotsLeft - 1 && groups[gi].length && gi < targets.length - 1;
+    if (mustMoveOn || mustLeaveSome) gi++;
+    groups[gi].push(sentences[si]);
+  }
+  const base = { speaker: line.speaker || "S1", language: line.language || "English", voiceover: false, note: "", identity: line.identity || "", voice: line.voice || "", delivery: line.delivery || "" };
+  targets.forEach((shot, i) => {
+    const text = groups[i].join(" ");
+    // By id into the real array: orderedShots hands back shot 1 as a copy.
+    const real = (draft.shots || []).find(x => x.id === shot.id) || shot;
+    real.dialogue = text ? [{ ...base, id: i === 0 ? line.id : `${line.id}-${i + 1}`, text }] : [];
+  });
+  return true;
+}
+
 /** The beat pool cut at every beat that is really a cut. Each segment:
  *  { beats, cut (verb or null), shotType (named after the cut or null),
  *  subjectOf }. A pool with no cut-beats is one segment. */
@@ -377,8 +441,7 @@ export function applySteering(draft, { pool = null } = {}) {
   const authoredCuts = segments.length > 1;
   const structure = paceToStructure(dials.pace, duration, beatPool.length);
   void distanceToShot(dials.distance);   // the clip-wide reading; each shot resolves its own below
-  const subjectMoves = /\b(walk|run|turn|reach|lift|pour|step|move|ride|drive|dance|climb|swing)\w*\b/i
-    .test(beatPool.join(" ") || orderedShots(draft).map(s => (s.beats || []).map(b => b.text).join(" ")).join(" "));
+  const subjectMoves = MOVES_RE.test(beatPool.join(" ") || orderedShots(draft).map(s => (s.beats || []).map(b => b.text).join(" ")).join(" "));
 
   /* Shots: keep what exists where possible, so a re-steer does not throw away
    * a subject the creator typed. */
@@ -457,6 +520,21 @@ export function applySteering(draft, { pool = null } = {}) {
       }
     }
   }
+
+  /* Now that every shot has its beats, the camera can be decided by what
+   * happens in THAT shot rather than anywhere in the clip. */
+  shots.forEach((shot, i) => {
+    if (shot.camera?.byHand) return;
+    const own = dialsFor(draft, shot);
+    const moves = shotMoves(shot);
+    shot.camera = {
+      ...shot.camera,
+      ...energyToCamera(own.energy, { subjectMoves: moves }),
+      ...(i % 2 === 1 && own.energy === dials.energy ? mirrorMove(energyToCamera(own.energy, { subjectMoves: moves })) : {}),
+      custom: "",
+    };
+  });
+  spreadDialogue({ ...draft, shots });
 
   draft.shots = shots;
   draft.selectedShot = shots[0]?.id || null;

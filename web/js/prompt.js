@@ -19,6 +19,7 @@
 import { shotTime, words } from "./util.js";
 import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION, NO_CUT, cutVerbFor } from "./vocab.js";
 import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS, ltxGuideTime } from "./state.js";
+import { speechWords, WORDS_PER_SECOND } from "./steer.js";
 /* film.js imports state.js and nothing else, so reaching for the planner here
  * is a leaf dependency rather than a cycle. The checker needs it because a
  * film's real error is never "this clip is too long" — it is where the clips
@@ -151,8 +152,15 @@ export function identityOf(project, speaker) {
       if ((l.speaker || "S1") === speaker && (l.identity || "").trim()) return shortIdentity(l.identity);
     }
   }
+  /* No identifying phrase written: the subject is who is on screen, and
+   * "the woman with short grey hair" is a person where "the speaker" is a
+   * voice from nowhere. */
+  const subject = expandTokens((orderedShots(project)[0]?.subject || "").trim());
+  if (subject) return definite(shortIdentity(subject));
   return "the speaker";
 }
+/** "a woman in her forties" → "the woman in her forties". */
+export const definite = (phrase) => String(phrase || "").replace(/^(a|an)\s+/i, "the ");
 /** The identifier reused after a first appearance: the phrase up to its
  *  first comma, "and" or "in" clause — "the woman with short grey hair", not
  *  the whole introduction again. */
@@ -318,6 +326,16 @@ export function beatsProse(shot) {
  * approved cut verb. Shot type and viewpoint are woven into the prose rather
  * than tagged on, because tags are exactly what an LLM encoder dilutes.
  */
+/** LTX re-establishes the subject at every cut, but "a woman in her forties"
+ *  again is a second woman to it. The same subject as shot 1 comes back as
+ *  "the same woman in her forties…" — an identifier reused, as the guide asks. */
+function ltxSubjectRef(subject, project) {
+  const first = expandTokens((orderedShots(project)[0]?.subject || "").trim());
+  const same = first && first.replace(/[.,;]\s*$/, "").toLowerCase() === subject.replace(/[.,;]\s*$/, "").toLowerCase();
+  if (!same || !/^(a|an)\s+/i.test(subject)) return phrase(subject);
+  return `the same ${phrase(subject).replace(/^(a|an)\s+/i, "")}`;
+}
+
 export function shotProse(shot, index, project, opts = {}) {
   const first = index === 0;
   /* Which speakers have already been introduced. A caller with no shot list —
@@ -385,7 +403,7 @@ export function shotProse(shot, index, project, opts = {}) {
     : ltx
       /* Lightricks: no timestamps, no shot numbers — the cut is named in
        * prose and the new shot re-established (scale, angle, subject). */
-      ? `${opening.charAt(0).toUpperCase()}${opening.slice(1)}${subject ? ` of ${phrase(subject)}` : ""}${changed ? `, now ${phrase(changed)}` : ""}`
+      ? `${opening.charAt(0).toUpperCase()}${opening.slice(1)}${subject ? ` of ${ltxSubjectRef(subject, project)}` : ""}${changed ? `, now ${phrase(changed)}` : ""}`
       : `At ${shotTime(shot.at || 0)}, ${opening}${subject ? ` of ${phrase(subject)}` : ""}${changed ? `, now ${phrase(changed)}` : ""}`;
   /* "State audio continuity explicitly" at every cut — the guide's own
    * example: "the piano score continues across the cut". */
@@ -909,6 +927,16 @@ export function validate(project) {
     if (n > Math.max(1, Math.ceil(len / 2))) {
       add("warn", `Shot ${i + 1} packs ${n} beats into ${len.toFixed(1)}s. H3 renders about one beat per 2–3s — the later ones tend to be dropped.`);
     }
+  });
+
+  /* Speech has a speed. A shot holding more words than its seconds carry is
+   * rushed on screen — the mouth and the body hurry to fit it — or cut off. */
+  shots.forEach((s, i) => {
+    const words = (s.dialogue || []).reduce((n, l) => n + speechWords(l.text), 0);
+    if (!words) return;
+    const secs = Math.max(0, ((i + 1 < shots.length ? shots[i + 1].at : span) - (s.at || 0)));
+    const fit = Math.floor(secs * WORDS_PER_SECOND);
+    if (words > fit + 3) add("warn", `Shot ${i + 1} carries ${words} words of speech in ${secs.toFixed(1)}s — about ${fit} fit at a spoken pace (≈${WORDS_PER_SECOND} words a second). The rest is rushed, and a rushed talking head jerks. Spread the line over more shots, or give this one more seconds.`);
   });
 
   const last = shots.length ? span - (shots[shots.length - 1].at || 0) : span;
