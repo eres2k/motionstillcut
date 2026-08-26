@@ -23,7 +23,8 @@ import {
  onProjectSwap, activeEngine, setEngine, durationFrames, LTX25_DURATION } from "../state.js";
 import { ingest, getBlob, delBlob, posterFor, kindOf } from "../media.js";
 import { queueLength } from "../queue.js";
-import { DIALS, DEFAULT_DIALS, applySteering, explainDials } from "../steer.js";
+import { polishShot } from "../llm.js";
+import { DIALS, DEFAULT_DIALS, applySteering, explainDials, DETAIL_BANDS, detailToWriting } from "../steer.js";
 import { readMaterial, moreBeats, baseQuestions } from "../interview.js";
 import { compilePrompt, validate } from "../prompt.js";
 import { renderPrompt } from "../prompttext.js";
@@ -200,6 +201,23 @@ function materialStage(p) {
       h("span.hint", (Number(creative(p).shotCount) || 0)
         ? `${creative(p).shotCount} shot${creative(p).shotCount === 1 ? "" : "s"}, each with its own Cut. Fewer than you already have keeps what you have — remove a shot with its own ✕.`
         : "Auto: the Pace dial picks a count — and a beat written as \"Cut to close-up, …\" always starts a new shot, whatever the dial says."),
+    /* How much each shot says. It is asked here, on the first screen,
+     * because "Read my material" writes to it — and that button is on this
+     * screen, before the dial rail is ever shown. Same field as the Detail
+     * dial on the next stage; the two stay in step. */
+    h("div.cr-row",
+      h("span.cr-label", "How detailed?"),
+      segmented(DETAIL_BANDS.map(b => [String(b.wordsPerShot), b.name, `${b.name}: about ${b.wordsPerShot} words a shot`]),
+        String(detailToWriting((creative(p).dials || {}).detail ?? DEFAULT_DIALS.detail).wordsPerShot),
+        (v) => {
+          const band = DETAIL_BANDS.find(b => String(b.wordsPerShot) === String(v)) || DETAIL_BANDS[1];
+          const idx = DETAIL_BANDS.indexOf(band);
+          // The middle of the band, so the dial on the next screen reads the same word.
+          const lo = idx === 0 ? 0 : DETAIL_BANDS[idx - 1].max + 1;
+          update((draft) => { draft.creative.dials = { ...DEFAULT_DIALS, ...(draft.creative.dials || {}), detail: Math.round((lo + band.max) / 2) }; }, "creative");
+          draw();
+        }),
+      h("span.hint", `${detailToWriting((creative(p).dials || {}).detail ?? DEFAULT_DIALS.detail).rules.split(".")[1]?.trim() || ""}. Read my material, Polish and Enhance write to this.`),
     ),
 
     h("div.cr-row",
@@ -455,6 +473,47 @@ function card(q, control) {
   );
 }
 
+/* Every shot, rewritten at the Detail dial's level. The polish call reads
+ * the level from projectBrief, so the instruction only has to say that the
+ * level is the point of this pass. Camera is left alone: it belongs to the
+ * Energy dial and the pad, not to how much is written. */
+let rewriting = false;
+async function rewriteAtDetail(btn, p) {
+  if (rewriting) return;
+  rewriting = true;
+  const label = btn.textContent;
+  btn.classList.add("disabled");
+  const shots = orderedShots(p);
+  const w = detailToWriting((creative(p).dials || {}).detail ?? DEFAULT_DIALS.detail);
+  let done = 0;
+  try {
+    for (let i = 0; i < shots.length; i++) {
+      const shot = shots[i];
+      btn.textContent = `rewriting ${i + 1}/${shots.length}…`;
+      const r = await polishShot(shot, i, getProject(),
+        `Rewrite this shot at the ${w.name.toUpperCase()} level of detail (about ${w.wordsPerShot} words across its fields). Keep what happens; change how much is said about it.`);
+      update((draft) => {
+        const s2 = draft.shots.find(x => x.id === shot.id);
+        if (!s2) return;
+        if (Array.isArray(r.beats) && r.beats.length) s2.beats = r.beats.map((b, bi) => newBeat(typeof b === "string" ? b : (b?.text || ""), bi === 0 ? "" : (b?.link || "then")));
+        if (r.subject) s2.subject = r.subject;
+        if (r.setting != null) s2.setting = r.setting;
+        if (r.lighting != null) s2.lighting = r.lighting;
+        if (r.details != null) s2.details = r.details;
+      }, "shots");
+      done++;
+    }
+    toast("Shots rewritten", `${done} of ${shots.length} at "${w.name}"`, "ok");
+  } catch (err) {
+    toast(done ? `Stopped after ${done} of ${shots.length}` : "Could not rewrite", err.message, "err");
+  } finally {
+    rewriting = false;
+    btn.classList.remove("disabled");
+    btn.textContent = label;
+    draw();
+  }
+}
+
 function dialRail(p) {
   const dials = { ...DEFAULT_DIALS, ...(creative(p).dials || {}) };
   const hasRefs = p.mode === "r2v" || !!p.frames?.first;
@@ -475,6 +534,15 @@ function dialRail(p) {
         h("span.grow", d.label),
         h("span", { class: explain[d.id]?.warn ? "hint warn" : "hint" }, explain[d.id]?.text || ""),
       ),
+      /* The dial steers the writer, so once the shots are written it looks
+       * inert. It is not — Polish, Enhance and Improve read it — but the
+       * honest thing is to offer the rewrite here, as a click, never as a
+       * side effect of moving a slider. */
+      d.id === "detail" && orderedShots(p).some(s => (s.subject || "").trim() || (s.beats || []).some(b => (b.text || "").trim())) ? h("button.btn.sm.ai", {
+        style: { marginBottom: "6px" },
+        title: "Rewrite every shot at this level of detail — subject, beats, setting, lighting, details. Nothing else moves.",
+        onclick: (e) => rewriteAtDetail(e.currentTarget, p),
+      }, `✨ Rewrite ${orderedShots(p).length} shot${orderedShots(p).length === 1 ? "" : "s"} at "${detailToWriting(dials.detail).name}"`) : null,
       explain[d.id]?.suggestDuration ? h("button.btn.sm", {
         style: { marginBottom: "6px" },
         title: "Nothing is deleted — the clip just gets long enough for what you wrote",
