@@ -380,16 +380,25 @@ export function spreadDialogue(draft) {
   // remain — a talking head that falls silent for a shot reads as a glitch.
   const targets = shots.slice(srcIndex);
   const groups = targets.map(() => []);
+  /* Each shot's share of the words is its share of the seconds — a balance,
+   * not a fill: greedy filling leaves the remainder piled into the last
+   * shot. A sentence goes to the current shot while that leaves it closer
+   * to its share than moving on would; later shots are never left empty
+   * while sentences remain. */
+  const totalWords = speechWords(sentences.join(" "));
+  const totalSecs = targets.reduce((n, _, i) => n + secondsOf(srcIndex + i), 0) || 1;
+  const share = targets.map((_, i) => totalWords * secondsOf(srcIndex + i) / totalSecs);
   let gi = 0;
   for (let si = 0; si < sentences.length; si++) {
     const left = sentences.length - si;
     const shotsLeft = targets.length - gi;
-    const cap = secondsOf(srcIndex + gi) * WORDS_PER_SECOND;
     const used = speechWords(groups[gi].join(" "));
     const next = speechWords(sentences[si]);
-    const mustMoveOn = groups[gi].length && (used + next > cap * 1.15) && gi < targets.length - 1;
+    const overshoot = Math.abs(used + next - share[gi]);
+    const undershoot = Math.abs(used - share[gi]);
+    const moveOn = groups[gi].length && overshoot > undershoot && gi < targets.length - 1;
     const mustLeaveSome = left <= shotsLeft - 1 && groups[gi].length && gi < targets.length - 1;
-    if (mustMoveOn || mustLeaveSome) gi++;
+    if (moveOn || mustLeaveSome) gi++;
     groups[gi].push(sentences[si]);
   }
   const base = { speaker: line.speaker || "S1", language: line.language || "English", voiceover: false, note: "", identity: line.identity || "", voice: line.voice || "", delivery: line.delivery || "" };

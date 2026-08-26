@@ -931,6 +931,13 @@ export function validate(project) {
 
   /* Speech has a speed. A shot holding more words than its seconds carry is
    * rushed on screen — the mouth and the body hurry to fit it — or cut off. */
+  {
+    const total = shots.reduce((n, s) => n + (s.dialogue || []).reduce((m, l) => m + speechWords(l.text), 0), 0);
+    const need = total / WORDS_PER_SECOND;
+    if (total && need > span + 3) {
+      add("warn", `${total} words of speech need about ${Math.ceil(need)}s at a spoken pace; the ${isFilm ? "film" : "clip"} is ${span}s. Trim the lines${activeEngine(project) === "ltx25" && !isFilm && span < LTX25_DURATION.max ? `, or make it ${Math.min(LTX25_DURATION.max, Math.ceil(need / 5) * 5)}s` : ""}.`);
+    }
+  }
   shots.forEach((s, i) => {
     const words = (s.dialogue || []).reduce((n, l) => n + speechWords(l.text), 0);
     if (!words) return;
