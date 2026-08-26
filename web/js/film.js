@@ -34,6 +34,7 @@
 
 import { orderedShots, H3_DURATION, LTX25_DURATION, LTX_DURATION_FRAMES, filmSpan, FILM_LIMITS, activeEngine } from "./state.js";
 import { NO_CUT } from "./vocab.js";
+import { spreadDialogue } from "./steer.js";
 
 /** The clip lengths a film may use: the DURATION_FRAMES rows inside H3's
  *  4–15 s window. 20/25/30 exist in the table and are deliberately not here —
@@ -73,8 +74,17 @@ export function clipLengthFor(seconds, lengths = CLIP_LENGTHS) {
  *   notes    — {level, msg} in the same shape validate() uses.
  */
 export function planFilm(project, { span = null } = {}) {
-  const shots = orderedShots(project);
   const total = Math.max(0, Number(span ?? filmSpan(project)) || 0);
+  /* One line of speech written into shot 1 would make clip 1 the only
+   * clip that talks. Each clip is its own render, so the words are dealt
+   * across the shots by their seconds before the clips are cut — on a copy:
+   * the plan is what renders, the timeline is what the creator wrote. */
+  const dealt = {
+    ...project,
+    shots: (project.shots || []).map(s => ({ ...s, dialogue: (s.dialogue || []).map(l => ({ ...l })) })),
+  };
+  const spread = spreadDialogue(dealt, { always: true, span: total });
+  const shots = orderedShots(dealt);
   const notes = [];
   const lengths = clipLengthsFor(project);
   const max = clipMaxFor(project);
@@ -148,6 +158,9 @@ export function planFilm(project, { span = null } = {}) {
       msg: `${authored.toFixed(0)}s of writing renders as ${seconds}s: a clip can only be ${lengths.join(", ")} seconds long, so short ones are `
         + `rounded up. The extra time goes to the last shot of each clip.`,
     });
+  }
+  if (spread && out.length > 1) {
+    notes.push({ level: "info", msg: "The speech was written into one shot; it is dealt across the shots by their seconds so every clip carries its own words." });
   }
   if (split && out.length > 1) {
     notes.push({

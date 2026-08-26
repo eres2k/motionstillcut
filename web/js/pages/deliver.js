@@ -324,7 +324,10 @@ function filmPanel(p) {
     return h("div", { class: `qrow ${state === "ok" ? "done" : state === "bad" ? "error" : ""}` },
       h("div.qtop",
         h("span", { class: `badge ${state}` }, h("span.dot"), `${clip.index + 1}`),
-        h("span.qname", `${clip.seconds}s · ${clip.shots.length} shot${clip.shots.length === 1 ? "" : "s"}`),
+        h("span.qname", (() => {
+          const words = clip.shots.reduce((n, s) => n + (s.dialogue || []).reduce((m, l) => m + String(l.text || "").trim().split(/\s+/).filter(Boolean).length, 0), 0);
+          return `${clip.seconds}s · ${clip.shots.length} shot${clip.shots.length === 1 ? "" : "s"}${words ? ` · ${words} words spoken` : ""}`;
+        })()),
         h("span.spacer", { style: { flex: "1" } }),
         h("span.hint.mono", clip.trimmed ? `−${clip.trimmed}s trimmed` : `from ${clip.at}s`),
       ),

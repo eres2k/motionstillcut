@@ -360,7 +360,7 @@ export const speechSeconds = (text) => speechWords(text) / WORDS_PER_SECOND;
  * long each one is. Speech the creator placed by hand — more than one shot
  * with lines — is never touched.
  */
-export function spreadDialogue(draft) {
+export function spreadDialogue(draft, { always = false, span = null } = {}) {
   const shots = orderedShots(draft);
   if (shots.length < 2) return false;
   const withLines = shots.filter(s => (s.dialogue || []).some(l => (l.text || "").trim()));
@@ -368,10 +368,12 @@ export function spreadDialogue(draft) {
   const src = withLines[0];
   const line = src.dialogue.find(l => (l.text || "").trim());
   if (line.voiceover || line.continues) return false;
-  const duration = draft.render?.duration || 5;
+  const duration = span ?? (draft.render?.duration || 5);
   const secondsOf = (i) => Math.max(0, ((i + 1 < shots.length ? shots[i + 1].at : duration) - (shots[i].at || 0)));
   const srcIndex = shots.indexOf(src);
-  if (speechSeconds(line.text) <= secondsOf(srcIndex) + 0.5) return false;
+  /* `always`: the film planner asks for the deal whether or not the line
+   * overflows — a clip that is its own render must carry its own words. */
+  if (!always && speechSeconds(line.text) <= secondsOf(srcIndex) + 0.5) return false;
 
   const sentences = String(line.text).trim().match(/[^.!?…]+[.!?…]+["'”’]?|[^.!?…]+$/g)?.map(t => t.trim()).filter(Boolean) || [];
   if (sentences.length < 2) return false;

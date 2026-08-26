@@ -70,3 +70,28 @@ test("too many words for a shot's seconds is a warning", () => {
   const w = validate(p).checks.find(c => /words of speech/.test(c.msg));
   assert.ok(w && w.level === "warn", w?.msg);
 });
+
+/* ── The film path: every clip carries its own words ─────────── */
+import { planFilm, clipProject } from "../web/js/film.js";
+
+test("a line written into shot 1 is dealt across the clips of a film", () => {
+  const p = blankProject();
+  p.render.engine = "ltx25";
+  p.film = { ...p.film, enabled: true, seconds: 20, splitAtCuts: true };
+  p.sound.musicOff = true; p.sound.soundscape = "room tone";
+  p.shots[0].subject = "a woman"; p.shots[0].beats = [newBeat("looks up")];
+  for (const at of [5, 10, 15]) { const s = newShot(); s.at = at; s.subject = "the woman"; s.beats = [newBeat("nods")]; p.shots.push(s); }
+  p.shots[0].dialogue = [{ id: "d1", speaker: "S1", text: LINE }];
+  const plan = planFilm(p);
+  assert.equal(plan.clips.length, 4);
+  const perClip = plan.clips.map(c => c.shots.flatMap(s => s.dialogue || []).map(l => l.text).join(" "));
+  assert.ok(perClip.every(t => t.trim()), `every clip speaks: ${JSON.stringify(perClip)}`);
+  assert.equal(perClip.join(" ").replace(/\s+/g, " "), LINE.replace(/\s+/g, " "));
+  assert.ok(plan.notes.some(n => /dealt across/.test(n.msg)));
+  // The timeline itself is untouched — the deal is the plan's, not the creator's.
+  assert.equal(p.shots[0].dialogue[0].text, LINE);
+  assert.equal((p.shots[1].dialogue || []).length, 0);
+  // And a clip snapshot carries exactly its share.
+  const snap = clipProject(p, plan.clips[2], { index: 2, total: 4 });
+  assert.equal(snap.shots.flatMap(s => s.dialogue).map(l => l.text).join(" "), perClip[2]);
+});
