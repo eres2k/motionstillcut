@@ -23,7 +23,7 @@ import {
  onProjectSwap, activeEngine, setEngine, durationFrames, LTX25_DURATION } from "../state.js";
 import { ingest, getBlob, delBlob, posterFor, kindOf } from "../media.js";
 import { queueLength } from "../queue.js";
-import { DIALS, DEFAULT_DIALS, applySteering, explainDials } from "../steer.js";
+import { DIALS, DEFAULT_DIALS, applySteering, explainDials, DETAIL_BANDS, detailToWriting } from "../steer.js";
 import { readMaterial, moreBeats, baseQuestions } from "../interview.js";
 import { compilePrompt, validate } from "../prompt.js";
 import { renderPrompt } from "../prompttext.js";
@@ -187,6 +187,25 @@ function materialStage(p) {
       h("span.hint", activeEngine(p) === "ltx25"
         ? "Up to 30 s, cuts written the way Lightricks' guide asks, keyframe pins on the timeline. Switchable later from the title bar."
         : "The native model: 4–15 s, the [Shot N] grammar its guide specifies, native dialogue. Switchable later from the title bar."),
+    ),
+
+    /* How much each shot says. It is asked here, on the first screen,
+     * because "Read my material" writes to it — and that button is on this
+     * screen, before the dial rail is ever shown. Same field as the Detail
+     * dial on the next stage; the two stay in step. */
+    h("div.cr-row",
+      h("span.cr-label", "How detailed?"),
+      segmented(DETAIL_BANDS.map(b => [String(b.wordsPerShot), b.name, `${b.name}: about ${b.wordsPerShot} words a shot`]),
+        String(detailToWriting((creative(p).dials || {}).detail ?? DEFAULT_DIALS.detail).wordsPerShot),
+        (v) => {
+          const band = DETAIL_BANDS.find(b => String(b.wordsPerShot) === String(v)) || DETAIL_BANDS[1];
+          const idx = DETAIL_BANDS.indexOf(band);
+          // The middle of the band, so the dial on the next screen reads the same word.
+          const lo = idx === 0 ? 0 : DETAIL_BANDS[idx - 1].max + 1;
+          update((draft) => { draft.creative.dials = { ...DEFAULT_DIALS, ...(draft.creative.dials || {}), detail: Math.round((lo + band.max) / 2) }; }, "creative");
+          draw();
+        }),
+      h("span.hint", `${detailToWriting((creative(p).dials || {}).detail ?? DEFAULT_DIALS.detail).rules.split(".")[1]?.trim() || ""}. Read my material, Polish and Enhance write to this.`),
     ),
 
     h("div.cr-row",

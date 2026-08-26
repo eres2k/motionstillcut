@@ -680,6 +680,11 @@ lengths (5–30 s). MiniMax ignores the row — its planner packs shots into
 
 ### The Detail dial
 
+It is asked twice, on purpose: **How detailed?** on Create's first screen
+(spare · measured · rich · exhaustive), because *Read my material* writes to
+it from there, and as the **Detail** dial on the steering rail after — the
+same setting, shown two ways.
+
 **Detail** (spare → exhaustive) is the one dial that steers the *writer*
 rather than the frame: it sets how much each shot says, in four bands —
 spare (~25 words a shot: a phrase per thing), measured (~45), rich (~70:
