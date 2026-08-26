@@ -1,0 +1,290 @@
+{
+  "version": 1,
+  "name": "LTX hard-cut test — what we built",
+  "mode": "t2v",
+  "style": {
+    "look": "documentary handheld",
+    "grade": "neutral daylight grade, slight warmth",
+    "extra": ""
+  },
+  "render": {
+    "resolution": "832x480",
+    "duration": 20,
+    "fps": 24,
+    "engine": "ltx25",
+    "variant": "ltx_two",
+    "seed": -1,
+    "precision": "int8",
+    "tiledDecode": false,
+    "refImageSize": "match",
+    "outputPrefix": ""
+  },
+  "shots": [
+    {
+      "id": "b571cssr",
+      "at": 0,
+      "cutVerb": "the camera cuts to",
+      "shotType": "medium",
+      "viewpoint": "front-facing",
+      "subject": "the woman in her forties with short grey hair and a charcoal linen shirt, seated at a plain oak desk with a laptop open beside her",
+      "beats": [
+        {
+          "id": "ytv47dml",
+          "text": "looks straight into the lens",
+          "link": ""
+        },
+        {
+          "id": "nbtd716z",
+          "text": "rests both hands on the desk",
+          "link": ""
+        }
+      ],
+      "setting": "a small editing room with a matte black monitor behind her and a window of grey daylight to the left",
+      "lighting": "soft window light from the left, a dim practical lamp on the shelf behind",
+      "camera": {
+        "type": "static",
+        "amplitude": "medium",
+        "speed": "normal",
+        "target": "",
+        "secondary": "none",
+        "lens": "",
+        "height": "",
+        "framing": "centered",
+        "fx": 50,
+        "fy": 50,
+        "depth": "",
+        "custom": "",
+        "byHand": true
+      },
+      "details": "",
+      "keyframe": null,
+      "keyframeStrength": 1,
+      "continuity": "",
+      "sfx": "",
+      "dialogue": [
+        {
+          "id": "d0",
+          "speaker": "S1",
+          "identity": "the woman in her forties with short grey hair and a charcoal linen shirt",
+          "voice": "warm, unhurried voice",
+          "delivery": "says",
+          "text": "We spent the day on Motionstill Cut. First: every cut between two shots is now a real choice."
+        }
+      ]
+    },
+    {
+      "id": "hvftda67",
+      "at": 5,
+      "cutVerb": "the camera cuts to",
+      "shotType": "close-up",
+      "viewpoint": "three-quarter",
+      "subject": "the woman with short grey hair",
+      "beats": [
+        {
+          "id": "homuce7j",
+          "text": "glances at the laptop screen",
+          "link": ""
+        },
+        {
+          "id": "vblsc0l3",
+          "text": "taps the trackpad once",
+          "link": ""
+        }
+      ],
+      "setting": "the same desk, the laptop screen throwing a faint blue on her cheek",
+      "lighting": "window light from the left, the screen glow filling the shadow side",
+      "camera": {
+        "type": "static",
+        "amplitude": "medium",
+        "speed": "normal",
+        "target": "",
+        "secondary": "none",
+        "lens": "",
+        "height": "",
+        "framing": "centered",
+        "fx": 50,
+        "fy": 50,
+        "depth": "",
+        "custom": "",
+        "byHand": true
+      },
+      "details": "the screen shows a row of shot cards joined by a dashed wire",
+      "keyframe": null,
+      "keyframeStrength": 1,
+      "continuity": "",
+      "sfx": "",
+      "dialogue": [
+        {
+          "id": "d5",
+          "speaker": "S1",
+          "identity": "the woman in her forties with short grey hair and a charcoal linen shirt",
+          "voice": "warm, unhurried voice",
+          "delivery": "says",
+          "text": "Hard cut, dissolve, fade — or no cut at all, when one long take just needs another moment."
+        }
+      ]
+    },
+    {
+      "id": "eskfmkxc",
+      "at": 10,
+      "cutVerb": "the camera cuts to",
+      "shotType": "wide",
+      "viewpoint": "front-facing",
+      "subject": "the woman with short grey hair standing by the window",
+      "beats": [
+        {
+          "id": "w95hg2yr",
+          "text": "turns from the window to face the room",
+          "link": ""
+        },
+        {
+          "id": "als5g14j",
+          "text": "gestures once toward the monitor",
+          "link": ""
+        }
+      ],
+      "setting": "the editing room seen whole: desk, monitor, a coat on a hook, rain streaking the window",
+      "lighting": "flat grey daylight through the window, the monitor the only warm source",
+      "camera": {
+        "type": "static",
+        "amplitude": "medium",
+        "speed": "normal",
+        "target": "",
+        "secondary": "none",
+        "lens": "",
+        "height": "",
+        "framing": "centered",
+        "fx": 50,
+        "fy": 50,
+        "depth": "",
+        "custom": "",
+        "byHand": true
+      },
+      "details": "",
+      "keyframe": null,
+      "keyframeStrength": 1,
+      "continuity": "",
+      "sfx": "",
+      "dialogue": [
+        {
+          "id": "d10",
+          "speaker": "S1",
+          "identity": "the woman in her forties with short grey hair and a charcoal linen shirt",
+          "voice": "warm, unhurried voice",
+          "delivery": "says",
+          "text": "For LTX we write the prompt the way Lightricks asks: one paragraph, every cut named out loud, the sound carried across it."
+        }
+      ]
+    },
+    {
+      "id": "8lz00d33",
+      "at": 15,
+      "cutVerb": "the camera cuts to",
+      "shotType": "medium close-up",
+      "viewpoint": "front-facing",
+      "subject": "the woman with short grey hair, back at the desk",
+      "beats": [
+        {
+          "id": "rtiwkcjr",
+          "text": "leans in slightly",
+          "link": ""
+        },
+        {
+          "id": "p2lkuz9c",
+          "text": "gives a small nod",
+          "link": ""
+        }
+      ],
+      "setting": "the desk, the laptop now closed",
+      "lighting": "soft window light from the left",
+      "camera": {
+        "type": "static",
+        "amplitude": "medium",
+        "speed": "normal",
+        "target": "",
+        "secondary": "none",
+        "lens": "",
+        "height": "",
+        "framing": "centered",
+        "fx": 50,
+        "fy": 50,
+        "depth": "",
+        "custom": "",
+        "byHand": true
+      },
+      "details": "",
+      "keyframe": null,
+      "keyframeStrength": 1,
+      "continuity": "",
+      "sfx": "",
+      "dialogue": [
+        {
+          "id": "d15",
+          "speaker": "S1",
+          "identity": "the woman in her forties with short grey hair and a charcoal linen shirt",
+          "voice": "warm, unhurried voice",
+          "delivery": "says",
+          "text": "And if you want the cuts to be real, each one renders on its own and we join them. That was today."
+        }
+      ]
+    }
+  ],
+  "sound": {
+    "soundscape": "quiet room tone, rain against the window, the faint hum of a laptop fan",
+    "music": "",
+    "musicOff": true,
+    "silent": false
+  },
+  "frames": {
+    "first": null
+  },
+  "refs": {
+    "images": [],
+    "videos": [],
+    "audios": []
+  },
+  "ref2v": {
+    "taskType": "subject reference",
+    "subjectDefs": "",
+    "summary": "",
+    "useFullIR": true
+  },
+  "prompt": {
+    "manual": false,
+    "description": "",
+    "lastEnhancedAt": 0,
+    "alignKeyframe": true
+  },
+  "film": {
+    "enabled": false,
+    "seconds": 60,
+    "continuity": true,
+    "audio": "keep",
+    "splitAtCuts": false
+  },
+  "jobs": [],
+  "selectedShot": null,
+  "creative": {
+    "stage": "material",
+    "material": {
+      "text": ""
+    },
+    "proposal": null,
+    "answers": {},
+    "dials": {
+      "distance": 50,
+      "energy": 30,
+      "pace": 40,
+      "light": 45,
+      "sound": 55,
+      "faithfulness": 80,
+      "detail": 60
+    },
+    "pool": {
+      "beats": []
+    },
+    "soundEdited": false,
+    "takes": []
+  },
+  "exportedAt": "2026-08-25T23:44:24.938Z"
+}
