@@ -370,6 +370,7 @@ export function blankProject() {
      * a shot list — this is what they actually touched, kept separately from
      * the shot list it produces so that re-steering never loses their words. */
     creative: {
+      shotCount: 0,           // 0 = auto (Pace and written cuts decide); 1–6 = exactly that many
       stage: "material",      // material → steer → takes
       material: { text: "" },
       proposal: null,         // what the model read out of the material

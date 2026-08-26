@@ -190,6 +190,19 @@ function materialStage(p) {
         : "The native model: 4–15 s, the [Shot N] grammar its guide specifies, native dialogue. Switchable later from the title bar."),
     ),
 
+    /* How many shots. Auto lets Pace decide, or the cuts the writer wrote;
+     * a number is exact — the interview writes that many "Cut to" beats and
+     * steering makes that many shots. Ref2V and I2V follow the same rule. */
+    h("div.cr-row",
+      h("span.cr-label", "How many shots?"),
+      segmented([["0", "Auto", "Pace decides — or the cuts written into the beats"], ...[1, 2, 3, 4, 5, 6].map(n => [String(n), String(n), `Exactly ${n} shot${n === 1 ? "" : "s"}`])],
+        String(Number(creative(p).shotCount) || 0),
+        (v) => { update((draft) => { draft.creative.shotCount = Number(v) || 0; if ((draft.shots || []).some(s => (s.subject || "").trim())) applySteering(draft); }, "creative"); draw(); }),
+      h("span.hint", (Number(creative(p).shotCount) || 0)
+        ? `${creative(p).shotCount} shot${creative(p).shotCount === 1 ? "" : "s"}, each with its own Cut. Fewer than you already have keeps what you have — remove a shot with its own ✕.`
+        : "Auto: the Pace dial picks a count — and a beat written as \"Cut to close-up, …\" always starts a new shot, whatever the dial says."),
+    ),
+
     /* How much each shot says. It is asked here, on the first screen,
      * because "Read my material" writes to it — and that button is on this
      * screen, before the dial rail is ever shown. Same field as the Detail
