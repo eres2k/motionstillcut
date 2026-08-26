@@ -693,7 +693,9 @@ sentence on the background) and exhaustive (~100: materials, textures,
 weather, what only someone who was there would notice). Read my material,
 Polish and Enhance all write to it; the dial's own line says the target so
 the word counter has something to be measured against. It never rewrites
-what you typed by itself. The model invents whatever is not written, so
+what you typed by itself — once the shots are written, the dial carries a
+**✨ Rewrite N shots at "rich"** button, which runs Polish over every shot at
+the new level, as a click and not as a side effect of moving a slider. The model invents whatever is not written, so
 spare is a choice to let it.
 
 ## 11 · Deliver
