@@ -201,6 +201,8 @@ function materialStage(p) {
       h("span.hint", (Number(creative(p).shotCount) || 0)
         ? `${creative(p).shotCount} shot${creative(p).shotCount === 1 ? "" : "s"}, each with its own Cut. Fewer than you already have keeps what you have — remove a shot with its own ✕.`
         : "Auto: the Pace dial picks a count — and a beat written as \"Cut to close-up, …\" always starts a new shot, whatever the dial says."),
+    ),
+
     /* How much each shot says. It is asked here, on the first screen,
      * because "Read my material" writes to it — and that button is on this
      * screen, before the dial rail is ever shown. Same field as the Detail
