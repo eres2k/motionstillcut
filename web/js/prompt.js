@@ -20,6 +20,7 @@ import { shotTime, words } from "./util.js";
 import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENTION, NO_CUT, cutVerbFor } from "./vocab.js";
 import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS, ltxGuideTime } from "./state.js";
 import { speechWords, WORDS_PER_SECOND } from "./steer.js";
+import { stripCutPrefix, cutInBeat } from "./shotlist.js";
 /* film.js imports state.js and nothing else, so reaching for the planner here
  * is a leaf dependency rather than a cycle. The checker needs it because a
  * film's real error is never "this clip is too long" — it is where the clips
@@ -303,7 +304,9 @@ const adoptLink = (b) => {
 };
 
 export function beatsProse(shot) {
-  const beats = (shot?.beats || []).map(adoptLink).filter(b => b.text);
+  // A beat that opens with a cut phrase is compiled without it: a cut is a
+  // shot, and a "Cut to" inside a beat is a second cut the model performs.
+  const beats = (shot?.beats || []).map(adoptLink).map(b => ({ ...b, text: stripCutPrefix(b.text || "") })).filter(b => b.text);
   if (!beats.length) return "";
   let out = beats[0].text;
   for (const beat of beats.slice(1)) {
@@ -927,6 +930,15 @@ export function validate(project) {
     if (n > Math.max(1, Math.ceil(len / 2))) {
       add("warn", `Shot ${i + 1} packs ${n} beats into ${len.toFixed(1)}s. H3 renders about one beat per 2–3s — the later ones tend to be dropped.`);
     }
+  });
+
+  /* A cut inside a beat. "Cut to medium shot, the camera glides…" as a beat
+   * is a second cut the model performs inside the shot — a four-shot
+   * timeline rendered seven. The phrase is dropped from the prompt; the
+   * timeline is where a cut belongs. */
+  shots.forEach((s, i) => {
+    const n = (s.beats || []).filter(b => cutInBeat(b.text || "")).length;
+    if (n) add("warn", `Shot ${i + 1} has ${n} beat${n === 1 ? "" : "s"} that begin${n === 1 ? "s" : ""} with a cut ("Cut to …"). A cut is a shot, not an action: the phrase is left out of the prompt and the beat reads as what follows it. To cut there, add a shot with ✂ instead.`);
   });
 
   /* Speech has a speed. A shot holding more words than its seconds carry is

@@ -86,3 +86,23 @@ test("an exact shot count from the first screen outranks Pace; written cuts outr
   applySteering(p);
   assert.equal(p.shots.length, 4, "four written cuts beat a count of three");
 });
+
+/* ── A cut phrase never reaches the prompt as an action ─────── */
+import { stripCutPrefix } from "../web/js/shotlist.js";
+import { compilePrompt, validate } from "../web/js/prompt.js";
+import { newBeat } from "../web/js/state.js";
+
+test("a beat that opens with a cut is compiled without the cut, and the checker says so", () => {
+  assert.equal(stripCutPrefix("Cut to medium shot, the camera glides toward the tower"), "the camera glides toward the tower");
+  assert.equal(stripCutPrefix("looks up"), "looks up");
+  const p = blankProject();
+  p.render.duration = 10; p.render.engine = "ltx25";
+  p.shots[0].subject = "a castle"; p.shots[0].beats = [newBeat("high aerial view of the whole complex")];
+  const s2 = { ...p.shots[0], id: "s2", at: 5, beats: [newBeat("Cut to close-up, detail of the stone textures")] };
+  p.shots.push(s2);
+  const { text } = compilePrompt(p);
+  assert.ok(!/Cut to close-up/i.test(text), text);
+  assert.match(text, /Detail of the stone textures/);
+  assert.equal((text.match(/hard cut transitions/g) || []).length, 1, "one cut, from the timeline, not two");
+  assert.ok(validate(p).checks.some(c => /begins with a cut/.test(c.msg)));
+});

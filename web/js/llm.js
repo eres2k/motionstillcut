@@ -11,7 +11,7 @@
  */
 
 import { detailToWriting, DEFAULT_DIALS } from "./steer.js";
-import { splitCutBeats } from "./shotlist.js";
+import { splitCutBeats, stripCutPrefix } from "./shotlist.js";
 import { api } from "./api.js";
 import { getBlob } from "./media.js";
 import { compilePrompt } from "./prompt.js";
@@ -282,6 +282,15 @@ ${instruction ? `\nThe user also asks: ${instruction}` : ""}`,
 /* ── 3. One shot at a time ────────────────────────────────
  * The inspector's own rewrite: same rules, scoped to the selected clip, so a
  * shot can be sharpened without touching the rest of the timeline. */
+/** Beats from a rewriter, with any cut phrase removed — a model asked to
+ *  write beats will sometimes open one with "Cut to …", and that is a shot,
+ *  not a beat. */
+function cleanBeats(beats) {
+  return (Array.isArray(beats) ? beats : [])
+    .map(b => typeof b === "string" ? stripCutPrefix(b) : (b && typeof b === "object" ? { ...b, text: stripCutPrefix(b.text || "") } : b))
+    .filter(b => (typeof b === "string" ? b : b?.text || "").trim());
+}
+
 export async function polishShot(shot, index, project, instruction = "") {
   const ordered = orderedShots(project);
   const end = index + 1 < ordered.length ? ordered[index + 1].at : project.render.duration;
@@ -305,7 +314,7 @@ ${tagRules(project)}${instruction ? `\nThe user also asks: ${instruction}` : ""}
     temperature: 0.7,
     maxTokens: 900,
   });
-  return { ...data, model, ms };
+  return { ...data, beats: Array.isArray(data.beats) ? cleanBeats(data.beats) : data.beats, model, ms };
 }
 
 /* ── 4. Sound ─────────────────────────────────────────────

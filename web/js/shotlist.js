@@ -93,3 +93,14 @@ export function splitCutBeats(shots, duration) {
   }
   return out.map(s => { const { _split, ...rest } = s; return rest; });
 }
+
+/** A beat with its cut phrase removed: "Cut to medium shot, the camera
+ *  glides toward the tower" → "the camera glides toward the tower". A cut
+ *  inside a beat is a cut the model performs mid-shot — on top of the one
+ *  the shot already opens with — so the phrase never reaches the prompt. */
+export function stripCutPrefix(text) {
+  const cut = cutInBeat(text);
+  if (!cut) return String(text || "");
+  const { rest } = readFraming(cut.remainder);
+  return (rest || cut.remainder || "").trim();
+}
