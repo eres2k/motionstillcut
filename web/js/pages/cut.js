@@ -583,8 +583,26 @@ function timeline(p) {
         title: "Drag the cut",
         onmousedown: (e) => startDrag(e, s.id, shots[i - 1].at + 0.5, end - 0.5, duration),
       }));
+      if (s.cutVerb === NO_CUT) clip.classList.add("same-take");
     }
     videoTrack.appendChild(clip);
+
+    /* The seam itself: what happens between this shot and the one before,
+     * on the timeline where the cut is — the same field the Inspector row,
+     * the node view and the Canvas set. A select, because a cut has eight
+     * answers and a click should not cycle through them. */
+    if (i > 0) {
+      const same = s.cutVerb === NO_CUT;
+      const label = same ? "⟶ same take" : `✂ ${transitionLabel(s.cutVerb).replace(/ \(ask first\)/, "")}`;
+      const pick = select(TRANSITIONS, s.cutVerb || "the camera cuts to", (v) => { update(proj => { const sh = proj.shots.find(x => x.id === s.id); if (sh) sh.cutVerb = v; }, "shots"); refresh(); },
+        { class: "tl-cut-sel", title: "What happens between these two shots" });
+      videoTrack.appendChild(h("div", {
+        class: `tl-cut${same ? " same" : ""}`,
+        style: { left: pctOf(s.at) },
+        onmousedown: (e) => e.stopPropagation(),
+        onclick: (e) => e.stopPropagation(),
+      }, h("span.tl-cut-lbl", label), pick));
+    }
   });
 
   const audioTrack = h("div.tl-track.audio");

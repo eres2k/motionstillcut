@@ -362,6 +362,20 @@ button.badge:disabled { cursor: default; opacity: .7; }
 .tl-clip .grip { position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
 .tl-clip .grip:hover { background: var(--clip-sel); opacity: .55; }
 .tl-clip .grip.l { left: 0; } .tl-clip .grip.r { right: 0; }
+/* The seam between two shots: a chip on the cut with its type, and the
+ * select behind it. "Same take" draws the two clips as one piece. */
+.tl-cut { position: absolute; top: 0; transform: translateX(-50%); z-index: 2; display: flex; flex-direction: column; align-items: center; }
+.tl-cut::before { content: ""; position: absolute; top: 0; bottom: -58px; left: 50%; border-left: 1px dashed rgba(255,255,255,.35); pointer-events: none; }
+.tl-cut.same::before { border-left: 2px solid #7fb2e5; }
+.tl-cut-lbl {
+  position: relative; font-size: 9px; line-height: 12px; padding: 0 5px; margin-top: -1px;
+  background: #2a2f36; color: #dce8f4; border: 1px solid #0d0d0d; border-radius: 0 0 6px 6px; white-space: nowrap;
+  font-family: var(--mono); letter-spacing: .03em; pointer-events: none;
+}
+.tl-cut.same .tl-cut-lbl { background: #1f3550; color: #a9cdef; border-color: #35506e; }
+.tl-cut .tl-cut-sel { position: absolute; top: 0; left: 0; right: 0; height: 13px; opacity: 0; cursor: pointer; }
+.tl-cut:hover .tl-cut-lbl { filter: brightness(1.25); }
+.tl-clip.same-take { border-left-color: transparent; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .tl-playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--clip-sel); pointer-events: none; z-index: 3; }
 .tl-playhead::before {
   content: ""; position: absolute; top: 0; left: -5px;
