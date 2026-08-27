@@ -503,7 +503,7 @@ export function applySteering(draft, { pool = null } = {}) {
     /* On LTX every cut has to change the angle as well as the size — the
      * guide's "re-establish scale and angle" — so a shot that would open on
      * the same viewpoint as the one before it turns to the next one. */
-    if (ltxOne && i > 0 && (base.viewpoint || "front-facing") === (shots[i - 1].viewpoint || "front-facing")) {
+    if (ltxOne && i > 0 && (!existing[i] || (base.viewpoint || "front-facing") === (shots[i - 1].viewpoint || "front-facing"))) {
       base.viewpoint = nextAngle(shots[i - 1].viewpoint || "front-facing", i);
     }
     shots.push(base);
@@ -614,10 +614,8 @@ function steeredCamera(i, own, dials, { subjectMoves = false, ltxOne = false } =
  * than a tour: three-quarter, then low, then over the shoulder, side, high. */
 const ANGLES = ["front-facing", "three-quarter", "low-angle", "over-the-shoulder", "side", "high-angle"];
 function nextAngle(prev, i) {
-  const at = ANGLES.indexOf(prev);
-  return ANGLES[(Math.max(0, at) + 1 + (i % 2)) % ANGLES.length] === prev
-    ? ANGLES[(Math.max(0, at) + 2) % ANGLES.length]
-    : ANGLES[(Math.max(0, at) + 1 + (i % 2)) % ANGLES.length];
+  const at = Math.max(0, ANGLES.indexOf(prev));
+  return ANGLES[(at + 1 + (i % 2)) % ANGLES.length];
 }
 
 /** One line per dial saying what it just did, in the model's own words. This is
