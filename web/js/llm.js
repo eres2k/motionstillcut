@@ -15,7 +15,7 @@ import { splitCutBeats, stripCutPrefix } from "./shotlist.js";
 import { api } from "./api.js";
 import { getBlob } from "./media.js";
 import { compilePrompt } from "./prompt.js";
-import { referenceInventory, orderedShots, shotActionText, filmSpan, activeEngine } from "./state.js";
+import { referenceInventory, orderedShots, orderedDialogue, shotActionText, filmSpan, activeEngine } from "./state.js";
 import { CLIP_MAX } from "./film.js";
 import { CAMERA_TYPES, SHOT_TYPES, VIEWPOINTS } from "./vocab.js";
 
@@ -352,6 +352,47 @@ Write the two audio fields for this video. Return exactly:
     maxTokens: 700,
   });
   return { soundscape: data.overall_soundscape || "", music: data.non_diegetic_music || "", model, ms };
+}
+
+/* ── 4b. Voices ───────────────────────────────────────────
+ * "Who is (S1), and how do they sound?" is the one dialogue field nothing
+ * else writes, and the one H3 builds the voice from. One call names every
+ * speaker in the clip from what is on screen and what they say. */
+export async function voicesFor(project, instruction = "") {
+  const speakers = new Map();
+  for (const { shot, line } of orderedDialogue(project)) {
+    if (!(line.text || "").trim()) continue;
+    const id = line.speaker || "S1";
+    if (!speakers.has(id)) speakers.set(id, { identity: line.identity || "", voiceover: !!line.voiceover, lines: [], subject: shot.subject || "" });
+    speakers.get(id).lines.push(line.text.trim());
+  }
+  if (!speakers.size) throw new Error("Nobody speaks yet — write a line first.");
+  const ids = [...speakers.keys()];
+  const { data, model, ms } = await ask({
+    expect: ["voices"],
+    system: `${BASE_RULES}
+
+You are casting the voices of a short video. For every speaker id, write the phrase MiniMax H3 builds the voice from.
+Return exactly: {"voices":{${ids.map(id => `"${id}":{"identity":"…","delivery":"…"}`).join(",")}}}
+- "identity": ONE phrase, 6–16 words — who this is and how they sound: character type, age, on screen or off,
+  pitch, timbre, pace, accent. "a woman in her forties with a low, unhurried voice". Match the person on screen
+  in the subject line; an off-screen voice says so. Never a name, never a sentence about what they do.
+- "delivery": the verb and its manner for their first line — "says", "says quietly", "snaps", "replies with a laugh".
+- Two speakers must sound clearly different from each other.${instruction ? `
+The user also asks: ${instruction}` : ""}`,
+    prompt: `${projectBrief(project)}\n\nSpeakers:\n${ids.map(id => {
+      const v = speakers.get(id);
+      return `(${id})${v.voiceover ? " — off-screen voiceover" : ""}${v.identity ? ` — currently: "${v.identity}"` : ""}\n  on screen: ${v.subject || "—"}\n  says: ${v.lines.map(l => `"${l}"`).join(" / ")}`;
+    }).join("\n")}`,
+    temperature: 0.7,
+    maxTokens: 600,
+  });
+  const voices = {};
+  for (const id of ids) {
+    const v = data.voices?.[id] || {};
+    voices[id] = { identity: String(v.identity || "").trim(), delivery: String(v.delivery || "").trim() };
+  }
+  return { voices, model, ms };
 }
 
 /* ── 5. Vision: describe an attached image ────────────────

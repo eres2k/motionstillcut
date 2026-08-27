@@ -207,7 +207,12 @@ export async function renderNow({
 
   let queued;
   try {
-    queued = await api.queue(prompt, CLIENT_ID);
+    /* ComfyUI defaults to --preview-method none, and a ComfyUI started
+     * without the flag sends no frames at all. Since 0.3.x a prompt can ask
+     * for its own preview method in extra_data — so ask, and the switch on
+     * Setup is the only thing that has to be on. */
+    const wantPreviews = getSettings()?.comfy?.previews !== false;
+    queued = await api.queue(prompt, CLIENT_ID, wantPreviews ? { preview_method: "auto" } : undefined);
   } catch (err) {
     current.status = "error";
     current.error = err.message;
@@ -229,6 +234,7 @@ export async function renderNow({
     filterPromptId: current.promptId,
     onProgress: (value, max) => {
       if (!current) return;
+      current.sawProgress = true;
       current.step = value; current.steps = max || current.steps;
       current.progress = max ? value / max : 0;
       live();
@@ -239,6 +245,7 @@ export async function renderNow({
      * would otherwise leak a hundred blobs into the tab. */
     onPreview: (blob) => {
       if (!current || getSettings()?.comfy?.previews === false) return;
+      current.sawPreview = true;
       const url = URL.createObjectURL(blob);
       if (current.preview) URL.revokeObjectURL(current.preview);
       current.preview = url;

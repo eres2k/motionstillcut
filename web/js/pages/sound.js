@@ -10,7 +10,8 @@ import {
 } from "../state.js";
 import { LANGUAGES, SPEAKERS } from "../vocab.js";
 import { compilePrompt, dialogueSentence } from "../prompt.js";
-import { soundFor } from "../llm.js";
+import { soundFor, voicesFor } from "../llm.js";
+import { getHealth } from "../config.js";
 
 let root = null;
 
@@ -194,10 +195,39 @@ function castPanel(p) {
       bySpeaker.size
         ? h("div.stack-6", ...[...bySpeaker.entries()].map(([spk, lines]) => h("div",
             h("div.flex", h("span.tag", `(${spk})`), h("span.hint", `${lines.length} line${lines.length > 1 ? "s" : ""}`)),
+            h("div.hint", { style: { paddingLeft: "8px", color: firstLineOf(p, spk)?.identity ? "var(--fg-dim)" : "var(--amber)" } },
+              firstLineOf(p, spk)?.identity || "no voice described — the model will guess who this is"),
             ...lines.map(({ shot, line }) => h("div.hint", { style: { paddingLeft: "8px" } },
               h("span.faint", `Shot ${shot}: `), `"${line.text.slice(0, 60)}"`)),
           )))
         : h("div.hint", "No speaking parts yet. A clip with no dialogue is fine — just don't mention talking in the description."),
+      bySpeaker.size && getHealth().llm?.ok ? h("div.btn-row", { style: { marginTop: "8px" } },
+        h("button.btn.sm.ai", {
+          title: "Name every speaker from who is on screen and what they say — fills the \"who is (S1)\" box on each voice's first line. A voice you wrote yourself is kept.",
+          onclick: async (e) => {
+            const btn = e.currentTarget; btn.classList.add("disabled"); btn.textContent = "casting…";
+            try {
+              const { voices } = await voicesFor(getProject());
+              let filled = 0;
+              update((proj) => {
+                const seen = new Set();
+                for (const sh of proj.shots) for (const line of sh.dialogue || []) {
+                  const id = line.speaker || "S1";
+                  if (seen.has(id) || !(line.text || "").trim()) continue;
+                  seen.add(id);
+                  const v = voices[id];
+                  if (!v?.identity || (line.identity || "").trim()) continue;
+                  line.identity = v.identity;
+                  if (!(line.delivery || "").trim() && v.delivery) line.delivery = v.delivery;
+                  filled++;
+                }
+              }, "shots");
+              toast(filled ? "Voices cast" : "Nothing to fill", filled ? `${filled} speaker${filled === 1 ? "" : "s"} described.` : "Every speaker already has a voice — clear one to recast it.", "ok");
+              refresh();
+            } catch (err) { toast("Could not cast the voices", err.message, "err"); }
+            finally { btn.classList.remove("disabled"); btn.textContent = "✨ Describe the voices"; }
+          },
+        }, "✨ Describe the voices")) : null,
 
       h("div.sep"),
       h("h4.sec", "What the model expects"),

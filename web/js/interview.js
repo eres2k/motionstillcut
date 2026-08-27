@@ -68,7 +68,7 @@ export async function readMaterial(project) {
 
   const r = await api.chat({
     json: true,
-    expect: ["idea","subject","setting","beats","speaks","line","mood","dials","questions"],
+    expect: ["idea","subject","setting","beats","speaks","line","voice","mood","dials","questions"],
     mode: project.mode,
     system: `You are a director reading a creator's raw material and proposing a first pass at a video.
 The video will be made by MiniMax H3, which renders about one action beat every 2–3 seconds, with its own audio.
@@ -88,7 +88,7 @@ picture AND cite it; a description alone is not enough. Never invent a tag that 
 ${unread.length ? `${unread.map(e => e.tag).join(", ")} ${unread.length === 1 ? "is" : "are"} also attached but NOT shown to you — do not describe ${unread.length === 1 ? "it" : "them"}.\n` : ""}` : ""}
 
 Return exactly:
-{"idea":"…","subject":"…","setting":"…","beats":["…","…"],"speaks":false,"line":"","mood":"…",
+{"idea":"…","subject":"…","setting":"…","beats":["…","…"],"speaks":false,"line":"","voice":"","mood":"…",
  "dials":{"distance":0-100,"energy":0-100,"pace":0-100,"light":0-100,"sound":0-100,"faithfulness":0-100},
  "questions":[{"id":"…","ask":"…","options":["…","…","…"]}]}
 
@@ -97,6 +97,10 @@ Return exactly:
 - "setting" is where it happens, in a few words.
 - "beats" are what happens, in order, present tense, each a short clause. Give ${has.text ? "as many as the idea supports" : "two or three"}, never more than six.
 - "speaks": true only if the material implies someone talking. "line" is the exact words if so.
+- "voice": who speaks and how they sound, when "speaks" is true — the model builds the voice from this
+  alone. One phrase: character type, age, on screen or not, pitch, timbre, pace, accent —
+  "a woman in her forties with a low, unhurried voice", "an off-screen narrator, older man, warm and dry".
+  Empty when nobody speaks.
 - "dials" are your reading of the material: distance (far → close), energy (still → restless),
   pace (one long breath → quick), light (soft → hard), sound (silent → full mix),
   faithfulness (loose → keep the pictures exactly). Pick what the material asks for, not the middle.
@@ -134,6 +138,7 @@ Answer with JSON only.`,
     beats: (Array.isArray(d.beats) ? d.beats : []).map(b => String(typeof b === "string" ? b : b?.text || "").trim()).filter(Boolean).slice(0, 6),
     speaks: !!d.speaks,
     line: String(d.line || "").trim(),
+    voice: String(d.voice || "").trim(),
     mood: String(d.mood || "").trim(),
     dials: {
       distance: clampDial(d.dials?.distance, DEFAULT_DIALS.distance),

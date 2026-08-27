@@ -238,6 +238,10 @@ function renderPanel(p) {
               ? `ComfyUI ${health.comfy.version || ""} on ${health.comfy.device || "?"}${health.comfy.vramFreeGB ? ` · ${health.comfy.vramFreeGB} GB free` : ""}`
               : "ComfyUI is not reachable — Setup ▸ ComfyUI. Downloading the JSON works regardless."),
         job?.error ? h("div.note.bad", { style: { marginTop: "8px" } }, job.error) : null,
+        running && job.sawProgress && (job.step || 0) >= 2 && !job.sawPreview && getSettings()?.comfy?.previews !== false
+          ? h("div.hint", { style: { marginTop: "6px" } },
+              "No preview frames are arriving. The render asks ComfyUI for them per prompt (preview_method: auto) — a ComfyUI older than that, or one that cannot decode this model's latent, sends none; the bar still moves and the clip still lands.")
+          : null,
         job?.errorKind === "save-permission" && !running ? h("div.btn-row", { style: { marginTop: "6px" } },
           h("button.btn.sm", { onclick: () => explainFailure(p, job) }, "What happened, and the way around it")) : null,
         job?.saveError ? h("div.note.bad", { style: { marginTop: "8px" } }, `Not copied to your folder: ${job.saveError}`) : null,

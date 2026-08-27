@@ -291,6 +291,7 @@ async function runRead(btn, p) {
         setting: proposal.setting,
         beats: proposal.beats,
         speech: proposal.speaks ? proposal.line : "",
+        voice: proposal.speaks ? proposal.voice : "",
         extra: {},
       };
       draft.creative.dials = { ...DEFAULT_DIALS, ...proposal.dials };
@@ -339,9 +340,16 @@ function writeAnswers(draft, { fresh = false } = {}) {
   if (!draft.shots?.length) draft.shots = [first];
   if (a.speech?.trim()) {
     const target = draft.shots[0];
+    /* Who is speaking is what H3 builds the voice from; a line with no
+     * identity compiles to a bare "(S1) says" and the model guesses a
+     * voice. The interview proposes one; failing that, the subject is who
+     * is on screen, which is at least a person rather than nobody. */
+    const voice = (a.voice || "").trim() || (a.subject || "").trim();
+    const prev = target.dialogue?.[0] || {};
     target.dialogue = [{
-      id: (target.dialogue?.[0]?.id) || `d-${Math.random().toString(36).slice(2, 8)}`,
-      speaker: "S1", language: "English", text: a.speech.trim(), voiceover: false, note: "",
+      id: prev.id || `d-${Math.random().toString(36).slice(2, 8)}`,
+      speaker: "S1", language: "English", text: a.speech.trim(), voiceover: /off-screen|narrat|voiceover/i.test(voice), note: "",
+      identity: voice, delivery: prev.delivery || "",
     }];
   } else {
     for (const shot of draft.shots) shot.dialogue = [];
@@ -427,6 +435,13 @@ function questionCards(p) {
         speaking ? h("input", {
           type: "text", value: a.speech, placeholder: "the exact words",
           oninput: (e) => setAnswer("speech", e.target.value),
+          onchange: () => draw(),
+        }) : null,
+        speaking ? h("input", {
+          type: "text", value: a.voice || "", style: { marginTop: "6px" },
+          placeholder: "who is speaking, and how do they sound — \"a woman in her forties, low and unhurried\"",
+          title: "H3 builds the voice from this phrase: character type, age, on screen or not, pitch, timbre, pace, accent.",
+          oninput: (e) => setAnswer("voice", e.target.value),
           onchange: () => draw(),
         }) : null,
       )));
