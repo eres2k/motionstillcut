@@ -196,7 +196,7 @@ function askDirector(request = "", runner = null) {
 }
 
 /* ── Keyboard ─────────────────────────────────────────────── */
-const PAGE_KEYS = { "`": "create", 0: "simple", 1: "media", 2: "cut", 3: "sound", 4: "deliver", 5: "library", 6: "setup", 9: "projects" };
+const PAGE_KEYS = { "`": "create", 0: "simple", 1: "media", 2: "library", 3: "cut", 4: "sound", 5: "deliver", 6: "setup", 9: "projects" };
 
 function onKey(e) {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
@@ -294,10 +294,10 @@ function installCommands() {
     { id: "page.create",  group: "Go to", label: "Create — material, steering, takes", hint: "`", keywords: ["guided", "start", "new", "idea"], run: go("create") },
     { id: "page.simple",  group: "Go to", label: "Simple node canvas", hint: "0", keywords: ["node", "easy", "quick"], run: go("simple") },
     { id: "page.media",   group: "Go to", label: "Media pool",  hint: "1", run: go("media") },
-    { id: "page.cut",     group: "Go to", label: "Cut",         hint: "2", run: go("cut") },
-    { id: "page.sound",   group: "Go to", label: "Sound",       hint: "3", run: go("sound") },
-    { id: "page.deliver", group: "Go to", label: "Deliver",     hint: "4", run: go("deliver") },
-    { id: "page.library", group: "Go to", label: "Library — every render and its prompt", hint: "5", keywords: ["history", "compare", "rated"], run: go("library") },
+    { id: "page.cut",     group: "Go to", label: "Cut",         hint: "3", run: go("cut") },
+    { id: "page.sound",   group: "Go to", label: "Sound",       hint: "4", run: go("sound") },
+    { id: "page.deliver", group: "Go to", label: "Deliver",     hint: "5", run: go("deliver") },
+    { id: "page.library", group: "Go to", label: "Library — every render and its prompt", hint: "2", keywords: ["history", "compare", "rated"], run: go("library") },
     { id: "page.setup",   group: "Go to", label: "Setup",       hint: "6", run: go("setup") },
 
     /* No "switch to T2V" any more — the mode is what the media says it is. The

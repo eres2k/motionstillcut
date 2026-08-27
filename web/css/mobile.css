@@ -100,6 +100,7 @@
   /* Icons carry the page bar; the words were only ever a courtesy. */
   .pagebar { gap: 0; }
   .pagebar .page-btn { min-width: 0; flex: 1; padding: 2px 2px; font-size: 9px; letter-spacing: .04em; }
+  .pagebar .pagebar-gap { width: 8px; flex: 0 0 8px; }
   .pagebar .page-btn svg { width: 19px; height: 19px; }
   .pagebar .corner { position: static; margin-left: 2px; }
   .pagebar .corner .btn.record { padding: 0 10px; }
