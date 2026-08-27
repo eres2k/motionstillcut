@@ -197,8 +197,8 @@ function renderPanel(p) {
         : running && job.preview
           ? h("img.live", { src: job.preview, alt: "render preview" })
           : h("div.empty", h("div.big", running ? "◐" : "▣"),
-              h("div", running ? "Rendering…" : "Nothing rendered yet."),
-              h("div.hint", { style: { marginTop: "6px" } }, statusLine || (running ? "" : "Render sends this timeline straight to ComfyUI."))),
+              h("div.t", running ? "Rendering…" : "Nothing rendered yet"),
+              h("div.hint", { style: { marginTop: "6px" } }, statusLine || (running ? "" : "Render sends this timeline straight to ComfyUI; the clip plays here when it lands."))),
     ),
   );
 
@@ -426,9 +426,10 @@ function filmPanel(p) {
               h("a.btn.sm", { href: api.filmUrl(filmRun.assembled.id), download: `${filmRun.assembled.name}.mp4` }, "⬇ Download")),
           )
         : null,
-      !on ? h("div", { style: { padding: "12px 10px" } },
-        h("div.hint", `One clip is ${H3_DURATION.min}–${H3_DURATION.max} seconds because that is what H3 generates — past it the model repeats itself. `
-          + `Tick the box to write something longer and have it cut into clips that each fit.`)) : null,
+      !on ? h("div.empty-state.tight",
+        h("div.hint", ltx
+          ? `LTX-2.5 renders up to ${LTX25_DURATION.max}s in one go. Tick the box for something longer, or to render every hard cut as its own clip.`
+          : `One clip is ${H3_DURATION.min}–${H3_DURATION.max}s because that is what H3 generates — past it the model repeats itself. Tick the box to write something longer and have it cut into clips that each fit.`)) : null,
     ),
   );
 }
@@ -580,24 +581,25 @@ function queuePanel() {
       }, "Clear finished") : null,
     ),
     h("div.bd",
-      h("div", { style: { padding: "9px 10px", borderBottom: "1px solid var(--line)" } },
+      running || waiting ? h("div", { style: { padding: "9px 10px", borderBottom: "1px solid var(--line)" } },
         h("div.btn-row",
           running
             ? h("button.btn.wide.disabled", {}, `Running — ${queueStatus || "…"}`)
             : h("button.btn.wide.record", {
-                class: `btn wide record${waiting ? "" : " disabled"}`,
-                title: waiting ? "Render everything waiting, in order" : "Nothing is waiting",
+                title: "Render everything waiting, in order",
                 onclick: () => runTheQueue(),
-              }, waiting ? `▶ Run ${waiting} render${waiting === 1 ? "" : "s"}` : "Nothing queued"),
+              }, `▶ Run ${waiting} render${waiting === 1 ? "" : "s"}`),
         ),
         h("div.hint", { style: { marginTop: "6px" } },
           "A queued clip is a snapshot — carry on editing and what runs is still what you queued. "
           + "The files it points at are not copied, so removing a picture from the pool before its render runs will fail that one."),
-      ),
+      ) : null,
       items.length
         ? h("div", { style: { padding: "8px 10px" } }, ...items.map(row))
-        : h("div", { style: { padding: "12px 10px" } },
-            h("div.hint", "Empty. ＋ Queue here, on the canvas's Render node, or at the end of Create.")),
+        : h("div.empty-state",
+            h("div.ico", "≡"),
+            h("div.t", "Nothing queued"),
+            h("div.hint", "＋ Queue puts a snapshot of this clip in line — here, on the canvas's Render node, or at the end of Create.")),
     ),
   );
 }
@@ -632,7 +634,7 @@ async function runTheQueue() {
 
 function historyStrip(p) {
   const jobs = p.jobs || [];
-  if (!jobs.length) return h("div", { style: { padding: "10px" } }, h("div.hint", "Finished renders land here."));
+  if (!jobs.length) return h("div.history-empty", h("div.hint", "Finished renders land here, newest first."));
   return h("div", { style: { flex: "0 0 auto", maxHeight: "168px", overflow: "auto", borderTop: "1px solid var(--line)" } },
     ...jobs.map(j => h("div.job",
       h("div.top",
@@ -682,23 +684,20 @@ function workflowPanel(p) {
     ),
     h("div.bd.pad",
       error ? h("div.note.bad", error) : null,
-      built ? h("div", { style: { marginBottom: "9px" } },
-        built.meta.engine === "ltx25" ? h("div.hint.mono", "engine: LTX-2.5 (experimental)") : null,
-        h("div.hint.mono", `${built.meta.dit}`),
-        built.meta.lora ? h("div.hint.mono", `+ ${built.meta.lora}`) : null,
-        h("div.hint.mono", `${built.meta.sampler} · ${built.meta.scheduler} · ${built.meta.steps} steps · seed ${built.meta.seed}`),
-        h("div.hint.mono",
-          (built.meta.shiftVideo != null ? `shift ${built.meta.shiftVideo}/${built.meta.shiftAudio}` : `${built.meta.stages === 2 ? "two-stage · 2× latent upscale" : "single-stage"}`)
+      built ? h("div.kv", { style: { marginBottom: "10px" } },
+        h("span.k", "engine"), h("span.v", built.meta.engine === "ltx25" ? "LTX-2.5 (experimental)" : "MiniMax H3"),
+        h("span.k", "model"), h("span.v", built.meta.dit),
+        built.meta.lora ? h("span.k", "lora") : null, built.meta.lora ? h("span.v", built.meta.lora) : null,
+        h("span.k", "sampling"), h("span.v", `${built.meta.sampler} · ${built.meta.scheduler} · ${built.meta.steps} steps`
+          + (built.meta.shiftVideo != null ? ` · shift ${built.meta.shiftVideo}/${built.meta.shiftAudio}` : ` · ${built.meta.stages === 2 ? "two-stage, 2× latent upscale" : "single-stage"}`)
           + (built.meta.tiledDecode ? " · tiled decode" : "")),
-        built.meta.guides?.length ? h("div.hint.mono",
-          `pins: ${built.meta.guides.map(g => `${g.at}s@${g.strength}`).join(" · ")}`) : null,
-        built.meta.droppedPins ? h("div.hint.bad",
-          `${built.meta.droppedPins} pin${built.meta.droppedPins === 1 ? "" : "s"} dropped — over the ${LTX_MAX_ANCHORS}-guide cap or landing on an already-pinned frame`) : null,
-        h("div.hint", { style: { marginTop: "3px" } },
-          built.meta.stockNodesOnly === false
-            ? `core + LTX-2 AV nodes — ${built.meta.nodeTypes.length} node types`
-            : `stock nodes only — ${built.meta.nodeTypes.length} node types`),
+        h("span.k", "seed"), h("span.v", String(built.meta.seed)),
+        built.meta.guides?.length ? h("span.k", "pins") : null,
+        built.meta.guides?.length ? h("span.v", built.meta.guides.map(g => `${g.at}s @ ${g.strength}`).join(" · ")) : null,
+        h("span.k", "nodes"), h("span.v", `${nodeCount} · ${built.meta.nodeTypes.length} types · ${built.meta.stockNodesOnly === false ? "core + LTX-2 AV" : "stock only"}`),
       ) : null,
+      built?.meta.droppedPins ? h("div.hint.bad", { style: { marginBottom: "8px" } },
+        `${built.meta.droppedPins} pin${built.meta.droppedPins === 1 ? "" : "s"} dropped — over the ${LTX_MAX_ANCHORS}-guide cap or landing on an already-pinned frame`) : null,
 
       built?.meta.inputs?.length ? h("div", { style: { marginBottom: "9px" } },
         h("h4.sec", "Input files"),
@@ -720,8 +719,8 @@ function workflowPanel(p) {
         h("b", "No LTX-2.5 core support: "),
         "this ComfyUI's CLIPLoader has no \"ltxv\" type, so the Gemma 4 encoder would load as a plain chat model and prompt encoding fails. Update ComfyUI.") : null,
 
-      h("h4.sec", "API-format graph"),
-      h("pre.code", { style: { maxHeight: "46vh" } }, json.length > 40000 ? `${json.slice(0, 40000)}\n… (${json.length} chars total — download for the whole graph)` : json),
+      more(`API-format graph · ${(json.length / 1024).toFixed(0)} KB`,
+        h("pre.code", { style: { maxHeight: "46vh" } }, json.length > 40000 ? `${json.slice(0, 40000)}\n… (${json.length} chars total — download for the whole graph)` : json)),
     ),
   );
 }
