@@ -97,3 +97,36 @@ test("on LTX-2.5 dialogue is quoted prose with the voice named, no tags", () => 
   assert.match(text, /The woman with the short grey hair says in a warm, unhurried voice: "We cut it four ways"\./);
   assert.match(text, /The woman with the short grey hair says: "And every cut is real"\./);
 });
+
+/* ── Cuts LTX-2.5 actually renders ──────────────────────────
+ * A six-shot argument came back from LTX with no cut at all: every shot was
+ * front-facing, every shot carried the same "shakes slightly while panning
+ * right", and every cut was the identical clause. To the model that is one
+ * take. */
+test("on LTX-2.5 the second hard cut is worded the guide's other way", () => {
+  const p = three();
+  p.render.engine = "ltx25";
+  const { text } = compilePrompt(p);
+  assert.match(text, /A hard cut transitions to a close-up shot/);
+  assert.match(text, /Another hard cut jumps to a medium shot/);
+  assert.equal(cutVerbFor("the camera cuts to", "ltx25", 0), "a hard cut transitions to");
+  assert.equal(cutVerbFor("the camera cuts to", "ltx25", 1), "another hard cut jumps to");
+  assert.equal(cutVerbFor("the camera cuts to", "ltx25", 2), "a hard cut transitions to");
+  assert.equal(cutVerbFor("the camera cuts to", "minimax", 1), "the camera cuts to");
+});
+
+test("on LTX-2.5 same angle and same move on every shot is flagged as one take", () => {
+  const p = three();
+  p.render.engine = "ltx25";
+  for (const s of p.shots) s.camera = { ...s.camera, type: "handheld", speed: "fast", secondary: "pan right" };
+  const msgs = () => validate(p).checks.map(c => c.msg);
+  assert.ok(msgs().some(m => /one continuous take/.test(m)), msgs().join("\n"));
+  p.shots[1].viewpoint = "over-the-shoulder";
+  assert.ok(msgs().some(m => /runs through every cut/.test(m)));
+  assert.ok(!msgs().some(m => /one continuous take/.test(m)));
+  p.shots[1].camera.type = "static"; p.shots[1].camera.secondary = "none";
+  assert.ok(!msgs().some(m => /runs through every cut|one continuous take|All 3 shots/.test(m)), msgs().join("\n"));
+  p.render.engine = "minimax";
+  p.shots[1].viewpoint = "front-facing";
+  assert.ok(!msgs().some(m => /continuous take|runs through/.test(m)), "MiniMax reads [Shot N] markers, not prose");
+});

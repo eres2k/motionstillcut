@@ -187,7 +187,13 @@ export const TRANSITIONS = [
  * verb becomes that phrase on the LTX engine; a dissolve or fade keeps its
  * own name, since those are different pictures. MiniMax keeps the guide's. */
 export const LTX_HARD_CUT = "a hard cut transitions to";
-export const cutVerbFor = (verb, engine) => {
+/* The guide's own multi-shot example does not say "a hard cut transitions
+ * to" twice in a row — its second cut is "Another hard cut jumps to". Six
+ * identical clauses in one paragraph read as one formula the model skims;
+ * the guide's alternation keeps every cut a separate event. `nth` is how many
+ * hard cuts precede this one. */
+export const LTX_HARD_CUT_AGAIN = "another hard cut jumps to";
+export const cutVerbFor = (verb, engine, nth = 0) => {
   const v = verb || "the camera cuts to";
   if (engine !== "ltx25" || v === NO_CUT) return v;
   // docs.ltx.io, "Multi-shot prompts": name the transition in natural
@@ -196,7 +202,7 @@ export const cutVerbFor = (verb, engine) => {
   if (/dissolve/i.test(v)) return "the image dissolves into";
   if (/fade/i.test(v)) return "the image fades into";
   if (/transitions/i.test(v)) return "the view cuts to";
-  return LTX_HARD_CUT;
+  return nth % 2 === 1 ? LTX_HARD_CUT_AGAIN : LTX_HARD_CUT;
 };
 export const transitionLabel = (v) => (TRANSITIONS.find(t => t[0] === (v || "the camera cuts to")) || TRANSITIONS[0])[1];
 

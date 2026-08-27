@@ -163,14 +163,28 @@ export async function breakdown(idea, project, shotCount = 0) {
    * happening in it. */
   const isFilm = !!project.film?.enabled;
   const duration = isFilm ? filmSpan(project) : project.render.duration;
-  const suggested = shotCount || Math.max(1, Math.min(isFilm ? 24 : 6, Math.round(duration / (isFilm ? 6 : 5))));
+  /* LTX-2.5 reads all its cuts from one paragraph, and Lightricks' guide is
+   * firm that 2–4 shots is the working range: a fifth shot takes its seconds
+   * out of the others and the model stops cutting and starts blending. A
+   * film that renders every cut as its own clip is not bound by that. */
+  const ltx = activeEngine(project) === "ltx25";
+  const ltxOneRender = ltx && !(isFilm && project.film?.splitAtCuts);
+  const ceiling = isFilm ? 24 : ltxOneRender ? 4 : 8;
+  const suggested = Math.min(ceiling, shotCount || Math.max(1, Math.min(isFilm ? 24 : ltxOneRender ? 4 : 6, Math.round(duration / (isFilm ? 6 : ltxOneRender ? 7 : 5)))));
   const { data, model, ms } = await ask({
     expect: ["shots"],
     system: `${BASE_RULES}
 
 You are breaking an idea into a shot list for a ${duration}-second ${isFilm ? "film" : "clip"}.
 Return: {"shots":[{"at":0,"shotType":"medium","viewpoint":"front-facing","subject":"…","beats":["…","…"],"setting":"…","lighting":"…","camera":{"type":"push in","amplitude":"small","speed":"slow","target":"…"},"details":"…"}]}
-- Exactly ${suggested} shots unless the idea clearly needs a different number (never more than ${isFilm ? 24 : 8}).
+- Exactly ${suggested} shots unless the idea clearly needs a different number (never more than ${ceiling}).${ltxOneRender ? `
+- This renders as ONE generation on LTX-2.5, which reads its cuts from prose. A cut only lands when the new shot is visibly a different
+  shot: EVERY cut must change the shot scale AND the viewpoint (viewpoints: ${VIEWPOINTS.map(v => v[0]).join(", ")}). Two consecutive
+  shots never share a viewpoint. "creative angles" means low-angle, over-the-shoulder, side, high-angle — not front-facing six times.
+- The camera move belongs to ONE shot. Never give consecutive shots the same camera type; the same continuous move on every shot
+  (a pan right in all of them) reads as one unbroken take and the model drops the cuts. Most shots should be "static"; give at most
+  one or two shots a move.
+- Give each shot at least ${Math.max(3, Math.floor(duration / Math.max(1, suggested)) - 1)} seconds so it registers before the next cut.` : ""}
 - "at" is seconds from the start; the first is always 0 and they strictly increase, all inside ${duration} s.
 - Give each shot at least 2 seconds${isFilm ? ` and at most ${CLIP_MAX}` : ""}. A cut must introduce new information.${isFilm ? `
 - This is rendered as several clips of at most ${CLIP_MAX} s, broken at YOUR cut times: a run of shots is packed into one clip until the next
@@ -248,7 +262,7 @@ export async function enhance(project, { instruction = "", useVision = true } = 
 You are rewriting a draft into the final MiniMax H3 prompt.
 Return exactly: ${schema}
 - The description field is ${budget}, one flowing paragraph that ${activeEngine(project) === "ltx25"
-    ? "keeps every cut named in prose EXACTLY as given (\"A hard cut transitions to…\", \"The image dissolves into…\") with the audio continuity stated after each — no [Shot N] markers, no timestamps, no field labels."
+    ? "keeps every cut named in prose EXACTLY as given (\"A hard cut transitions to…\", \"Another hard cut jumps to…\", \"The image dissolves into…\") with the audio continuity stated after each — no [Shot N] markers, no timestamps, no field labels. At every cut the SAME person is re-identified with the SAME words: pick one identifier per person in the first shot (\"the woman in the charcoal turtleneck\") and repeat it byte-for-byte after every cut — a colour, fabric or garment that changes from shot to shot is a second person to the model. The set stays one set: the same furniture, the same lamp, the same objects in every shot; never add props (stones, cups, papers) the draft does not hold. The camera move of each shot stays exactly the shot it was given — never copy one shot's move into the others."
     : "keeps the [Shot N] markers and their cut timestamps EXACTLY as given. A single-shot clip still opens with [Shot 1] and carries no timestamp."}
 - Keep every concrete detail the draft gives: names, wardrobe, props, locations, quoted dialogue,
   camera moves and their amplitude/speed. Add only what is implied. Invent no new camera motion.

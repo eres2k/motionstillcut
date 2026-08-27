@@ -339,6 +339,19 @@ function ltxSubjectRef(subject, project) {
   return `the same ${phrase(subject).replace(/^(a|an)\s+/i, "")}`;
 }
 
+/** How many plain hard cuts precede shot `index` — dissolves, fades and
+ *  same-take rows do not count, they are not hard cuts. */
+function hardCutsBefore(project, index) {
+  const shots = orderedShots(project);
+  let n = 0;
+  for (let i = 1; i < index && i < shots.length; i++) {
+    const v = shots[i].cutVerb || "the camera cuts to";
+    if (v === NO_CUT || /dissolve|fade|transitions/i.test(v)) continue;
+    n++;
+  }
+  return n;
+}
+
 export function shotProse(shot, index, project, opts = {}) {
   const first = index === 0;
   /* Which speakers have already been introduced. A caller with no shot list —
@@ -364,7 +377,7 @@ export function shotProse(shot, index, project, opts = {}) {
         : `${article(shotType)} ${shotType} shot, ${viewpoint}`)
     : continuesTake(shot, index)
       ? `without a cut, the camera reframes to ${article(shotType)} ${shotType} shot, ${viewpoint}`
-      : `${cutVerbFor(shot.cutVerb, activeEngine(project))} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
+      : `${cutVerbFor(shot.cutVerb, activeEngine(project), hardCutsBefore(project, index))} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
 
   /* I2V opens FROM the picture. §3.1: "The description should first establish
    * the style, subjects, composition, and scene anchors in the image, then
@@ -1003,6 +1016,27 @@ export function validate(project) {
      * exceed 30 s, but a hand-edited or imported project can. */
     const cuts = shotMarkers(shots)[shots.length - 1] || 1;
     if (cuts > 4) add("warn", `${cuts} shots in one LTX-2.5 generation. Lightricks' guide prefers 2–4 — more cuts need clearer, shorter beats per shot, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+    /* — Cuts that look like one take —
+     * LTX reads a cut out of the prose only when the next shot is visibly a
+     * different shot. Six shots that are all front-facing with the same pan
+     * stamped into each one is, to the model, a single take with a camera
+     * that keeps panning; it renders no cut, or a blend. The guide asks that
+     * every cut re-establish scale AND angle, and that a continuous move
+     * not run through the cut. */
+    if (cuts >= 3) {
+      const cutRows = shots.filter((s, i) => i > 0 && s.cutVerb !== NO_CUT);
+      const camKey = (s) => cameraSentence(s.camera || {});
+      const moving = cutRows.filter(s => camKey(s) !== "The camera remains static.");
+      const sameCam = moving.length === cutRows.length && new Set(cutRows.map(camKey)).size === 1;
+      const sameAngle = new Set(shots.map(s => s.viewpoint || "front-facing")).size === 1;
+      if (sameCam && sameAngle) {
+        add("warn", `Every shot is ${shots[0].viewpoint || "front-facing"} with the same camera move ("${camKey(cutRows[0]).replace(/\.$/, "")}"). LTX-2.5 reads that as one continuous take and drops the cuts — change the angle at every cut, keep the move to one shot, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+      } else if (sameCam) {
+        add("warn", `The same camera move runs through every cut ("${camKey(cutRows[0]).replace(/\.$/, "")}"). A move that continues across a cut tells LTX-2.5 it is one take — make the other shots static, or give each its own move.`);
+      } else if (sameAngle) {
+        add("warn", `All ${shots.length} shots are ${shots[0].viewpoint || "front-facing"}. A cut LTX-2.5 honours changes the angle as well as the scale — vary the viewpoint (low-angle, over-the-shoulder, side) at each cut.`);
+      }
+    }
     if (duration > LTX25_DURATION.max) {
       add("err", `A ${duration}s clip is past LTX-2.5's ${LTX25_DURATION.max}s window.`);
     } else if (duration < LTX25_DURATION.min) {
