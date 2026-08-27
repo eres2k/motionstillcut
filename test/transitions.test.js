@@ -130,3 +130,30 @@ test("on LTX-2.5 same angle and same move on every shot is flagged as one take",
   p.shots[1].viewpoint = "front-facing";
   assert.ok(!msgs().some(m => /continuous take|runs through/.test(m)), "MiniMax reads [Shot N] markers, not prose");
 });
+
+/* The Create page's Pace dial, not the LLM, decides how many shots a 30 s
+ * piece gets — and it gave LTX six, all front-facing, all "shakes slightly
+ * while panning right", which the model rendered as one take. */
+test("Create's steering on a single LTX-2.5 render: at most 4 shots, a new angle at every cut, no move repeated across a cut", async () => {
+  const { applySteering, DEFAULT_DIALS } = await import("../web/js/steer.js");
+  const { cameraSentence } = await import("../web/js/prompt.js");
+  const make = (engine) => {
+    const p = blankProject();
+    p.render.engine = engine; p.render.duration = 30;
+    p.creative.dials = { ...DEFAULT_DIALS, pace: 85, energy: 85 };
+    p.creative.pool = { beats: ["gestures at the air", "counters with a nod", "both move to the centre", "her eyes light up", "he leans in with a smirk", "they both laugh"] };
+    p.shots[0].subject = "a woman in a sleek turtleneck and a man in a structured blazer";
+    applySteering(p);
+    return p;
+  };
+  const ltx = make("ltx25");
+  assert.ok(ltx.shots.length <= 4 && ltx.shots.length >= 2, `${ltx.shots.length} shots`);
+  for (let i = 1; i < ltx.shots.length; i++) {
+    assert.notEqual(ltx.shots[i].viewpoint, ltx.shots[i - 1].viewpoint, `shot ${i + 1} repeats the angle`);
+    assert.notEqual(cameraSentence(ltx.shots[i].camera), cameraSentence(ltx.shots[i - 1].camera), `shot ${i + 1} repeats the move`);
+  }
+  assert.ok(!validate(ltx).checks.some(c => /one continuous take|runs through every cut|All \d shots are/.test(c.msg)));
+  const h3 = make("minimax");
+  assert.equal(h3.shots.length, 6, "H3 keeps the [Shot N] ceiling of six");
+  assert.notEqual(cameraSentence(h3.shots[1].camera), cameraSentence(h3.shots[0].camera), "the mirrored shot flips its pan too");
+});

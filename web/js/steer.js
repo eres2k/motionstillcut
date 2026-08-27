@@ -18,7 +18,7 @@
  * as it did.
  */
 
-import { newShot, newBeat, orderedShots, DURATION_FRAMES, H3_DURATION } from "./state.js";
+import { newShot, newBeat, orderedShots, DURATION_FRAMES, H3_DURATION, activeEngine } from "./state.js";
 import { GRADES } from "./vocab.js";
 import { clamp } from "./util.js";
 import { cutInBeat, readFraming } from "./shotlist.js";
@@ -150,7 +150,7 @@ export function energyToCamera(v, { subjectMoves = false } = {}) {
 }
 
 /* ── Pace → how much happens, and how often it cuts ───────── */
-export function paceToStructure(v, durationSeconds, beatCount = 0) {
+export function paceToStructure(v, durationSeconds, beatCount = 0, { maxShots = 6 } = {}) {
   // One beat per 2–3 s is the model's real throughput; the top of the dial
   // pushes to the edge of it rather than past it, because past it beats are
   // silently dropped and the clip looks *emptier*, not busier.
@@ -158,7 +158,10 @@ export function paceToStructure(v, durationSeconds, beatCount = 0) {
   // How many beats this duration has *room* for at this pace.
   const room = clamp(Math.round(durationSeconds / secondsPerBeat), 1, 12);
   // Cuts start appearing in the top half and never go under 3 s apart.
-  const shots = v < 45 ? 1 : clamp(Math.floor(durationSeconds / (9 - (v / 100) * 5)), 1, 6);
+  // `maxShots` is the engine's ceiling: six for H3's [Shot N] markers, four
+  // on a single LTX-2.5 render, which reads its cuts from prose and stops
+  // cutting past four (Lightricks' guide: 2–4 shots per generation).
+  const shots = v < 45 ? 1 : clamp(Math.floor(durationSeconds / (9 - (v / 100) * 5)), 1, maxShots);
   // What the creator wrote always wins over what the dial would have picked:
   // a dial may warn that a clip is crowded, it may never quietly bin a beat.
   const needsSeconds = beatCount ? Math.ceil(beatCount * secondsPerBeat) : 0;
@@ -450,7 +453,12 @@ export function applySteering(draft, { pool = null } = {}) {
    * Pace keeps its say over camera, timing and everything else. */
   const segments = cutSegments(beatPool);
   const authoredCuts = segments.length > 1;
-  const structure = paceToStructure(dials.pace, duration, beatPool.length);
+  /* One LTX-2.5 render reads every cut out of one paragraph, and a cut only
+   * lands there when the next shot is visibly a different shot: a new angle,
+   * and not the same camera move running on through it. Six front-facing
+   * shots that all pan right came back from LTX as one take. */
+  const ltxOne = activeEngine(draft) === "ltx25" && !(draft.film?.enabled && draft.film?.splitAtCuts);
+  const structure = paceToStructure(dials.pace, duration, beatPool.length, { maxShots: ltxOne ? 4 : 6 });
   void distanceToShot(dials.distance);   // the clip-wide reading; each shot resolves its own below
   const subjectMoves = MOVES_RE.test(beatPool.join(" ") || orderedShots(draft).map(s => (s.beats || []).map(b => b.text).join(" ")).join(" "));
 
@@ -490,15 +498,13 @@ export function applySteering(draft, { pool = null } = {}) {
      * dial has no business overwriting it — the same rule the pace dial
      * follows about beats. It is released explicitly, never silently. */
     if (!base.camera?.byHand) {
-      base.camera = {
-        ...base.camera,
-        ...energyToCamera(own.energy, { subjectMoves }),
-        // Alternate the horizontal moves so a multi-shot clip doesn't arc the
-        // same way three times. A shot steering itself is left pointing where
-        // its own dial put it.
-        ...(i % 2 === 1 && own.energy === dials.energy ? mirrorMove(energyToCamera(own.energy, { subjectMoves })) : {}),
-        custom: "",
-      };
+      base.camera = { ...base.camera, ...steeredCamera(i, own, dials, { subjectMoves, ltxOne }), custom: "" };
+    }
+    /* On LTX every cut has to change the angle as well as the size — the
+     * guide's "re-establish scale and angle" — so a shot that would open on
+     * the same viewpoint as the one before it turns to the next one. */
+    if (ltxOne && i > 0 && (base.viewpoint || "front-facing") === (shots[i - 1].viewpoint || "front-facing")) {
+      base.viewpoint = nextAngle(shots[i - 1].viewpoint || "front-facing", i);
     }
     shots.push(base);
   }
@@ -538,12 +544,7 @@ export function applySteering(draft, { pool = null } = {}) {
     if (shot.camera?.byHand) return;
     const own = dialsFor(draft, shot);
     const moves = shotMoves(shot);
-    shot.camera = {
-      ...shot.camera,
-      ...energyToCamera(own.energy, { subjectMoves: moves }),
-      ...(i % 2 === 1 && own.energy === dials.energy ? mirrorMove(energyToCamera(own.energy, { subjectMoves: moves })) : {}),
-      custom: "",
-    };
+    shot.camera = { ...shot.camera, ...steeredCamera(i, own, dials, { subjectMoves: moves, ltxOne }), custom: "" };
   });
   spreadDialogue({ ...draft, shots });
 
@@ -584,7 +585,40 @@ const MIRROR = {
   "pan left": "pan right", "pan right": "pan left",
   "truck left": "truck right", "truck right": "truck left",
 };
-const mirrorMove = (cam) => (MIRROR[cam.type] ? { type: MIRROR[cam.type] } : {});
+/* Both halves of the move flip, or "handheld while panning right" comes
+ * back "handheld while panning right" — which is what six shots of one
+ * argument all got. */
+const mirrorMove = (cam) => ({
+  ...(MIRROR[cam.type] ? { type: MIRROR[cam.type] } : {}),
+  ...(MIRROR[cam.secondary] ? { secondary: MIRROR[cam.secondary] } : {}),
+});
+const STATIC = { type: "static", amplitude: "medium", speed: "normal", secondary: "none" };
+
+/** The camera Energy gives shot `i`.
+ *  H3: the dial's move, mirrored on odd shots so a clip does not arc the
+ *  same way three times. LTX-2.5, one render: the dial's move belongs to
+ *  the first shot; after that the shots alternate static and mirrored, so
+ *  no two consecutive shots carry the same move and a cut is not read as
+ *  the move continuing. A shot steering itself keeps its own dial's move. */
+function steeredCamera(i, own, dials, { subjectMoves = false, ltxOne = false } = {}) {
+  const cam = energyToCamera(own.energy, { subjectMoves });
+  const shared = own.energy === dials.energy;
+  if (ltxOne && i > 0 && shared) {
+    if (i % 2 === 1) return { ...STATIC };
+    return { ...cam, ...mirrorMove(cam) };
+  }
+  return { ...cam, ...(i % 2 === 1 && shared ? mirrorMove(cam) : {}) };
+}
+
+/* The angles a cut can turn to, in an order that reads as coverage rather
+ * than a tour: three-quarter, then low, then over the shoulder, side, high. */
+const ANGLES = ["front-facing", "three-quarter", "low-angle", "over-the-shoulder", "side", "high-angle"];
+function nextAngle(prev, i) {
+  const at = ANGLES.indexOf(prev);
+  return ANGLES[(Math.max(0, at) + 1 + (i % 2)) % ANGLES.length] === prev
+    ? ANGLES[(Math.max(0, at) + 2) % ANGLES.length]
+    : ANGLES[(Math.max(0, at) + 1 + (i % 2)) % ANGLES.length];
+}
 
 /** One line per dial saying what it just did, in the model's own words. This is
  *  the honesty the dials owe: a slider that hides its effect is a toy. */
