@@ -1073,7 +1073,17 @@ export function validate(project) {
       const cutRows = shots.filter((s, i) => i > 0 && s.cutVerb !== NO_CUT);
       const silent = cutRows.filter(s => !(s.dialogue || []).some(l => (l.text || "").trim()));
       if (silent.length === cutRows.length) {
-        add("warn", `No shot after the first has a spoken line. In this app's own LTX-2.5 tests, ${shots.length} shots of action with no speech after shot 1 rendered as a single unbroken take; the same shots with a line in each cut at every one. Give each shot something said, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+        const firstLine = (shots[0].dialogue || []).find(l => (l.text || "").trim());
+        const oneSentence = firstLine && !/[.!?…]\s*\S/.test(firstLine.text.trim());
+        const subjects = new Set(shots.map(s => (s.subject || "").trim().toLowerCase()));
+        if (!firstLine && subjects.size > 1) {
+          /* Silent, but cutting between different subjects — measured, that
+           * cuts (waves, gulls, boots). Nothing to say. */
+        } else if (!firstLine) {
+          add("warn", `Nobody speaks and every shot is ${shots[0].subject ? `"${shots[0].subject.slice(0, 40)}"` : "the same subject"}. In this app's own LTX-2.5 tests, silent shots of one person moving through a scene rendered as a single unbroken take, while cuts to something else (the waves, her hands, the tower) held. Make one or two shots a cutaway, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+        } else {
+          add("warn", `Only shot 1 speaks${oneSentence ? " — one sentence, so Create could not deal it across the shots" : ""}. In this app's own LTX-2.5 tests, ${shots.length} shots of action with speech only in shot 1 rendered as a single unbroken take; the same shots with a line in each cut at every one. ${oneSentence ? "Split the line into sentences, or add a line to a later shot" : "Give a later shot something said"}, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+        }
       }
     }
     if (duration > LTX25_DURATION.max) {

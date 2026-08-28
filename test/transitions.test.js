@@ -178,8 +178,10 @@ test("on one LTX-2.5 render the steering tames the camera and deals the line acr
   }
   const spoken = p.shots.filter(s => (s.dialogue || []).some(l => (l.text || "").trim()));
   assert.equal(spoken.length, 2, "two sentences, two shots speaking — even though the line fits shot 1");
-  const silent = validate(p).checks.find(c => /No shot after the first has a spoken line/.test(c.msg));
+  const silent = validate(p).checks.find(c => /Only shot 1 speaks|Nobody speaks/.test(c.msg));
   assert.ok(!silent, "a dealt line satisfies the silent-cuts check");
   for (const s of p.shots) s.dialogue = [];
-  assert.ok(validate(p).checks.some(c => /No shot after the first has a spoken line/.test(c.msg)));
+  assert.ok(validate(p).checks.some(c => /Nobody speaks/.test(c.msg)), "silent, same subject in every shot");
+  p.shots[1].subject = "the black waves on the rocks";
+  assert.ok(!validate(p).checks.some(c => /Nobody speaks|Only shot 1 speaks/.test(c.msg)), "a cutaway is the remedy, so a cutaway silences it");
 });
