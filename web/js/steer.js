@@ -485,9 +485,22 @@ export function applySteering(draft, { pool = null } = {}) {
    * Never fewer than exist — a shot is removed with its own ✕, not by a
    * number changing elsewhere. */
   const fixed = clamp(Number(draft.creative?.shotCount) || 0, 0, 8);
-  const wanted = authoredCuts
-    ? Math.max(existing.length, segments.length)
-    : Math.max(existing.length, fixed || structure.shots);
+  /* A count the creator typed is a ceiling on everything — the model's
+   * "Cut to" beats included. Asked for four, the model wrote five cuts and
+   * Create showed six shots, because written cuts used to outrank the
+   * number. Now the cuts past the count fold into the last shot that fits,
+   * their beats kept, their headings dropped; and shots past the count are
+   * cut, since the number was typed to cut them. */
+  if (fixed && segments.length > fixed) {
+    const keep = segments.slice(0, fixed);
+    for (const extra of segments.slice(fixed)) keep[fixed - 1].beats.push(...extra.beats);
+    segments.length = 0; segments.push(...keep);
+  }
+  const wanted = fixed
+    ? fixed
+    : authoredCuts
+      ? Math.max(existing.length, segments.length)
+      : Math.max(existing.length, structure.shots);
   const bySegment = authoredCuts && segments.length === wanted;
   const shots = [];
   for (let i = 0; i < wanted; i++) {

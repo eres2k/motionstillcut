@@ -51,7 +51,8 @@ export async function readMaterial(project) {
    * shot needs ~5 s to be a shot, so the cut budget follows the duration:
    * 10 s → 1, 15 s → 2, 20 s and up → 3. */
   const ltxOne = activeEngine(project) === "ltx25" && !(project.film?.enabled && project.film?.splitAtCuts);
-  const maxCuts = Math.max(1, Math.min(3, Math.floor((project.render?.duration || 5) / 5) - 1));
+  const typed = Number(project.creative?.shotCount) || 0;
+  const maxCuts = typed > 1 ? typed - 1 : Math.max(1, Math.min(3, Math.floor((project.render?.duration || 5) / 5) - 1));
   const has = {
     text: !!material.text, images: material.images.length,
     clips: material.clips.length, sounds: material.sounds.length,

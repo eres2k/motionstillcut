@@ -74,7 +74,7 @@ test("a beat pool cut at its cuts is the shot list, whatever Pace wants", () => 
   assert.equal(cutSegments(["a", "b"]).length, 1, "no cuts: one segment, Pace decides");
 });
 
-test("an exact shot count from the first screen outranks Pace; written cuts outrank both", () => {
+test("an exact shot count from the first screen outranks Pace AND the written cuts", () => {
   const p = blankProject();
   p.render.duration = 20;
   p.creative.dials = { ...DEFAULT_DIALS, pace: 20 };
@@ -84,7 +84,8 @@ test("an exact shot count from the first screen outranks Pace; written cuts outr
   assert.equal(p.shots.length, 3);
   p.creative.pool = { beats: ["a", "Cut to close-up, b", "c", "Cut to wide, d", "Cut to medium, e"] };
   applySteering(p);
-  assert.equal(p.shots.length, 4, "four written cuts beat a count of three");
+  assert.equal(p.shots.length, 3, "four written shots, a count of three: the last cut folds into shot 3");
+  assert.deepEqual(p.shots[2].beats.map(b => b.text), ["d", "e"]);
 });
 
 /* ── A cut phrase never reaches the prompt as an action ─────── */
@@ -153,4 +154,27 @@ test("a heading with the 'Cut to' left off is still a cut — except on a shot's
   assert.deepEqual(shots.map(s => s.shotType), ["wide", "medium", "close-up", "close-up"]);
   assert.deepEqual(shots.map(s => s.beats[0]), ["the lighthouse stands against crashing waves", "the keeper climbs the winding stone stairs", "her hand reaches out to turn a brass crank", "she looks up at the flame"]);
   assert.deepEqual(shots.map(s => s.at), [0, 5, 10, 15]);
+});
+
+test("a shot count the creator typed caps the model's written cuts, and trims a longer list", async () => {
+  const { applySteering } = await import("../web/js/steer.js");
+  const p = blankProject();
+  p.render.engine = "ltx25"; p.render.duration = 20;
+  p.creative.shotCount = 4;
+  p.creative.pool = { beats: [
+    "Wide shot, the lighthouse stands against the waves",
+    "Cut to medium shot, the keeper climbs the stairs",
+    "Cut to close-up, her hand on the brass crank",
+    "Cut to close-up, she looks up at the flame",
+    "Cut to wide shot, the lamp bursts into light",
+    "Cut to close-up, she closes her eyes",
+  ] };
+  p.shots[0].subject = "a keeper";
+  applySteering(p);
+  assert.equal(p.shots.length, 4, "six written cuts, four asked for");
+  assert.equal(p.shots[3].beats.length, 3, "the two extra cuts' beats live on in the last shot");
+  assert.equal(p.shots[3].beats[1].text, "the lamp bursts into light", "headings dropped, actions kept");
+  p.creative.shotCount = 2;
+  applySteering(p);
+  assert.equal(p.shots.length, 2, "a typed count also trims shots that already exist");
 });
