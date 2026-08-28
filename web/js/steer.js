@@ -491,16 +491,23 @@ export function applySteering(draft, { pool = null } = {}) {
    * number. Now the cuts past the count fold into the last shot that fits,
    * their beats kept, their headings dropped; and shots past the count are
    * cut, since the number was typed to cut them. */
-  if (fixed && segments.length > fixed) {
-    const keep = segments.slice(0, fixed);
-    for (const extra of segments.slice(fixed)) keep[fixed - 1].beats.push(...extra.beats);
+  /* On auto, one LTX-2.5 render has its own ceiling, by duration: measured
+   * (28 Aug 2026), six written cuts in 20 s came back as ~3, and four shots
+   * of action in 20 s mostly as one take — 20 s holds 4, 15 s holds 3,
+   * 10 s holds 2. The model's written cuts and a longer existing list both
+   * fold into it, the same way a typed count folds them. */
+  const ltxCap = ltxOne ? clamp(Math.floor(duration / 5), 2, 4) : 0;
+  const cap = fixed || ltxCap;
+  if (cap && segments.length > cap) {
+    const keep = segments.slice(0, cap);
+    for (const extra of segments.slice(cap)) keep[cap - 1].beats.push(...extra.beats);
     segments.length = 0; segments.push(...keep);
   }
   const wanted = fixed
     ? fixed
-    : authoredCuts
+    : Math.min(cap || Infinity, authoredCuts
       ? Math.max(existing.length, segments.length)
-      : Math.max(existing.length, structure.shots);
+      : Math.max(existing.length, structure.shots));
   const bySegment = authoredCuts && segments.length === wanted;
   const shots = [];
   for (let i = 0; i < wanted; i++) {
