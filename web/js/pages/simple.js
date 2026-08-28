@@ -42,7 +42,8 @@ import { compilePrompt, validate, cameraSentence, compileSubjectDefs, taskTypeFo
 import { SPEEDS, SPEAKERS, LANGUAGES, LOOKS, GRADES, REF_TASK_TYPES, TRANSITIONS, NO_CUT } from "../vocab.js";
 import { estimateSeconds, humanTime } from "../workflow.js";
 import { renderNow, currentJob, onRenderChange, cancelRender, applyLive } from "../render.js";
-import { enhance, breakdown, polishShot } from "../llm.js";
+import { breakdown } from "../llm.js";
+import { assistBar, improveShots as improveShotsShared, assistBusy } from "../assist.js";
 import { api } from "../api.js";
 import { getHealth, getSettings } from "../config.js";
 import { DEFAULT_DIALS, applySteering, hasOwnDials } from "../steer.js";
@@ -1842,10 +1843,7 @@ function toolbar(p) {
       title: "Turn one line into a shot list",
       onclick: (e) => askIdea(e.currentTarget),
     }, h("span.sn-tool-ico", "✨"), h("span", "Idea")),
-    h("button.sn-tool.ai", {
-      title: "Rewrite in the format the model wants — reads the attached images",
-      onclick: (e) => improveShots(e.currentTarget),
-    }, h("span.sn-tool-ico", "✎"), h("span", "Improve")),
+    assistBar(p, { refresh, cls: "sn-tool.ai" }),
     h("span.sn-sep"),
     h("button.sn-tool.ghost", {
       title: "Put every node back in its lane",
@@ -1922,59 +1920,19 @@ async function askIdea(btn) {
   finally { busy = false; btn.classList.remove("disabled"); btn.textContent = label; }
 }
 
-/**
- * Improve the SHOTS, not the compiled paragraph.
- *
- * This used to call enhance(), which rewrites the whole prompt into one block
- * of prose and stores it as prompt.manual — an override. Two things went wrong
- * and neither was visible: the shot nodes still showed the old words, so
- * nothing looked improved; and every later edit — the camera pad, the beats,
- * the steering dials — was silently dropped, because a manual override stops
- * the prompt being compiled from the shots at all.
- *
- * polishShot returns structured fields instead, so the improvement lands where
- * you can see it and everything downstream keeps working.
- */
+/* One shot from its own node; the whole-clip version is the assist bar's. */
 async function improveShots(btn, only = null) {
-  if (busy) return;
+  if (busy || assistBusy()) return;
   busy = true;
   btn?.classList.add("disabled");
-  const label = btn?.querySelector("span:last-child");
-  const was = label?.textContent;
   try {
-    const p = getProject();
-    const shots = orderedShots(p);
-    const targets = only ? shots.filter(sh => sh.id === only) : shots;
-    if (!targets.length) throw new Error("There is no shot to improve yet.");
-
-    let done = 0, changed = 0;
-    for (const shot of targets) {
-      const index = shots.findIndex(sh => sh.id === shot.id);
-      if (label) label.textContent = targets.length > 1 ? `${++done}/${targets.length}…` : "…";
-      const r = await polishShot(shot, index, p);
-      update((draft) => {
-        const live = draft.shots.find(x => x.id === shot.id);
-        if (!live) return;
-        if (r.subject) live.subject = r.subject;
-        if (Array.isArray(r.beats) && r.beats.length) {
-          live.beats = r.beats.map((t, i) => newBeat(String(typeof t === "string" ? t : t?.text || "").trim(), i === 0 ? "" : "then"))
-            .filter(b => b.text);
-        }
-        for (const k of ["setting", "lighting", "details"]) if (r[k]) live[k] = r[k];
-        // A camera the creator set by hand on the pad stays theirs.
-        if (r.camera && !live.camera?.byHand) live.camera = { ...live.camera, ...r.camera, custom: "" };
-        changed++;
-      }, "shots");
-      refresh();
-    }
-    toast(targets.length > 1 ? "Shots improved" : "Shot improved",
-      `${changed} shot${changed === 1 ? "" : "s"} rewritten — ⌘Z per shot to take one back`, "ok");
+    const r = await improveShotsShared(getProject(), { only });
+    toast("Shot improved", `${r.changed} rewritten — ⌘Z to take it back`, "ok");
   } catch (err) {
     toast("Could not improve it", err.message, "err");
   } finally {
     busy = false;
     btn?.classList.remove("disabled");
-    if (label && was) label.textContent = was;
     refresh();
   }
 }

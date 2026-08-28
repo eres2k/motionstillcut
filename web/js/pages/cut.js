@@ -28,7 +28,8 @@ import { createPreviz, shotAt, framingOrigin, subjectHeightPct } from "../previz
 import { renderNodeGraph, nodeGraphLegend } from "../nodeview.js";
 import { renderPrompt } from "../prompttext.js";
 import { renderBoard } from "../board.js";
-import { breakdown, polishShot, enhance, dryRun } from "../llm.js";
+import { breakdown, polishShot } from "../llm.js";
+import { assistBar, lastReading, setReading } from "../assist.js";
 import { validateFix, describeFix, applyFix } from "../fixes.js";
 import { beatEditor } from "../beats.js";
 import { directorBody, directorBadge, director, runDirector } from "../director.js";
@@ -353,6 +354,11 @@ function viewerPanel(p) {
         ["prompt", "Prompt", "Exactly what the encoder will read"],
         ["checks", "Checks", "Everything checkable before a render"],
       ], viewerMode, setViewerMode),
+      h("span.vsep"),
+      /* The three LLM assists, the same three in every viewer mode — they
+       * used to be one each under Prompt and Checks and one in the node
+       * view, so which you found depended on where you were standing. */
+      assistBar(p, { refresh, onReading: () => setViewerMode("checks") }),
     ),
     body,
   );
@@ -378,12 +384,6 @@ function promptView(p) {
       h("div", { class: `meter ${meterClass}` }, h("i", { style: { width: `${pct}%` } })),
       h("span.n", `target ${budget.min}–${budget.max}`),
       h("button.btn.sm", { onclick: async () => { await copyText(compiled.text); toast("Prompt copied", "", "ok"); } }, "Copy"),
-      h("button.btn.sm.ai", {
-        title: p.mode === "t2v"
-          ? "Rewrite the draft in the format H3's own rewriter emits"
-          : "Rewrite in H3 format — the model looks at the attached images",
-        onclick: (e) => runEnhance(e.currentTarget, p),
-      }, p.mode === "t2v" ? "✨ Rewrite in H3 format" : "✨ Rewrite (reads the images)"),
     ),
     pre,
     p.prompt.manual
@@ -392,36 +392,6 @@ function promptView(p) {
   );
 }
 
-async function runEnhance(btn, p) {
-  if (busy) return;
-  busy = true;
-  const label = btn.textContent;
-  btn.classList.add("disabled"); btn.textContent = "rewriting…";
-  try {
-    const r = await enhance(p);
-    update((proj) => {
-      proj.prompt.manual = true;
-      proj.prompt.description = r.description;
-      if (r.soundscape) proj.sound.soundscape = r.soundscape === "N/A" ? "" : r.soundscape;
-      if (r.soundscape === "N/A") proj.sound.silent = true;
-      if (r.music) proj.sound.music = r.music === "N/A" ? "" : r.music;
-      if (r.music === "N/A") proj.sound.musicOff = true;
-      if (r.subjectDefs) proj.ref2v.subjectDefs = r.subjectDefs;
-      if (r.summary) proj.ref2v.summary = r.summary;
-      proj.prompt.lastEnhancedAt = Date.now();
-    }, "prompt");
-    toast("Rewritten",
-      `${r.model} · ${(r.ms / 1000).toFixed(1)}s${r.sawImages ? ` · read ${r.sawImages} image${r.sawImages === 1 ? "" : "s"}` : ""}`, "ok");
-    refresh();
-  } catch (err) {
-    toast("Rewrite failed", err.message, "err");
-  } finally {
-    busy = false;
-    btn.classList.remove("disabled"); btn.textContent = label;
-  }
-}
-
-let dryRunResult = null;    // the last second opinion, kept until the prompt changes
 
 function checksView(p) {
   const { checks, errors, warnings, wordCount, pristine } = validate(p);
@@ -443,16 +413,12 @@ function checksView(p) {
         pristine ? null : h("span", { class: `badge ${warnings ? "busy" : "ok"}` }, h("span.dot"), `${warnings} warning${warnings === 1 ? "" : "s"}`),
         h("span.hint", `${wordCount} words`),
         h("span.grow"),
-        h("button.btn.ai.sm", {
-          title: "Have the LLM read the prompt back as the model would",
-          onclick: (e) => runDryRun(e.currentTarget, p),
-        }, "✨ Second opinion"),
       ),
       h("div.hint", { style: { marginTop: "6px" } },
         "Everything checkable before a GPU second is spent. Nothing here blocks a render — most bad clips are bad prompts, and this is the cheapest place to notice."),
     ),
     h("div.checks", ...rows),
-    dryRunResult ? dryRunView(dryRunResult) : null,
+    lastReading() ? dryRunView(lastReading()) : null,
   );
 }
 
@@ -496,7 +462,7 @@ function fixList(r) {
           let done = 0;
           update((draft) => { for (const { fix } of usable) { if (applyFix(draft, fix).ok) done++; } }, "shots");
           toast(`${done} edit${done === 1 ? "" : "s"} applied`, "⌘Z puts it all back.", "ok");
-          dryRunResult = { ...r, fixes: [] };
+          setReading({ ...r, fixes: [] });
           refresh();
         },
       }, `Use all ${usable.length}`) : null,
@@ -512,7 +478,7 @@ function fixList(r) {
           let ok = false;
           update((draft) => { ok = applyFix(draft, fix).ok; }, "shots");
           toast(ok ? "Applied" : "Could not apply", ok ? describeFix(p, fix) : "", ok ? "ok" : "err");
-          dryRunResult = { ...r, fixes: (r.fixes || []).filter(f => f !== fix) };
+          setReading({ ...r, fixes: (r.fixes || []).filter(f => f !== fix) });
           refresh();
         },
       }, "Use") : null,
@@ -520,21 +486,6 @@ function fixList(r) {
   );
 }
 
-async function runDryRun(btn, p) {
-  if (busy) return;
-  busy = true;
-  const label = btn.textContent;
-  btn.classList.add("disabled"); btn.textContent = "reading…";
-  try {
-    dryRunResult = await dryRun(p);
-    refresh();
-  } catch (err) {
-    toast("Second opinion failed", err.message, "err");
-  } finally {
-    busy = false;
-    btn.classList.remove("disabled"); btn.textContent = label;
-  }
-}
 
 /* ── Centre bottom: the timeline ──────────────────────────── */
 /* Laid out the way an NLE lays it out: a fixed gutter of track headers on the
@@ -734,13 +685,13 @@ let lastFocusedField = null;
 /* Everything above that belongs to ONE project, forgotten when a different one
  * is opened. `idea` is a logline the user typed and it lives only here, so a
  * new project used to land on Cut with the last one's idea still in the box;
- * `dryRunResult` is the LLM's second opinion on the PREVIOUS shot list, whose
+ * the second opinion (assist.js) is the LLM's reading of the PREVIOUS shot list, whose
  * fixes apply by shot INDEX, so one click wrote project A's text into project
  * B. The transport position is only cosmetic, and is reset for the same
  * reason a fresh timeline starts at zero. */
 onProjectSwap(() => {
   idea = "";
-  dryRunResult = null;
+  setReading(null);
   playhead = 0;
   followedShot = -1;
   viewerMode = "previz";
