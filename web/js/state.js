@@ -10,7 +10,7 @@
 import { uid, debounce } from "./util.js";
 import { applyRenderPrefs, rememberRender, rememberedVariant } from "./renderprefs.js";
 // vocab.js imports nothing, so this is a leaf dependency and not a cycle.
-import { SPEAKERS, REF_TASK_TYPES } from "./vocab.js";
+import { SPEAKERS, REF_TASK_TYPES, FRAMINGS } from "./vocab.js";
 
 const STORE_KEY = "mscut.project.v1";
 export const PROJECT_VERSION = 1;
@@ -158,6 +158,19 @@ export const RESOLUTIONS = [
   ["480x832",  "480p · 9:16 — 480×832",  "Portrait, fast tier"],
   ["640x640",  "480p · 1:1 — 640×640",   "Square, fast tier"],
 ];
+
+/** A camera as something outside the app wrote it — a model's JSON, a saved
+ *  file — with the fields it cannot mean removed. `framing` is WHERE the
+ *  subject sits (a third, low in frame); a model asked for a shot's framing
+ *  hands back its SIZE, and "wide" in this slot compiled to "The frame is
+ *  composed with the subject framed in the wide" on a close-up. A size in
+ *  the framing slot is dropped, never rewritten: shotType already says it. */
+export function cleanCamera(raw = {}) {
+  const cam = { ...newShot(0).camera, ...(raw || {}) };
+  const ok = cam.framing === "custom" || FRAMINGS.some(([id]) => id === cam.framing);
+  if (!ok) { cam.framing = "centered"; cam.fx = 50; cam.fy = 50; }
+  return cam;
+}
 
 export function newShot(at = 0) {
   return {
@@ -546,7 +559,7 @@ function migrate(p) {
   merged.creative.material = { ...base.creative.material, ...(p?.creative?.material || {}) };
   merged.shots = Array.isArray(p?.shots) && p.shots.length
     ? p.shots.map((s) => {
-        const shot = { ...newShot(s.at || 0), ...s, camera: { ...newShot(0).camera, ...(s.camera || {}) }, dialogue: s.dialogue || [] };
+        const shot = { ...newShot(s.at || 0), ...s, camera: cleanCamera(s.camera), dialogue: s.dialogue || [] };
         /* An undirected "roll" is not in H3's vocabulary and camPhrase falls
          * back to "The camera remains static" for an id it does not know — so
          * leaving this unmigrated would silently turn a saved roll into a

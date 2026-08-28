@@ -106,3 +106,51 @@ test("a beat that opens with a cut is compiled without the cut, and the checker 
   assert.equal((text.match(/hard cut transitions/g) || []).length, 1, "one cut, from the timeline, not two");
   assert.ok(validate(p).checks.some(c => /begins with a cut/.test(c.msg)));
 });
+
+/* ── What a model hands back for a camera ──────────────────── */
+
+import { cleanCamera } from "../web/js/state.js";
+
+test("a shot SIZE in the framing slot is dropped, a real framing kept", () => {
+  // The breakdown prompt used to ask each shot for its "framing", and the
+  // model answered with a size: camera.framing = "wide" on a close-up became
+  // "The frame is composed with the subject framed in the wide".
+  assert.equal(cleanCamera({ framing: "wide" }).framing, "centered");
+  assert.equal(cleanCamera({ framing: "medium close-up" }).framing, "centered");
+  assert.equal(cleanCamera({ framing: "left third" }).framing, "left third");
+  assert.equal(cleanCamera({ framing: "custom", fx: 20, fy: 70 }).fx, 20);
+  assert.equal(cleanCamera({ type: "push in" }).type, "push in");
+});
+
+test("a shot heading written inside a beat is flagged; an action that starts with a size word is not", () => {
+  const p = blankProject();
+  p.shots[0].shotType = "medium wide";
+  p.shots[0].beats = [newBeat("Wide low-angle shot of the lighthouse tower as rain hammers down"), newBeat("a blade of gold light sweeps out")];
+  const flagged = validate(p).checks.filter(w => /shot heading/.test(w.msg));
+  assert.equal(flagged.length, 1, "the heading inside shot 1 should be flagged once");
+  assert.match(flagged[0].msg, /Shot 1/);
+
+  p.shots[0].beats = [newBeat("Long shadows fall across the floor"), newBeat("close-up detail on her hands")];
+  assert.equal(validate(p).checks.filter(w => /shot heading/.test(w.msg)).length, 0);
+});
+
+test("a heading with the 'Cut to' left off is still a cut — except on a shot's first beat, where it names the shot", () => {
+  // Gemma wrote "Wide shot, …", "Medium shot, …", "Close-up, …" for a
+  // lighthouse and the reader put all three inside shot 1 as actions.
+  assert.equal(cutInBeat("Medium shot, the keeper struggles up the winding stone stairs").verb, "the camera cuts to");
+  assert.equal(readFraming(cutInBeat("Close-up, her hand reaches out to turn a massive brass crank").remainder).shotType, "close-up");
+  assert.equal(readFraming(cutInBeat("Close-up, her hand reaches out to turn a massive brass crank").remainder).rest, "her hand reaches out to turn a massive brass crank");
+  assert.equal(cutInBeat("Wide low-angle shot of the tower as rain hammers down"), null, "a description, not a heading — no delimiter");
+  assert.equal(cutInBeat("Medium heat rises off the tarmac"), null);
+  const raw = [{ at: 0, shotType: "medium", subject: "a keeper", beats: [
+    "Wide shot, the lighthouse stands against crashing waves",
+    "Medium shot, the keeper climbs the winding stone stairs",
+    "Close-up, her hand reaches out to turn a brass crank",
+    "Cut to close-up, she looks up at the flame",
+  ] }];
+  const shots = splitCutBeats(raw, 20);
+  assert.equal(shots.length, 4);
+  assert.deepEqual(shots.map(s => s.shotType), ["wide", "medium", "close-up", "close-up"]);
+  assert.deepEqual(shots.map(s => s.beats[0]), ["the lighthouse stands against crashing waves", "the keeper climbs the winding stone stairs", "her hand reaches out to turn a brass crank", "she looks up at the flame"]);
+  assert.deepEqual(shots.map(s => s.at), [0, 5, 10, 15]);
+});

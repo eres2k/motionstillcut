@@ -32,7 +32,7 @@ import {
   h, mount, clear, toast, uid, clamp, timecode, download, copyText, modal, select,
 } from "../util.js";
 import {
-  getProject, update, orderedShots, newShot, newBeat, newDialogue, nextUnusedSpeaker,
+  getProject, update, orderedShots, newShot, cleanCamera, newBeat, newDialogue, nextUnusedSpeaker,
   referenceInventory, removeReference,
   normaliseMedia,
   shotActionText, dimensions, frameCount, DURATION_FRAMES, MODES, H3_DURATION, overLength,
@@ -1907,7 +1907,7 @@ async function askIdea(btn) {
         lighting: s.lighting || "",
         details: s.details || "",
         ...(i > 0 && s.cutVerb ? { cutVerb: s.cutVerb } : {}),
-        camera: { ...newShot(0).camera, ...(s.camera || {}) },
+        camera: cleanCamera(s.camera),
       }));
       // A fresh layout, because the old positions describe shots that are gone.
       draft.simple = { pos: {} };

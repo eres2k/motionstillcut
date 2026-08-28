@@ -21,6 +21,11 @@ import { CAMERA_TYPES, CAMERA_GERUNDS, LANGUAGES, VISUAL_RETENTION, AUDIO_RETENT
 import { orderedShots, referenceInventory, MODES, shotActionText, isPristine, H3_DURATION, LTX25_DURATION, activeEngine, shotKeyframes, REF_LIMITS, filmSpan, FILM_LIMITS, ltxGuideTime } from "./state.js";
 import { speechWords, WORDS_PER_SECOND } from "./steer.js";
 import { stripCutPrefix, cutInBeat } from "./shotlist.js";
+
+/* "Wide low-angle shot of…", "Close-up shot on…", "An extreme wide shot…" —
+ * a size word, up to two qualifiers, then "shot". "Long shadows fall" is not
+ * one, so the word "shot" is required. */
+const SHOT_HEADING_RE = /^(?:an?\s+)?(?:extreme\s+|medium\s+|big\s+)?(?:close[- ]?up|wide|long|establishing|medium)(?:\s+[\w-]+){0,2}\s+shot\b/i;
 /* film.js imports state.js and nothing else, so reaching for the planner here
  * is a leaf dependency rather than a cycle. The checker needs it because a
  * film's real error is never "this clip is too long" — it is where the clips
@@ -336,7 +341,12 @@ function ltxSubjectRef(subject, project) {
   const first = expandTokens((orderedShots(project)[0]?.subject || "").trim());
   const same = first && first.replace(/[.,;]\s*$/, "").toLowerCase() === subject.replace(/[.,;]\s*$/, "").toLowerCase();
   if (!same || !/^(a|an)\s+/i.test(subject)) return phrase(subject);
-  return `the same ${phrase(subject).replace(/^(a|an)\s+/i, "")}`;
+  /* The identifier, not the whole description. Shot 1 said the coat, the
+   * boots and the hair; "the same lighthouse keeper" is the guide's reused
+   * identifier, and repeating the full sentence at every cut was a third of
+   * a four-shot prompt spent re-reading shot 1. */
+  const tag = subject.replace(/[.,;]\s*$/, "").split(/,| wearing | holding | carrying | with (?:a|an|her|his|their|short|long)\b/i)[0].trim() || subject;
+  return `the same ${phrase(tag).replace(/^(a|an)\s+/i, "")}`;
 }
 
 /** How many plain hard cuts precede shot `index` — dissolves, fades and
@@ -360,7 +370,12 @@ export function shotProse(shot, index, project, opts = {}) {
   const seen = opts.seen || new Set();
   const look = (project.style?.look || "live-action cinematic").trim();
   const shotType = shot.shotType || "medium";
-  const viewpoint = shot.viewpoint || "front-facing";
+  /* LTX reads the guide's prose — "a medium close-up of her face", "a
+   * low-angle shot of a man's boots" — where only an angle worth naming is
+   * named. The default angle stamped on every shot gave it "a medium shot,
+   * front-facing of the white foam of the ocean waves". */
+  const isLtx = activeEngine(project) === "ltx25";
+  const viewpoint = (shot.viewpoint || "front-facing") === "front-facing" && isLtx ? "" : (shot.viewpoint || "front-facing");
   const subject = expandTokens((shot.subject || "").trim());
   const action = expandTokens(beatsProse(shot));
   const setting = expandTokens((shot.setting || "").trim());
@@ -373,11 +388,11 @@ export function shotProse(shot, index, project, opts = {}) {
   const styleInHead = first && opts.styleAhead !== true;
   const opening = first
     ? (styleInHead
-        ? `${article(look)} ${look} ${shotType} shot, ${viewpoint}`
-        : `${article(shotType)} ${shotType} shot, ${viewpoint}`)
+        ? `${article(look)} ${look} ${shotType} shot${viewpoint ? `, ${viewpoint}` : ""}`
+        : `${article(shotType)} ${shotType} shot${viewpoint ? `, ${viewpoint}` : ""}`)
     : continuesTake(shot, index)
-      ? `without a cut, the camera reframes to ${article(shotType)} ${shotType} shot, ${viewpoint}`
-      : `${cutVerbFor(shot.cutVerb, activeEngine(project), hardCutsBefore(project, index))} ${article(shotType)} ${shotType} shot, ${viewpoint}`;
+      ? `without a cut, the camera reframes to ${article(shotType)} ${shotType} shot${viewpoint ? `, ${viewpoint}` : ""}`
+      : `${cutVerbFor(shot.cutVerb, activeEngine(project), hardCutsBefore(project, index))} ${article(shotType)} ${shotType} shot${viewpoint ? `, ${viewpoint}` : ""}`;
 
   /* I2V opens FROM the picture. §3.1: "The description should first establish
    * the style, subjects, composition, and scene anchors in the image, then
@@ -954,6 +969,16 @@ export function validate(project) {
     if (n) add("warn", `Shot ${i + 1} has ${n} beat${n === 1 ? "" : "s"} that begin${n === 1 ? "s" : ""} with a cut ("Cut to …"). A cut is a shot, not an action: the phrase is left out of the prompt and the beat reads as what follows it. To cut there, add a shot with ✂ instead.`);
   });
 
+  /* A shot heading inside a beat. "Wide low-angle shot of the tower as rain
+   * hammers down" as a beat of a medium shot is a second shot described
+   * inside the first — the model cannot cut to it (no cut is named) and
+   * cannot hold the medium either, so it blends the two. The size and angle
+   * belong to the shot's own fields; the beat is what happens in it. */
+  shots.forEach((s, i) => {
+    const heads = (s.beats || []).filter(b => !cutInBeat(b.text || "") && SHOT_HEADING_RE.test((b.text || "").trim()));
+    if (heads.length) add("warn", `Shot ${i + 1} has a beat that reads as a shot heading ("${heads[0].text.trim().slice(0, 40)}…"). A shot's size and angle live in its own Shot and Angle fields; a heading inside a beat is a second shot the model blends into this one. Make it a shot with ✂, or cut the heading and keep the action.`);
+  });
+
   /* Speech has a speed. A shot holding more words than its seconds carry is
    * rushed on screen — the mouth and the body hurry to fit it — or cut off. */
   {
@@ -1035,6 +1060,20 @@ export function validate(project) {
         add("warn", `The same camera move runs through every cut ("${camKey(cutRows[0]).replace(/\.$/, "")}"). A move that continues across a cut tells LTX-2.5 it is one take — make the other shots static, or give each its own move.`);
       } else if (sameAngle) {
         add("warn", `All ${shots.length} shots are ${shots[0].viewpoint || "front-facing"}. A cut LTX-2.5 honours changes the angle as well as the scale — vary the viewpoint (low-angle, over-the-shoulder, side) at each cut.`);
+      }
+    }
+    /* — Cuts with nothing to hold them —
+     * Measured on this app's own renders: four shots of physical action
+     * (climb, throw a lever, look out) with speech only in shot 1 came back
+     * as one continuous take five times out of five, at 10 s and 20 s, on
+     * both samplers; the same shots with a sentence in each cut cleanly at
+     * every one, as did a talking head with a line per shot. The model
+     * cuts where the sound changes; where it does not, it travels. */
+    if (cuts >= 3 && !project.sound?.silent) {
+      const cutRows = shots.filter((s, i) => i > 0 && s.cutVerb !== NO_CUT);
+      const silent = cutRows.filter(s => !(s.dialogue || []).some(l => (l.text || "").trim()));
+      if (silent.length === cutRows.length) {
+        add("warn", `No shot after the first has a spoken line. In this app's own LTX-2.5 tests, ${shots.length} shots of action with no speech after shot 1 rendered as a single unbroken take; the same shots with a line in each cut at every one. Give each shot something said, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
       }
     }
     if (duration > LTX25_DURATION.max) {

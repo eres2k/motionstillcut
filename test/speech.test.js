@@ -57,7 +57,7 @@ test("with no identifying phrase the speaker is the subject, and LTX reuses her 
   assert.equal(identityOf(p, "S1"), "the woman");
   const { text } = compilePrompt(p);
   assert.ok(!/The speaker says/.test(text), text);
-  assert.match(text, /A hard cut transitions to a [\w -]+ shot, [\w-]+ of the same woman in her forties/);
+  assert.match(text, /A hard cut transitions to a [\w -]+ shot of the same woman in her forties/);
 });
 
 test("too many words for a shot's seconds is a warning", () => {

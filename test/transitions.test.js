@@ -53,7 +53,7 @@ test("on LTX-2.5 the prompt is Lightricks' dialect: one paragraph, cuts in prose
   assert.ok(!/\[Shot \d\]/.test(text), "no shot numbers");
   assert.ok(!/At \d\d:\d\d/.test(text), "no timestamps");
   assert.ok(!/integrated_multimodal_description|overall_soundscape|non_diegetic_music/.test(text), "no field labels");
-  assert.match(text, /A hard cut transitions to a close-up shot, front-facing of the baker\. The ambient sound continues across the cut\./);
+  assert.match(text, /A hard cut transitions to a close-up shot of the baker\. The ambient sound continues across the cut\./);
   assert.match(text, /Ambient sound throughout: a shutter rattling up\./);
   p.shots[2].cutVerb = "the shot dissolves to";
   assert.match(compilePrompt(p).text, /The image dissolves into a medium shot/);
@@ -156,4 +156,30 @@ test("Create's steering on a single LTX-2.5 render: at most 4 shots, a new angle
   const h3 = make("minimax");
   assert.equal(h3.shots.length, 6, "H3 keeps the [Shot N] ceiling of six");
   assert.notEqual(cameraSentence(h3.shots[1].camera), cameraSentence(h3.shots[0].camera), "the mirrored shot flips its pan too");
+});
+
+/* Measured on this app's own renders, 28 Aug 2026: a four-shot lighthouse
+ * with speech only in shot 1 and a fast two-axis arc on shot 1 came back as
+ * one take (five renders, both samplers, 10 s and 20 s); with a sentence in
+ * every shot and small or static cameras it cut at every shot. */
+test("on one LTX-2.5 render the steering tames the camera and deals the line across the shots", async () => {
+  const { applySteering, DEFAULT_DIALS } = await import("../web/js/steer.js");
+  const p = blankProject();
+  p.render.engine = "ltx25"; p.render.duration = 20;
+  p.creative.dials = { ...DEFAULT_DIALS, pace: 70, energy: 75 };
+  p.creative.pool = { beats: ["looks up at the dark lantern room", "climbs the spiral stairs", "throws the brass lever", "looks out to sea"] };
+  p.shots[0].subject = "a lighthouse keeper in a yellow oilskin";
+  p.shots[0].dialogue = [{ id: "d1", speaker: "S1", language: "English", text: "Not tonight. Nobody drowns tonight.", voiceover: false, note: "", identity: "a woman in her forties", delivery: "" }];
+  applySteering(p);
+  assert.ok(p.shots.length >= 2);
+  for (const s of p.shots) {
+    assert.notEqual(s.camera.speed, "fast", `shot at ${s.at}s moves fast`);
+    assert.ok(!s.camera.secondary || s.camera.secondary === "none", `shot at ${s.at}s adds a second axis`);
+  }
+  const spoken = p.shots.filter(s => (s.dialogue || []).some(l => (l.text || "").trim()));
+  assert.equal(spoken.length, 2, "two sentences, two shots speaking — even though the line fits shot 1");
+  const silent = validate(p).checks.find(c => /No shot after the first has a spoken line/.test(c.msg));
+  assert.ok(!silent, "a dealt line satisfies the silent-cuts check");
+  for (const s of p.shots) s.dialogue = [];
+  assert.ok(validate(p).checks.some(c => /No shot after the first has a spoken line/.test(c.msg)));
 });

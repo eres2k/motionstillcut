@@ -222,11 +222,17 @@ function nearestDuration(seconds, current = 0) {
  * The key stays on the left the whole way. Where the light comes FROM is a
  * separate decision from how hard it is, and it belongs to the shot's own
  * Lighting field — the previz draws whichever side that field names.
+ *
+ * No band names a time of day either. Band four used to be "harsh midday
+ * sun", and the dial does not know what the setting says: a lighthouse in a
+ * night storm came out of Create with "Harsh midday sun" stamped on all four
+ * shots, and LTX believed the sun. The dial says how hard the light is; the
+ * setting says what is casting it.
  */
 export const LIGHT_BANDS = [
   {
     upTo: 20,
-    lighting: "overcast diffused daylight",
+    lighting: "soft diffused light with no visible source",
     grade: "high-key grade, bright and low-contrast with lifted blacks",
     say: "nothing in the frame casts a shadow",
   },
@@ -244,7 +250,7 @@ export const LIGHT_BANDS = [
   },
   {
     upTo: 80,
-    lighting: "harsh midday sun",
+    lighting: "single hard light source with hard-edged shadows",
     grade: "bleach-bypass look, desaturated with crushed blacks and hard contrast",
     say: "hard-edged shadows, blacks crushed",
   },
@@ -492,7 +498,13 @@ export function applySteering(draft, { pool = null } = {}) {
     const own = dialsFor(draft, base);
     const ownShotType = distanceToShot(own.distance);
     base.shotType = i === 0 || own.distance !== dials.distance ? ownShotType : nudgeShot(ownShotType, i);
-    base.lighting = lightToLighting(own.light);
+    /* Lighting the dial wrote, the dial may rewrite. A line a person or the
+     * interview wrote — "her face lit in pulses of gold and blue" — is theirs,
+     * the same rule the camera follows below: this used to stamp the band's
+     * phrase over every shot on every re-steer. */
+    if (!(base.lighting || "").trim() || LIGHT_BANDS.some(b => b.lighting === base.lighting)) {
+      base.lighting = lightToLighting(own.light);
+    }
     /* A camera the creator set by hand is theirs. The Energy dial describes
      * what the camera should do when nobody has said; once somebody has, the
      * dial has no business overwriting it — the same rule the pace dial
@@ -546,7 +558,11 @@ export function applySteering(draft, { pool = null } = {}) {
     const moves = shotMoves(shot);
     shot.camera = { ...shot.camera, ...steeredCamera(i, own, dials, { subjectMoves: moves, ltxOne }), custom: "" };
   });
-  spreadDialogue({ ...draft, shots });
+  /* On one LTX-2.5 render a line in every shot is what anchors the cuts:
+   * the same lighthouse cut at every shot with a sentence per shot and
+   * morphed through all four with the whole line in shot 1. So the deal
+   * happens whether or not the line overflows its shot. */
+  spreadDialogue({ ...draft, shots }, { always: ltxOne });
 
   draft.shots = shots;
   draft.selectedShot = shots[0]?.id || null;
@@ -601,8 +617,16 @@ const STATIC = { type: "static", amplitude: "medium", speed: "normal", secondary
  *  no two consecutive shots carry the same move and a cut is not read as
  *  the move continuing. A shot steering itself keeps its own dial's move. */
 function steeredCamera(i, own, dials, { subjectMoves = false, ltxOne = false } = {}) {
-  const cam = energyToCamera(own.energy, { subjectMoves });
+  let cam = energyToCamera(own.energy, { subjectMoves });
   const shared = own.energy === dials.energy;
+  /* One LTX-2.5 render, measured (harness, 28 Aug 2026): the same four-shot
+   * lighthouse came back as one continuous take with "arcs left at fast
+   * speed while tilting up" on shot 1 — the camera simply travelled up the
+   * tower into shot 2 — and cut cleanly at every shot with a small push-in
+   * and static cameras after it. A big, fast, two-axis move is a journey
+   * the model would rather complete than cut away from. Energy still says
+   * how much the camera moves; here it may not say "fast" or add an axis. */
+  if (ltxOne && cam.type !== "static") cam = { ...cam, amplitude: "small", speed: cam.speed === "fast" ? "normal" : cam.speed, secondary: "none" };
   if (ltxOne && i > 0 && shared) {
     if (i % 2 === 1) return { ...STATIC };
     return { ...cam, ...mirrorMove(cam) };

@@ -245,10 +245,11 @@ export const GRADES = [
  * dial asking for more contrast can harden the key it already has instead of
  * carrying it across to the other side of the face. */
 export const LIGHTING = [
-  "", "overcast diffused daylight", "soft key light from the left",
+  "", "soft diffused light with no visible source", "overcast diffused daylight", "soft key light from the left",
   "fluorescent overhead light", "single practical lamp in frame",
   "screen glow on the face", "moonlight through a window", "firelight flicker",
   "neon signage lighting the subject", "backlit with a bright rim",
+  "single hard light source with hard-edged shadows",
   "harsh midday sun", "hard key light from the left", "hard key light from the right",
 ];
 

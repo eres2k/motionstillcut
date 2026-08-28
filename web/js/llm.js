@@ -196,7 +196,7 @@ Return: {"shots":[{"at":0,"shotType":"medium","viewpoint":"front-facing","subjec
 - "beats" are the shot's action, in order, present tense, ONE PER 2–3 SECONDS OF THAT SHOT and no more.
   A 4-second shot gets 1–2 beats. Each beat is a short clause, not a sentence with its own subject.
 - A CUT IS A NEW SHOT, NEVER A BEAT. Never write "cut to", "hard cut to", "the view cuts to" or "dissolve to" inside a beat —
-  start a new entry in "shots" with its own "at", framing and subject instead. One shot with cuts written as beats is wrong.
+  start a new entry in "shots" with its own "at", shotType and subject instead. One shot with cuts written as beats is wrong.
 - camera.type must be one of: ${CAMERA_TYPES.map(c => c[0]).join(", ")}.
 ${tagRules(project)}`,
     prompt: `${projectBrief(project)}\n\nThe idea:\n${idea}`,

@@ -22,7 +22,8 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { LIGHT_BANDS, lightToLighting, lightToGrade, lightSays, DEFAULT_DIALS } from "../web/js/steer.js";
+import { LIGHT_BANDS, lightToLighting, lightToGrade, lightSays, DEFAULT_DIALS, applySteering } from "../web/js/steer.js";
+import { blankProject, newBeat } from "../web/js/state.js";
 import { lightingLook, lightingLayers, lightSentence } from "../web/js/previz.js";
 import { LIGHTING, GRADES } from "../web/js/vocab.js";
 
@@ -137,4 +138,31 @@ test("the sentence on the frame carries both halves", () => {
   assert.match(said, /soft key light from the left/);
   assert.match(said, /Rec\.709 neutral/, "the grade should be named by its short name, not its sentence");
   assert.equal(lightSentence("", ""), "", "nothing said, nothing written on the frame");
+});
+
+/* ── The dial says how hard, never when ───────────────────── */
+
+test("no band names a time of day or the sun", () => {
+  // Band four was "harsh midday sun": Create stamped it on all four shots of a
+  // lighthouse in a night storm, and LTX believed the sun over the setting.
+  for (const band of LIGHT_BANDS) {
+    assert.doesNotMatch(band.lighting, /midday|noon|sun\b|sunlight|daylight|dawn|dusk|golden hour/i,
+      `"${band.lighting}" tells the model what time it is, which the dial cannot know`);
+  }
+});
+
+test("lighting a person wrote survives a re-steer; lighting the dial wrote follows it", () => {
+  const p = blankProject();
+  p.shots[0].beats = [newBeat("looks out to sea")];
+  p.shots[0].lighting = "her face lit in pulses of gold and blue from the lantern room";
+  p.creative.dials = { ...DEFAULT_DIALS, light: 70 };
+  applySteering(p);
+  assert.equal(p.shots[0].lighting, "her face lit in pulses of gold and blue from the lantern room");
+
+  const q = blankProject();
+  q.shots[0].beats = [newBeat("looks out to sea")];
+  q.shots[0].lighting = lightToLighting(30);
+  q.creative.dials = { ...DEFAULT_DIALS, light: 70 };
+  applySteering(q);
+  assert.equal(q.shots[0].lighting, lightToLighting(70), "the dial's own phrase is the dial's to move");
 });

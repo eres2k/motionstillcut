@@ -12,6 +12,15 @@
 const CUT_RE = /^(?:then[,\s]+)?(?:(?:a|the)\s+)?(?:(hard|match|smash|jump)\s+)?(?:cut|cuts)\s+(?:to|into)\s+(?:(?:a|an|the)\s+)?/i;
 const VIEW_RE = /^(?:the\s+)?(?:view|camera|shot|image)\s+(?:cuts|hard\s+cuts)\s+to\s+(?:(?:a|an|the)\s+)?/i;
 const DISSOLVE_RE = /^(?:then[,\s]+)?(?:(?:a|the)\s+)?(?:image\s+|shot\s+)?(dissolve|dissolves|fade|fades)\s+(?:to|into)\s+(?:(?:a|an|the)\s+)?/i;
+/* A beat that is a shot heading with the "Cut to" left off — "Wide shot, the
+ * lighthouse stands against the waves", "Close-up, her hand reaches for the
+ * crank". Asked to write cuts as "Cut to <framing>, …", a model writes the
+ * first few this way anyway, and the reader saw an action: three headings
+ * went into one shot as "Wide shot, …, then Medium shot, …, then Close-up, …"
+ * and the render was one take of nothing in particular. The delimiter after
+ * the heading is required — "Wide low-angle shot of the tower as rain falls"
+ * is a description, not a heading, and stays a beat for the checker to flag. */
+const HEADING_RE = /^(?:then[,\s]+)?(?:an?\s+)?(?:(?:extreme|big|medium)\s+)?(?:close[- ]?up|wide|long|establishing|medium|mid)(?:\s+(?:low|high)[- ]angle)?(?:\s+shot)?\s*[,;:—–-]\s+/i;
 
 const SHOT_TYPES = [
   ["extreme close-up", /^(extreme|big)\s+close[- ]?up/i],
@@ -45,6 +54,8 @@ export function cutInBeat(text) {
   if (m) return { verb: "the camera cuts to", remainder: t.slice(m[0].length) };
   m = DISSOLVE_RE.exec(t);
   if (m) return { verb: /fade/i.test(m[1]) ? "the shot fades to" : "the shot dissolves to", remainder: t.slice(m[0].length) };
+  // The remainder keeps the heading so readFraming can take the size off it.
+  if (HEADING_RE.test(t)) return { verb: "the camera cuts to", remainder: t.replace(/^then[,\s]+/i, ""), heading: true };
   return null;
 }
 
@@ -62,6 +73,12 @@ export function splitCutBeats(shots, duration) {
     for (const b of beats) {
       const cut = cutInBeat(b);
       if (!cut) { cur.beats.push(b); continue; }
+      if (cut.heading && !cur.beats.length && cur === out[out.length - 1] && !cur._split) {
+        const { shotType, rest } = readFraming(cut.remainder);
+        if (shotType) cur.shotType = shotType;
+        if (rest) cur.beats.push(rest);
+        continue;
+      }
       {
         const { shotType, rest, framingOf } = readFraming(cut.remainder);
         cur = {
