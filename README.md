@@ -1,8 +1,8 @@
 # Motionstill Cut
 
 **A film editor for prompts.** Text, image and reference to video on **MiniMax
-H3** — written in a DaVinci-Resolve-style NLE where a **local LLM** and **your
-own ComfyUI** share the desk: one writes and critiques the prompt with you, the
+H3** and **LTX-2.5** — written in a DaVinci-Resolve-style NLE where a **local
+LLM** and **your own ComfyUI** share the desk: one writes and critiques the prompt with you, the
 other renders it, and they take turns on the same GPU. No cloud, no account,
 no upload — the model that writes and the model that renders are both yours.
 
@@ -34,7 +34,7 @@ real screenshots and a searchable manual — or read [QUICKGUIDE.md](QUICKGUIDE.
           ▼                                  ▼
    local LLM server                     your ComfyUI
    (LM Studio · Ollama ·                (MiniMax H3 ·
-    llama.cpp — e.g. Gemma 3 12B)        LTX-2.5 experimental)
+    llama.cpp — e.g. Gemma 3 12B)        LTX-2.5)
           ▲                                  ▲
           └────────── VRAM saver ────────────┘
              one engine on the GPU at a time
@@ -86,6 +86,13 @@ LLM server speaks. A render in flight is never interrupted.
 - **Films longer than 15 seconds.** H3 renders 4–15 s per clip, so The Film
   cuts the writing into clips that each fit, chains them — each starting from
   the previous clip's final frame — and joins them with ffmpeg (local app).
+  LTX-2.5 holds a real 30 s in one render; there, the Film can instead make
+  **every hard cut its own clip** — a true cut between two files rather than
+  one the model is asked to perform mid-clip.
+- **Cuts as a control, not a hope.** Each shot after the first carries a
+  cut — hard cut, dissolve, fade, or *no cut, same take* — on the timeline,
+  the node canvas and the inspector, and each engine gets it in the words
+  its own prompt guide uses.
 
 What the encoder actually gets is a grammar, not prose — compiled from shots,
 beats and the camera pad, checked against MiniMax's own prompt guides, and
@@ -171,9 +178,44 @@ video with native 32 kHz audio in one pass — on **your own ComfyUI**, stock
 nodes only: every node this editor emits ships with ComfyUI, which is what
 makes the downloaded workflow run on anyone's install. The Setup page checks
 the node catalog by name, lists the model files (the Comfy-Org repack plus the
-Turbo distills) and hands over exact download commands. An **experimental
-second engine — LTX-2.5** — renders the *same compiled prompt* on Lightricks'
-model for comparison (T2V/I2V).
+Turbo distills) and hands over exact download commands.
+
+### The second engine: LTX-2.5
+
+**Lightricks' LTX-2.5** renders the same timeline (T2V/I2V; still marked
+*experimental* in the UI while it settles). It is not the H3 prompt pushed
+through another model — the compiler speaks each model's own dialect:
+
+- **Its own prompt grammar.** Where H3 gets `[Shot N]` markers and timestamps,
+  LTX gets what its prompting guide asks for: one chronological paragraph, no
+  timestamps or shot numbers, every cut named in prose (`A hard cut
+  transitions to a close-up shot …`), the new shot re-established in full, the
+  audio continuity stated at each cut, dialogue as quoted lines with the voice
+  named, and the ambient sound described at the end. Lightricks' prompt
+  enhancer stays **off** — it helps a thin prompt and dilutes a compiled one.
+- **Its own pipeline.** Stock ComfyUI LTX-2 AV nodes, Two-stage (8+3) or
+  Single-stage 8-step distilled builds, cfg 1, frame counts on LTX's 8k+1 grid,
+  clips to a real **30 s**. Five model files (~40 GB, listed under Setup ▸
+  Models); a ComfyUI without the LTX nodes still renders MiniMax.
+- **Pins on the timeline → `LTXVAddGuide`.** Attach an image to a shot and
+  the graph anchors it at that shot's cut time, strength per pin. The app
+  tells you what the node won't: guides land on an **8-frame grid**, so the
+  pin row prints the frame it really hits (`→ f104 · 00:04.333`) instead of
+  letting it look like drift; and the **same image pinned at two or more
+  cuts at strength ≥ 0.7 freezes the character** — the checker warns.
+- **Cuts that actually render.** Measured on the model, not read from the
+  guide: a spoken line in every shot anchors cuts; cutaways to a different
+  subject cut reliably; one subject travelling through connected spaces is
+  what the model morphs through instead. There is a cut budget per length
+  (about 4 shots in 20 s), and a different angle and camera move per shot
+  with the new shot re-established makes even a single silent subject cut.
+  Create's generator is steered by this — shot count capped by duration,
+  angle and move varied per shot, dialogue dealt across shots — and the
+  checker flags the "silent cuts" case. Or take the sure route: **one render
+  per hard cut**, joined afterwards.
+- **The Engine sweep.** Same timeline, same references, seed pinned, both
+  engines — the closest thing to a controlled comparison of what H3's grammar
+  is worth on a model that wasn't trained on it.
 
 No GPU at all? The app is still a full prompt editor: everything compiles,
 previews and lints, and the workflow downloads as JSON.
@@ -211,7 +253,7 @@ server's API contract — no page module knows which one answered:
 npm test
 ```
 
-93 tests, Node's own runner, no dependencies: the compiler against golden
+150 tests, Node's own runner, no dependencies: the compiler against golden
 files, the film planner, the linter run over MiniMax's canonical examples,
 cast handling, the fresh-start templates.
 
