@@ -347,6 +347,11 @@ function viewerPanel(p) {
     h("div.hd",
       h("span.title", "Viewer"),
       h("span.spacer"),
+      /* The three LLM assists, the same three in every viewer mode — they
+       * used to be one each under Prompt and Checks and one in the node
+       * view, so which you found depended on where you were standing. */
+      assistBar(p, { refresh, onReading: () => setViewerMode("checks") }),
+      h("span.vsep"),
       segmented([
         ["previz", "Previz", "Play the prompt back before spending GPU time on it"],
         ["board", "Board", "Every beat as a card, in render order"],
@@ -354,11 +359,6 @@ function viewerPanel(p) {
         ["prompt", "Prompt", "Exactly what the encoder will read"],
         ["checks", "Checks", "Everything checkable before a render"],
       ], viewerMode, setViewerMode),
-      h("span.vsep"),
-      /* The three LLM assists, the same three in every viewer mode — they
-       * used to be one each under Prompt and Checks and one in the node
-       * view, so which you found depended on where you were standing. */
-      assistBar(p, { refresh, onReading: () => setViewerMode("checks") }),
     ),
     body,
   );
