@@ -88,6 +88,21 @@ test("an exact shot count from the first screen outranks Pace AND the written cu
   assert.deepEqual(p.shots[2].beats.map(b => b.text), ["d", "e"]);
 });
 
+test("without written cuts every shot gets beats — the last one is not left empty", () => {
+  for (const [count, beats] of [[4, ["a", "b", "c", "d", "e"]], [4, ["a", "b", "c", "d", "e", "f"]], [3, ["a", "b", "c", "d"]]]) {
+    const p = blankProject();
+    p.render.duration = 20;
+    p.creative.shotCount = count;
+    p.creative.pool = { beats };
+    applySteering(p);
+    assert.equal(p.shots.length, count);
+    const texts = p.shots.map(s => s.beats.map(b => b.text).filter(Boolean));
+    assert.ok(texts.every(t => t.length >= 1), `${beats.length} beats over ${count} shots: ${JSON.stringify(texts)}`);
+    assert.deepEqual(texts.flat(), beats, "every beat kept, in order");
+    assert.ok(Math.max(...texts.map(t => t.length)) - Math.min(...texts.map(t => t.length)) <= 1, "dealt evenly");
+  }
+});
+
 /* ── A cut phrase never reaches the prompt as an action ─────── */
 import { stripCutPrefix } from "../web/js/shotlist.js";
 import { compilePrompt, validate } from "../web/js/prompt.js";

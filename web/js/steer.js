@@ -555,12 +555,15 @@ export function applySteering(draft, { pool = null } = {}) {
       if (seg.subjectOf && !(shot.subject || "").trim()) shot.subject = seg.subjectOf;
     });
   } else {
-    const perShot = Math.max(1, Math.ceil(beatPool.length / wanted));
+    /* Dealt as evenly as they go, the odd ones to the earlier shots. This
+     * used to hand out ceil(pool / shots) at a time, so five beats over four
+     * shots went 2·2·1·0 and the last shot of every Create came up empty. */
+    const n = shots.length;
+    const each = Math.floor(beatPool.length / n), odd = beatPool.length % n;
     let cursor = 0;
-    for (let i = 0; i < shots.length; i++) {
+    for (let i = 0; i < n; i++) {
       const shot = shots[i];
-      const last = i === shots.length - 1;
-      const take = last ? beatPool.slice(cursor) : beatPool.slice(cursor, cursor + perShot);
+      const take = beatPool.slice(cursor, cursor + each + (i < odd ? 1 : 0));
       cursor += take.length;
       if (take.length) {
         shot.beats = take.map((text, j) => newBeat(text, j === 0 ? "" : "then"));
