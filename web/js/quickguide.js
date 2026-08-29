@@ -64,7 +64,7 @@ const SECTIONS = [
       {
         n: "✦", title: "What this is — a whole studio, all on your machine",
         body: [
-          "Motionstill Cut is a prompt-engineering suite for one video model: MiniMax H3 — text, image and reference to video, with native audio. It looks like an NLE, writes prompts in the exact grammar H3's own rewriter emits, plays them back BEFORE you spend GPU time, and renders through your own ComfyUI.",
+          "Motionstill Cut is a prompt-engineering suite for two video models: MiniMax H3 — text, image and reference to video, with native audio — and Lightricks' LTX-2.5 (text and image to video, up to 30 s). It looks like an NLE, writes each model's own dialect — the exact grammar H3's rewriter emits, the prose paragraph LTX's guide asks for — plays the prompt back BEFORE you spend GPU time, and renders through your own ComfyUI.",
           "The unusual part is the pairing: a LOCAL LLM sits inside the editor as a director — it interviews you, captions your references, rewrites shots, reads your compiled prompt back like a stranger, and learns from how you rate your renders. Nothing leaves your machine: the model that writes and the model that renders are both yours, and they share your GPU by taking turns (VRAM saver).",
           "Neither engine is required to WRITE: without them the app is still a full prompt editor with previz and checks, and the workflow downloads as a ComfyUI graph.",
         ],
@@ -90,7 +90,8 @@ const SECTIONS = [
       {
         n: "1", title: "Create → Canvas → Studio",
         body: [
-          "Create is where a new project opens. Paste a rough idea, drop pictures and audio, and it interviews you — reading the images — then steers the result with six dials in plain language. Its last step is Build the canvas.",
+          "Create is where a new project opens. Which model? comes first, because H3 and LTX-2.5 read different prompts. Paste a rough idea, drop pictures and audio, and it interviews you — reading the images — then steers the result with seven dials in plain language. Its last step is Build the canvas.",
+          "How many shots? is a CEILING, written cuts included: ask for four and the model's fifth \"Cut to\" folds into the last shot that fits. On Auto, H3 gets up to six; one LTX-2.5 render is capped by length — 4 shots at 20 s, 3 at 15, 2 at 10 — because that is how many cuts it was measured to render. Beats are dealt evenly, so the last shot never comes up empty.",
           "Canvas is a node graph laid out as a timeline: shots left to right, the pictures each shot cites above it, the clip-wide things — steering, sound, the director — on a shelf underneath, the render at the end. Uncited material waits in an amber inbox.",
           "Studio is everything below: per-beat timing, dialogue, retention markers, lens and height, the framing box, the seed ladder. The two views edit the SAME fields — the same editor drawn twice, so they cannot disagree.",
           "` opens Create, 0 the Canvas, 2 the Cut page.",
@@ -122,6 +123,13 @@ const SECTIONS = [
         ],
       },
       {
+        n: "✎", page: "cut", title: "The assist bar — three LLM verbs, one place",
+        body: [
+          "Improve shots · Second opinion · Rewrite whole prompt sit together in the Cut viewer header in every mode, and in the node view's toolbar — same order, and labels that say what each one touches.",
+          "✎ Improve shots rewrites each shot's OWN fields in the model's format; the timeline keeps driving the prompt, so you can see what changed. Each shot node has its own ✎ for one shot at a time. ✨ Second opinion has an LLM read the prompt back as the model would — the reading and its suggested edits land under Checks. ⤵ Rewrite whole prompt writes one block of prose in the rewriter's format and turns manual override ON: the shot list stops driving until you turn it back off.",
+        ],
+      },
+      {
         n: "◎", title: "The camera, on the node",
         body: [
           "Every shot node has a camera pad. The angle you drag picks the move, the distance from centre picks the amplitude, and the centre is \"the camera remains static\" — which H3 wants said out loud, because an unstated camera is one the model invents.",
@@ -138,7 +146,7 @@ const SECTIONS = [
         n: "❝", title: "Voices are people, not properties of a shot",
         body: [
           "(S1) in shot 1 and (S1) in shot 4 are the same person, and the model keeps the voice between them. So each speaking part is its own node, wired to every shot it speaks in — the only thing in the app that answers \"who is in this scene\" at a glance.",
-          "SAY WHO A VOICE IS, once: \"the young woman with a quiet, breathy voice\". That phrase is what H3 builds the voice out of; without it the model picks one, and in a two-person frame nothing says whose mouth moves.",
+          "SAY WHO A VOICE IS, once: \"a little boy with a high, eager voice\". That phrase is what H3 builds the voice out of; without it the model picks one, and in a two-person frame nothing says whose mouth moves. Create's interview proposes the voice and shows it as its own field; Sound's cast panel lists every speaker with their identity — amber where one is missing — and Describe the voices has the LLM fill in the ones you left blank, keeping any you wrote yourself.",
           "The words inside <d>[Language] … </d> are verbatim — never translated, never punctuated for you. \"Off screen\" writes H3's exact voiceover phrasing ending in \"the lips stay closed\"; \"carries over the cut\" writes <scenetrans> on both sides.",
         ],
       },
@@ -185,8 +193,8 @@ const SECTIONS = [
         n: "5", page: "cut", title: "Previz — the frame, lit and moving",
         body: [
           "Viewer ▸ Previz plays the clip back as frames: the cuts where they actually fall, each shot's framing, the camera move at its own amplitude and speed, the dialogue as captions. It is lit — the key goes where the Lighting line puts it and the grade tints the frame, so the Light dial is something you watch.",
-          "Paused, the frame carries two boxes: orange where the subject starts, blue where the move leaves it. Drag them and the camera vocabulary is read back out of the drag. Viewer ▸ Board (B) is the same clip as a storyboard.",
-          "It simulates the PROMPT, not the model: whether the timing, framing and structure are what you meant — the part a render cannot tell you cheaply. Viewer ▸ Checks lists everything wrong before a GPU second is spent; Second opinion has the LLM read the finished prompt as a stranger would.",
+          "Paused, the frame carries two boxes: orange where the subject starts, blue where the move leaves it. Drag them and the camera vocabulary is read back out of the drag. The five tabs: Previz · Board (B, the same clip as a storyboard) · Render (the job on the GPU) · Prompt (exactly what the encoder reads) · Checks.",
+          "It simulates the PROMPT, not the model: whether the timing, framing and structure are what you meant — the part a render cannot tell you cheaply. Checks lists everything wrong before a GPU second is spent; Second opinion on the assist bar has the LLM read the finished prompt as a stranger would, and its reading lands under Checks.",
         ],
       },
       {
@@ -270,6 +278,20 @@ const SECTIONS = [
         body: [
           "MiniMax's model card gives H3's output as 4–15 seconds at 24 fps. ComfyUI accepts a longer latent without complaining, and the extra time comes back as a repeat of what you already have. A shot list is prompt syntax, not a longer window: \"[Shot 3] At 00:08.000\" says when to cut, not how much to generate.",
           "For something longer, tick The Film: it cuts the writing into clips that each fit, renders them in order — each continuing from the previous clip's final frame — and joins them at the end (the join runs on the local app; the hosted version hands you the clips).",
+        ],
+      },
+      {
+        n: "L", page: "deliver", title: "LTX-2.5 — the second engine, in its own dialect",
+        body: [
+          "Deliver's Engine row (and the chip in the title bar) switches the same timeline to Lightricks' LTX-2.5. It is not the H3 prompt pushed through another model: LTX gets one chronological paragraph, no timestamps or shot numbers, every cut named in prose — \"A hard cut transitions to a close-up …\" — the new shot re-established, dialogue as quoted lines with the voice named, the ambient sound at the end. Lightricks' prompt enhancer stays OFF: it helps a thin prompt and dilutes a compiled one.",
+          "Its own pipeline: stock ComfyUI LTX-2 AV nodes, Two-stage 8+3 or Single-stage 8-step distilled, cfg 1, frames on the 8k+1 grid, clips to a real 30 s. Five model files (~40 GB, Setup ▸ Models); a ComfyUI without the LTX nodes still renders MiniMax. Pins attach an image to a shot at its cut time (LTXVAddGuide) — they land on an 8-frame grid, the pin row prints the frame really hit, and the same picture pinned at two cuts at strength ≥ 0.7 freezes the character; the checks warn.",
+        ],
+      },
+      {
+        n: "✂", page: "cut", title: "What makes LTX-2.5 actually cut",
+        body: [
+          "Measured on the model with fixed seeds and ffmpeg scene scores, not read from the guide. A four-shot prompt coming back as one continuous take is the usual failure, and verbosity is not the cause — the guide's own compact prose morphed too. What holds a cut in one LTX render: a spoken line in every shot; a cutaway to something else (the waves, her hands, the tower); a different angle and camera move per shot, small or static; at most 3–4 shots — 4 at 20 s, 3 at 15, 2 at 10.",
+          "Create is steered by this on LTX — shot count capped by length, angles walked, no two consecutive shots sharing a move, the line dealt across shots — and the checker names which case you are in: nobody speaks and every shot is the same subject (add a cutaway, or Film ▸ Cuts), or only shot 1 speaks (deal a line). Or take the sure route: Film ▸ Cuts renders every hard cut as its own clip and joins them afterwards.",
         ],
       },
       {
@@ -362,7 +384,7 @@ const SECTIONS = [
     id: "tips", icon: "◈", label: "Tips",
     cards: [
       {
-        n: "◈", title: "Ten things people find out late",
+        n: "◈", title: "Eleven things people find out late",
         list: [
           ["An empty soundscape renders SILENCE.", "N/A is an instruction, not an omission — describe the room, or mean the silence."],
           ["The camera must be told to hold still.", "\"The camera remains static\" is a sentence H3 wants; an unstated camera is one the model invents."],
@@ -372,7 +394,8 @@ const SECTIONS = [
           ["The seed is a take, not a setting.", "-1 rolls fresh; pin it only to compare — and sweep one variable at a time."],
           ["Rate your renders.", "The director reads your stars and weighs your box's results over the vendor's guide. Unrated libraries teach it nothing."],
           ["Say what changed since the last shot.", "The subject line repeats at every cut and the model believes it — the Changed since line is how clothes stay off."],
-          ["15 seconds is the ceiling per clip.", "More time repeats; more SHOTS is syntax, not duration. Longer pieces are films — several clips, chained and joined."],
+          ["15 seconds is the ceiling per clip on H3.", "More time repeats; more SHOTS is syntax, not duration. Longer pieces are films — several clips, chained and joined. LTX-2.5 holds a real 30 s, but only 3–4 cuts of it."],
+          ["On LTX-2.5, a silent shot of the same subject is not a cut.", "Give every shot a line, cut away to something else, or render every hard cut as its own clip (Film ▸ Cuts)."],
           ["⌘K knows everything.", "Modes, pages, templates, GPU controls, import/export — type a few letters of what you want."],
         ],
       },
@@ -409,7 +432,7 @@ const SECTIONS = [
           ["⇧Space", "The readthrough — watch the prompt play"],
           ["`", "Create"],
           ["0", "The Canvas"],
-          ["1 – 6", "Media · Cut · Sound · Deliver · Library · Setup"],
+          ["1 – 6", "Library · Media · Cut · Sound · Deliver · Setup"],
           ["Space", "Play the previz"],
           ["← →", "Nudge the playhead"],
           ["S", "Split the shot at the playhead"],

@@ -1,11 +1,13 @@
 # Motionstill Cut — quick guide
 
-An online editor for one model: **MiniMax H3**, in its three conditioning modes
-(T2V, I2V, Ref2V). It writes prompts in the format H3's own rewriter emits, plays
-them back before you spend GPU time on them, and hands the result to ComfyUI —
-either as a workflow file you download, or as a job it queues for you.
-(One marked exception: Deliver's **Engine** row can render the same compiled
-prompt on **LTX-2.5** as an experiment — see §11.)
+An online editor for two video models: **MiniMax H3**, in its three
+conditioning modes (T2V, I2V, Ref2V), and **Lightricks' LTX-2.5** (T2V, I2V).
+It writes each one's own dialect — the format H3's rewriter emits, the prose
+paragraph LTX's prompting guide asks for — plays the prompt back before you
+spend GPU time on it, and hands the result to ComfyUI, either as a workflow
+file you download or as a job it queues for you. The engine is chosen on
+Create (**Which model?**) and switched later from the title-bar chip — see §11
+for what LTX-2.5 changes.
 
 The same guide is in the app: press **F1** or the **?** button.
 
@@ -87,8 +89,14 @@ it is the step *before* them and not a third peer alongside them.
 
 **Create** is where a new project opens, and where the **shot count** is set
 (**How many shots?** — Auto lets the Pace dial decide, and a beat written as
-"Cut to close-up, …" always starts a new shot whatever the dial says; a
-number is exact), and where the **model** is chosen — **Which model?**, above **How long?**: MiniMax H3 and LTX-2.5 read different prompts, so it is asked before anything is written for it; the title-bar chip switches it later. Paste a rough idea, drop your pictures
+"Cut to close-up, …" or "Wide shot, …" starts a new shot whatever the dial
+says; a number is a **ceiling on everything, written cuts included** — ask for
+four and the model's fifth "Cut to" folds into the last shot that fits, beats
+kept, headings dropped. On auto, one LTX-2.5 render has its own ceiling by
+length — 4 shots at 20 s, 3 at 15, 2 at 10 — because that is how many cuts
+the model was measured to render in one clip; H3 keeps its six. Beats are
+dealt evenly across the shots, so the last shot never comes up empty), and
+where the **model** is chosen — **Which model?**, above **How long?**: MiniMax H3 and LTX-2.5 read different prompts, so it is asked before anything is written for it; the title-bar chip switches it later. Paste a rough idea, drop your pictures
 and audio, and it interviews you — reading the images — then steers the result
 with seven dials in plain language. Its job is to hand you a working canvas, so
 the last step is **Build the canvas →**.
@@ -220,9 +228,19 @@ Create's preview — a reference tag is a **chip carrying the picture it names**
 coloured by kind. A tag with nothing behind it turns red with a wavy underline,
 because H3 ignores those silently.
 
-**Improve** rewrites the shots, not the compiled paragraph — so you can see
-what changed and everything downstream keeps working. Each shot node has its
-own **✎** for one shot at a time.
+**The assist bar** is the same three LLM verbs in the same order wherever the
+prompt is being worked on — the Cut viewer header in every mode, and the node
+view's toolbar — with labels that say what each one touches:
+
+* **✎ Improve shots** — each shot's own fields, rewritten in the model's
+  format. The timeline keeps driving the prompt, so you can see what changed
+  and everything downstream keeps working. Each shot node has its own **✎**
+  for one shot at a time.
+* **✨ Second opinion** — an LLM reads the prompt back as the model would;
+  the reading and its suggested edits land under **Checks** (§9).
+* **⤵ Rewrite whole prompt** — one block of prose in the rewriter's format.
+  This turns **manual override** on: the shot list stops driving the prompt
+  until you turn it back off.
 
 **The two views edit the same fields, not two versions of them.** A shot's
 subject is one input and each beat is its own row with its connective, on the
@@ -230,7 +248,8 @@ node exactly as in the inspector — the same editor, drawn twice. Press **Enter
 at the end of a beat to start the next one; **Backspace** in an empty one
 removes it.
 
-**Studio** is everything below: five pages, four viewer tabs, an inspector.
+**Studio** is everything below: five pages, five viewer tabs (**Previz ·
+Board · Render · Prompt · Checks**), an inspector.
 Per-beat timing, dialogue, retention markers, lens and height, the framing box,
 the seed ladder — everything too detailed to belong on a node.
 
@@ -409,7 +428,15 @@ the right one of the two vocabularies, and no speaker id in
 ## 5 · Point it at your box — *Setup*
 
 Two addresses. **Auto-detect** finds either server if it is already running; both
-badges in the title bar go green when they answer.
+badges in the title bar go green when they answer, and the status strip at the
+top of the page (ComfyUI · LLM · GPU) says the same thing in one line.
+
+The page is grouped the way Deliver's left column is: **ComfyUI**, **LLM
+server** and **VRAM saver** on the left; **model files** (one aligned row
+each, with an installed / not-found badge and an *n/N* tally in the group
+header), **storage**, **this machine** and the **install guide** on the right.
+Node lists and the install guide fold away; the long explanation behind each
+group is under its **?** button.
 
 **No custom nodes are needed.** Every node the editor emits ships with ComfyUI —
 that is what makes a downloaded workflow run on someone else's install. If Setup
@@ -594,11 +621,17 @@ camera line and the words. Playback answers "does this play the way I meant";
 the board answers it at a glance, and answers one playback cannot: whether six
 beats ended up where three were intended.
 
-The other two viewer tabs: **Prompt** is exactly what the encoder will read,
-coloured by field; **Checks** is every problem findable before a GPU second is
-spent — cuts past the end of the clip, beats packed too tight, negations,
-intensifiers, quality tags, speech mentioned without words, references attached
-but never cited, a Turbo build on the wrong canvas.
+The other three viewer tabs: **Render** follows the job on the GPU (§10b);
+**Prompt** is exactly what the encoder will read, coloured by field;
+**Checks** is every problem findable before a GPU second is spent — cuts past
+the end of the clip, beats packed too tight, negations, intensifiers, quality
+tags, speech mentioned without words, references attached but never cited, a
+Turbo build on the wrong canvas, and on LTX-2.5 the cuts that will not render
+as cuts: every shot on one viewpoint or one camera move, a shot heading
+buried inside a beat, silent shots of the same subject after shot 1 (§11).
+
+The header above the tabs carries the **assist bar** — Improve shots · Second
+opinion · Rewrite whole prompt (§2) — in every mode.
 
 **Nodes** (`N`, or the button in the timeline header) is the strip between the
 viewer and the timeline: sources on the left, shots in cut order in the middle,
@@ -615,9 +648,10 @@ and is told that where the draft contradicts an image, the image wins. Set a
 different models. The Media page's **Describe** button captions a whole bin in
 one go, which is what feeds the rewriter when it cannot see pixels itself.
 
-**Second opinion** (on the Checks tab) is the other half of "how will this play
-out": it has the LLM read the finished prompt back and report, shot by shot,
-what it would render and which phrase reads two ways. Previz shows what the
+**Second opinion** (on the assist bar; its reading lands under Checks) is the
+other half of "how will this play out": it has the LLM read the finished
+prompt back and report, shot by shot, what it would render and which phrase
+reads two ways. Previz shows what the
 *timeline* says; this shows what the *prompt* says to someone who wasn't there
 when you wrote it.
 
@@ -634,20 +668,33 @@ stable across shots and the words are never translated. Voiceover uses the exact
 phrase *"says in an off-screen voiceover"* plus a statement that the lips stay
 closed. `N/A` in either audio field means *deliberately none*.
 
+**Say who a voice is.** H3 builds the voice out of the phrase on the speaker's
+first line — character type, age, on screen or not, pitch, timbre, pace,
+accent: *"a little boy with a high, eager voice"*. A bare `(S1) says` makes
+the model pick one, and in a two-person frame nothing says whose mouth moves.
+Create's interview proposes the voice and shows it as its own field (falling
+back to the subject, so a line never compiles nameless); the **cast** panel on
+Sound lists every speaker with their identity — amber where one is missing —
+and **Describe the voices** has the LLM fill identity and delivery for the
+speakers you left blank, keeping any you wrote yourself.
+
 ## 10b · Watching a render
 
 The render node shows a real bar, the step count, the node ComfyUI is on, and
 a running estimate — and, when ComfyUI is streaming them, the sampler's own
 **preview frames** as the image resolves.
 
-Previews need ComfyUI started with a preview method:
+Every job is queued asking for previews (`preview_method: auto`) while
+Setup ▸ **Show render previews** is on, so a current ComfyUI needs no flag.
+An older one that ignores the request wants it on the command line:
 
 ```bash
 python main.py --preview-method auto        # or latent2rgb (cheap) / taesd (good)
 ```
 
-Without one the bar still moves; there is just nothing to show. Setup ▸ **Show
-render previews** turns them off if you would rather not pay the bandwidth.
+Without one the bar still moves; there is just nothing to show, and Deliver
+says so when progress arrives but no frames do. Turn previews off on Setup if
+you would rather not pay the bandwidth.
 
 ---
 
@@ -769,13 +816,14 @@ Build row:
 Steps and flow shifts are properties of a distill, not preferences — they are set
 together or the motion degrades without erroring anywhere.
 
-### The Engine row (experimental)
+### The second engine: LTX-2.5
 
 On T2V and I2V an **Engine** row sits above the build picker: **MiniMax H3**
-(native) or **LTX-2.5 · experimental** — and the same choice sits in the
-title bar as a chip beside the mode, on every page, because it decides what
-the timeline may do (15 s or 30 s, pins or no pins). Click the chip to switch;
-the prompt does not change, the checks use the other engine's limits. A check
+or **LTX-2.5** (still marked *experimental* while it settles) — and the same
+choice sits in the title bar as a chip beside the mode, on every page, because
+it decides what the timeline may do (15 s or 30 s, pins or no pins). Click
+the chip to switch; the timeline does not change, the compiler speaks the
+other model's dialect and the checks use its limits. A check
 that the other engine would resolve — a 20 s clip on H3, a pinned shot on H3 —
 carries a **Switch to LTX-2.5** button of its own. The LTX chip compiles the *same
 timeline* the way Lightricks' prompting guide asks — one chronological paragraph, no
@@ -818,6 +866,35 @@ Two things about pins that ComfyUI will not tell you, so this app does:
 The LTX chip also leaves Lightricks' **prompt enhancer off** on purpose.
 It helps a thin prompt; it dilutes a compiled one, and every prompt this
 app sends is compiled.
+
+### What makes LTX-2.5 actually cut
+
+Measured on the model (21 harness renders, fixed seeds, ffmpeg scene scores
+— `scripts/render-test.mjs`), not read from the guide. A four-shot prompt
+that reads as one continuous take is the usual failure, and what decides it
+is not verbosity: the same content in the guide's own compact prose morphed
+too. What holds a cut on one LTX-2.5 render:
+
+* **A spoken line in every shot.** Dialogue anchors the cut; silent shots of
+  one subject moving through connected spaces are what the model morphs
+  through instead.
+* **A cutaway to something else** — the waves, her hands, the tower — cuts
+  reliably.
+* **A different angle and camera move per shot**, small or static cameras,
+  the new shot re-established in full. Six shots all front-facing with the
+  same handheld pan are one take to this model.
+* **At most 3–4 shots** in a clip: 4 at 20 s, 3 at 15, 2 at 10.
+
+Create is steered by this on LTX: the shot count is capped by length, fresh
+shots walk the angle cycle rather than front/low/front/low, no two
+consecutive shots share a move, the camera is never fast or two-axis on one
+render, the line is dealt across the shots, and the Light dial never names a
+time of day. The compiler re-identifies the subject by a short tag at every
+cut, and the checker names which case you are in — nobody speaks and every
+shot is the same subject (suggests a cutaway, or Film ▸ Cuts), or only shot 1
+speaks (deal or add a line), and says nothing when the silent shots already
+cut to a different subject. Or take the sure route: **one render per hard
+cut**, joined afterwards (§10b).
 
 ### These settings stick
 
@@ -939,7 +1016,7 @@ templates, renders, GPU controls, project import and export.
 | `⇧Space` | the readthrough |
 | `` ` `` | Create |
 | `0` | the Canvas |
-| `1` – `6` | Media · Cut · Sound · Deliver · Library · Setup |
+| `1` – `6` | Library · Media · Cut · Sound · Deliver · Setup |
 | `Space` | play the previz |
 | `←` `→` | nudge the playhead |
 | `S` | split at the playhead |
