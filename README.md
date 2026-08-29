@@ -10,7 +10,7 @@ no upload — the model that writes and the model that renders are both yours.
 shared:**
 
 ```
-Web    → the Netlify link · nothing to install · everything stays in your browser
+Web    → https://motionstillcut.netlify.app · nothing to install · everything stays in your browser
 Local  → git clone …/motionstillcut && node server/server.js   (Node 18+, zero deps)
 ```
 
