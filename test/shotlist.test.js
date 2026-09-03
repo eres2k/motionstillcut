@@ -194,18 +194,18 @@ test("a shot count the creator typed caps the model's written cuts, and trims a 
   assert.equal(p.shots.length, 2, "a typed count also trims shots that already exist");
 });
 
-test("on auto, one LTX-2.5 render caps written cuts by duration: 20 s → 4, 10 s → 2", async () => {
+test("on auto, one LTX-2.5 render caps written cuts by legibility: 20 s → 5, 10 s → 3", async () => {
   const { applySteering } = await import("../web/js/steer.js");
   const six = ["Wide shot, the tower", "Cut to medium shot, the stairs", "Cut to close-up, the crank", "Cut to close-up, the flame", "Cut to wide shot, the lamp", "Cut to close-up, her eyes"];
   const p = blankProject();
   p.render.engine = "ltx25"; p.render.duration = 20; p.creative.shotCount = 0;
   p.creative.pool = { beats: six }; p.shots[0].subject = "a keeper";
   applySteering(p);
-  assert.equal(p.shots.length, 4);
+  assert.equal(p.shots.length, 5);
   assert.equal(p.shots.flatMap(s => s.beats).filter(b => b.text).length, 6, "every beat survives");
   p.render.duration = 10;
   applySteering(p);
-  assert.equal(p.shots.length, 2, "and a shorter clip folds the existing four down");
+  assert.equal(p.shots.length, 3, "and a shorter clip folds the existing five down");
   p.render.engine = "minimax"; p.render.duration = 20;
   p.creative.pool = { beats: six };
   applySteering(p);

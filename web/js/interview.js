@@ -46,13 +46,17 @@ export async function gatherMaterial(project) {
  */
 export async function readMaterial(project) {
   const material = await gatherMaterial(project);
-  /* One LTX-2.5 render: measured on this app's own renders (28 Aug 2026),
-   * six cuts in 20 s came back as one take; the guide's 2–4 shots held. A
-   * shot needs ~5 s to be a shot, so the cut budget follows the duration:
-   * 10 s → 1, 15 s → 2, 20 s and up → 3. */
+  /* One LTX-2.5 render: measured on this app's own renders (28 Aug 2026,
+   * every render read frame by frame 3 Sep 2026), the model places a seam at
+   * nearly every written cut — six beats in 20 s came back as seven seams.
+   * What the prompt decides is whether a seam lands as a hard cut or a
+   * dissolve, not whether it lands. So the count is bounded by legibility,
+   * not by the model: a shot needs ~3 s to read, and past about five shots
+   * the seams start landing as flash frames. 10 s → 2 cuts, 15 s → 4,
+   * 20 s and up → 4. */
   const ltxOne = activeEngine(project) === "ltx25" && !(project.film?.enabled && project.film?.splitAtCuts);
   const typed = Number(project.creative?.shotCount) || 0;
-  const maxCuts = typed > 1 ? typed - 1 : Math.max(1, Math.min(3, Math.floor((project.render?.duration || 5) / 5) - 1));
+  const maxCuts = typed > 1 ? typed - 1 : Math.max(1, Math.min(4, Math.floor((project.render?.duration || 5) / 3) - 1));
   const has = {
     text: !!material.text, images: material.images.length,
     clips: material.clips.length, sounds: material.sounds.length,
@@ -78,7 +82,7 @@ export async function readMaterial(project) {
     expect: ["idea","subject","setting","beats","speaks","line","voice","mood","dials","questions"],
     mode: project.mode,
     system: `You are a director reading a creator's raw material and proposing a first pass at a video.
-The video will be made by ${ltxOne ? "LTX-2.5 in ONE generation, which reads its cuts out of prose and holds at most " + (maxCuts + 1) + " shots: write at most " + maxCuts + " \"Cut to\" beat" + (maxCuts === 1 ? "" : "s") + ", each shot at least 4 seconds with one or two beats of its own" : "MiniMax H3"}, which renders about one action beat every 2–3 seconds, with its own audio.
+The video will be made by ${ltxOne ? "LTX-2.5 in ONE generation, which reads its cuts out of prose and places a seam at every one, landing it as a clean cut only when the new shot is visibly a different shot: write at most " + maxCuts + " \"Cut to\" beat" + (maxCuts === 1 ? "" : "s") + " (" + (maxCuts + 1) + " shots), each shot at least 3 seconds with one or two beats of its own" : "MiniMax H3"}, which renders about one action beat every 2–3 seconds, with its own audio.
 Never write that someone "speaks", "says" or "shouts" inside a beat — the words go in "line", and a beat that mentions speech without them makes the model invent dialogue.
 If the video needs more than one shot, the beat where a new shot begins STARTS WITH "Cut to <framing>, " — for example
 "Cut to close-up, she looks up from the letter" — and that beat is the first of the new shot. A cut is never described any other way,

@@ -63,13 +63,26 @@ test("on LTX-2.5 the prompt is Lightricks' dialect: one paragraph, cuts in prose
   assert.equal(cutVerbFor(NO_CUT, "ltx25"), NO_CUT);
 });
 
-test("on LTX-2.5 more than four shots is a warning, per Lightricks", () => {
+test("on LTX-2.5 more than five shots is a warning: the seams land, the shots stop reading", () => {
   const p = three();
   p.render.engine = "ltx25";
-  for (const at of [7, 8]) { const s = newShot(); s.at = at; s.subject = "the baker"; s.beats = [newBeat("x", "")]; p.shots.push(s); }
+  for (const at of [7, 8, 9]) { const s = newShot(); s.at = at; s.subject = "the baker"; s.beats = [newBeat("x", "")]; p.shots.push(s); }
   assert.ok(validate(p).checks.some(c => /prefers 2–4/.test(c.msg)));
-  p.shots[4].cutVerb = NO_CUT;   // four cuts now
+  p.shots[5].cutVerb = NO_CUT;   // five cuts now
   assert.ok(!validate(p).checks.some(c => /prefers 2–4/.test(c.msg)));
+});
+
+/* Measured on one prompt and seed: single-stage landed every seam as a
+ * dissolve, two-stage landed the same seams as hard cuts. */
+test("on LTX-2.5 single-stage with cuts suggests the two-stage build; two-stage says nothing", () => {
+  const p = three();
+  p.render.engine = "ltx25"; p.render.variant = "ltx_single";
+  assert.ok(validate(p).checks.some(c => /Two-stage 8\+3/.test(c.msg)));
+  p.render.variant = "ltx_two";
+  assert.ok(!validate(p).checks.some(c => /Two-stage 8\+3/.test(c.msg)));
+  p.render.variant = "ltx_single";
+  p.shots[1].cutVerb = NO_CUT; p.shots[2].cutVerb = NO_CUT;   // no cuts to harden
+  assert.ok(!validate(p).checks.some(c => /Two-stage 8\+3/.test(c.msg)));
 });
 
 test("a dissolve is written as the guide's verb", () => {
@@ -115,26 +128,26 @@ test("on LTX-2.5 the second hard cut is worded the guide's other way", () => {
   assert.equal(cutVerbFor("the camera cuts to", "minimax", 1), "the camera cuts to");
 });
 
-test("on LTX-2.5 same angle and same move on every shot is flagged as one take", () => {
+test("on LTX-2.5 same angle and same move on every shot is flagged: the seams land as dissolves", () => {
   const p = three();
   p.render.engine = "ltx25";
   for (const s of p.shots) s.camera = { ...s.camera, type: "handheld", speed: "fast", secondary: "pan right" };
   const msgs = () => validate(p).checks.map(c => c.msg);
-  assert.ok(msgs().some(m => /one continuous take/.test(m)), msgs().join("\n"));
+  assert.ok(msgs().some(m => /dissolves rather than cuts/.test(m)), msgs().join("\n"));
   p.shots[1].viewpoint = "over-the-shoulder";
   assert.ok(msgs().some(m => /runs through every cut/.test(m)));
-  assert.ok(!msgs().some(m => /one continuous take/.test(m)));
+  assert.ok(!msgs().some(m => /dissolves rather than cuts/.test(m)));
   p.shots[1].camera.type = "static"; p.shots[1].camera.secondary = "none";
-  assert.ok(!msgs().some(m => /runs through every cut|one continuous take|All 3 shots/.test(m)), msgs().join("\n"));
+  assert.ok(!msgs().some(m => /runs through every cut|dissolves rather than cuts|All 3 shots/.test(m)), msgs().join("\n"));
   p.render.engine = "minimax";
   p.shots[1].viewpoint = "front-facing";
-  assert.ok(!msgs().some(m => /continuous take|runs through/.test(m)), "MiniMax reads [Shot N] markers, not prose");
+  assert.ok(!msgs().some(m => /dissolves rather than cuts|runs through/.test(m)), "MiniMax reads [Shot N] markers, not prose");
 });
 
 /* The Create page's Pace dial, not the LLM, decides how many shots a 30 s
  * piece gets — and it gave LTX six, all front-facing, all "shakes slightly
- * while panning right", which the model rendered as one take. */
-test("Create's steering on a single LTX-2.5 render: at most 4 shots, a new angle at every cut, no move repeated across a cut", async () => {
+ * while panning right", which came back with every seam dissolved. */
+test("Create's steering on a single LTX-2.5 render: at most 5 shots, a new angle at every cut, no move repeated across a cut", async () => {
   const { applySteering, DEFAULT_DIALS } = await import("../web/js/steer.js");
   const { cameraSentence } = await import("../web/js/prompt.js");
   const make = (engine) => {
@@ -147,12 +160,12 @@ test("Create's steering on a single LTX-2.5 render: at most 4 shots, a new angle
     return p;
   };
   const ltx = make("ltx25");
-  assert.ok(ltx.shots.length <= 4 && ltx.shots.length >= 2, `${ltx.shots.length} shots`);
+  assert.ok(ltx.shots.length <= 5 && ltx.shots.length >= 2, `${ltx.shots.length} shots`);
   for (let i = 1; i < ltx.shots.length; i++) {
     assert.notEqual(ltx.shots[i].viewpoint, ltx.shots[i - 1].viewpoint, `shot ${i + 1} repeats the angle`);
     assert.notEqual(cameraSentence(ltx.shots[i].camera), cameraSentence(ltx.shots[i - 1].camera), `shot ${i + 1} repeats the move`);
   }
-  assert.ok(!validate(ltx).checks.some(c => /one continuous take|runs through every cut|All \d shots are/.test(c.msg)));
+  assert.ok(!validate(ltx).checks.some(c => /dissolves rather than cuts|runs through every cut|All \d shots are/.test(c.msg)));
   const h3 = make("minimax");
   assert.equal(h3.shots.length, 6, "H3 keeps the [Shot N] ceiling of six");
   assert.notEqual(cameraSentence(h3.shots[1].camera), cameraSentence(h3.shots[0].camera), "the mirrored shot flips its pan too");

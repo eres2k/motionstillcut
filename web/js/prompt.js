@@ -1040,14 +1040,16 @@ export function validate(project) {
      * happen teaches people to ignore the counter. The dropdown cannot
      * exceed 30 s, but a hand-edited or imported project can. */
     const cuts = shotMarkers(shots)[shots.length - 1] || 1;
-    if (cuts > 4) add("warn", `${cuts} shots in one LTX-2.5 generation. Lightricks' guide prefers 2–4 — more cuts need clearer, shorter beats per shot, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
-    /* — Cuts that look like one take —
-     * LTX reads a cut out of the prose only when the next shot is visibly a
-     * different shot. Six shots that are all front-facing with the same pan
-     * stamped into each one is, to the model, a single take with a camera
-     * that keeps panning; it renders no cut, or a blend. The guide asks that
-     * every cut re-establish scale AND angle, and that a continuous move
-     * not run through the cut. */
+    if (cuts > 5) add("warn", `${cuts} shots in one LTX-2.5 generation. Lightricks' guide prefers 2–4, and in this app's own tests the model placed a seam at every written cut but past five in 20 s the shots got too short to read and seams landed as flash frames. Give each shot at least 3 s, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+    /* — Seams that land as dissolves —
+     * Measured on this app's own renders (28 Aug 2026, every render read
+     * frame by frame 3 Sep): LTX places a seam at nearly every written cut,
+     * and what varies is whether it lands as a hard cut or as a dissolve.
+     * Six shots that are all front-facing with the same pan stamped into
+     * each one dissolve at every seam; a camera that keeps moving through
+     * the cut reads as one continuous take. The guide asks that every cut
+     * re-establish scale AND angle, and that a continuous move not run
+     * through the cut. */
     if (cuts >= 3) {
       const cutRows = shots.filter((s, i) => i > 0 && s.cutVerb !== NO_CUT);
       const camKey = (s) => cameraSentence(s.camera || {});
@@ -1055,20 +1057,21 @@ export function validate(project) {
       const sameCam = moving.length === cutRows.length && new Set(cutRows.map(camKey)).size === 1;
       const sameAngle = new Set(shots.map(s => s.viewpoint || "front-facing")).size === 1;
       if (sameCam && sameAngle) {
-        add("warn", `Every shot is ${shots[0].viewpoint || "front-facing"} with the same camera move ("${camKey(cutRows[0]).replace(/\.$/, "")}"). LTX-2.5 reads that as one continuous take and drops the cuts — change the angle at every cut, keep the move to one shot, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+        add("warn", `Every shot is ${shots[0].viewpoint || "front-facing"} with the same camera move ("${camKey(cutRows[0]).replace(/\.$/, "")}"). LTX-2.5 lands those seams as dissolves rather than cuts — change the angle at every cut, keep the move to one shot, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
       } else if (sameCam) {
-        add("warn", `The same camera move runs through every cut ("${camKey(cutRows[0]).replace(/\.$/, "")}"). A move that continues across a cut tells LTX-2.5 it is one take — make the other shots static, or give each its own move.`);
+        add("warn", `The same camera move runs through every cut ("${camKey(cutRows[0]).replace(/\.$/, "")}"). A move that continues across a cut makes LTX-2.5 dissolve through it instead of cutting — make the other shots static, or give each its own move.`);
       } else if (sameAngle) {
         add("warn", `All ${shots.length} shots are ${shots[0].viewpoint || "front-facing"}. A cut LTX-2.5 honours changes the angle as well as the scale — vary the viewpoint (low-angle, over-the-shoulder, side) at each cut.`);
       }
     }
-    /* — Cuts with nothing to hold them —
+    /* — Seams with nothing to hold them —
      * Measured on this app's own renders: four shots of physical action
-     * (climb, throw a lever, look out) with speech only in shot 1 came back
-     * as one continuous take five times out of five, at 10 s and 20 s, on
-     * both samplers; the same shots with a sentence in each cut cleanly at
-     * every one, as did a talking head with a line per shot. The model
-     * cuts where the sound changes; where it does not, it travels. */
+     * (climb, throw a lever, look out) with speech only in shot 1 placed a
+     * seam at every shot but landed nearly all of them as dissolves, seven
+     * renders out of seven, at 10 s and 20 s, on both samplers; the same
+     * shots with a sentence in each cut cleanly at every seam, as did a
+     * talking head with a line per shot. The model cuts hard where the
+     * sound changes; where it does not, it dissolves. */
     if (cuts >= 3 && !project.sound?.silent) {
       const cutRows = shots.filter((s, i) => i > 0 && s.cutVerb !== NO_CUT);
       const silent = cutRows.filter(s => !(s.dialogue || []).some(l => (l.text || "").trim()));
@@ -1080,11 +1083,21 @@ export function validate(project) {
           /* Silent, but cutting between different subjects — measured, that
            * cuts (waves, gulls, boots). Nothing to say. */
         } else if (!firstLine) {
-          add("warn", `Nobody speaks and every shot is ${shots[0].subject ? `"${shots[0].subject.slice(0, 40)}"` : "the same subject"}. In this app's own LTX-2.5 tests, silent shots of one person moving through a scene rendered as a single unbroken take, while cuts to something else (the waves, her hands, the tower) held. Make one or two shots a cutaway, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+          add("warn", `Nobody speaks and every shot is ${shots[0].subject ? `"${shots[0].subject.slice(0, 40)}"` : "the same subject"}. In this app's own LTX-2.5 tests, silent shots of one person moving through a scene dissolved at every seam instead of cutting, while cuts to something else (the waves, her hands, the tower) landed as hard cuts. Make one or two shots a cutaway, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
         } else {
-          add("warn", `Only shot 1 speaks${oneSentence ? " — one sentence, so Create could not deal it across the shots" : ""}. In this app's own LTX-2.5 tests, ${shots.length} shots of action with speech only in shot 1 rendered as a single unbroken take; the same shots with a line in each cut at every one. ${oneSentence ? "Split the line into sentences, or add a line to a later shot" : "Give a later shot something said"}, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
+          add("warn", `Only shot 1 speaks${oneSentence ? " — one sentence, so Create could not deal it across the shots" : ""}. In this app's own LTX-2.5 tests, ${shots.length} shots of action with speech only in shot 1 dissolved at every seam; the same shots with a line in each cut cleanly at every one. ${oneSentence ? "Split the line into sentences, or add a line to a later shot" : "Give a later shot something said"}, or render every cut as its own clip (Deliver ▸ Film ▸ Cuts).`);
         }
       }
+    }
+    /* — Single-stage softens seams —
+     * Measured on one prompt and one seed (28 Aug 2026, read by eye 3 Sep):
+     * Single-stage 8-step landed all four seams as dissolves; Two-stage 8+3
+     * landed the same four as one hard cut plus two clean ones at 480p and
+     * as three hard cuts plus one clean at 768p. The seams sat in the same
+     * places in all three, so the refine pass hardens what the prompt has
+     * placed. One render per condition — a lead, offered as one. */
+    if (cuts >= 2 && project.render?.variant === "ltx_single") {
+      add("warn", `Single-stage 8-step with ${cuts} shots. In this app's own tests on one prompt and seed, single-stage rendered every seam as a dissolve while Two-stage 8+3 landed the same seams as hard cuts (three of four at 768p). If the cuts matter, switch the build to Two-stage 8+3.`);
     }
     if (duration > LTX25_DURATION.max) {
       add("err", `A ${duration}s clip is past LTX-2.5's ${LTX25_DURATION.max}s window.`);

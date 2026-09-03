@@ -869,31 +869,45 @@ app sends is compiled.
 
 ### What makes LTX-2.5 actually cut
 
-Measured on the model (21 harness renders, fixed seeds, ffmpeg scene scores
-— `scripts/render-test.mjs`), not read from the guide. A four-shot prompt
-that reads as one continuous take is the usual failure, and what decides it
-is not verbosity: the same content in the guide's own compact prose morphed
-too. What holds a cut on one LTX-2.5 render:
+Measured on the model (21 harness renders, fixed seeds, ffmpeg scene scores,
+then every render read frame by frame — `scripts/render-test.mjs`,
+`scripts/scenes.py`, `scripts/sheets.py`), not read from the guide. The
+model places a seam at nearly every cut you write: six beats in 20 s came
+back as seven seams, four shots as four. So the question is never whether
+LTX-2.5 cuts but whether the seam lands as a **hard cut** or a **dissolve**.
+A four-shot prompt that reads as one continuous take is four shots joined by
+dissolves, and what decides it is not verbosity: the same content in the
+guide's own compact prose dissolved at the same seams. What makes a seam
+land as a cut on one LTX-2.5 render:
 
-* **A spoken line in every shot.** Dialogue anchors the cut; silent shots of
-  one subject moving through connected spaces are what the model morphs
-  through instead.
+* **A spoken line in every shot.** With a sentence per shot the lighthouse
+  cut cleanly at all four seams; with the whole line in shot 1 the same four
+  seams dissolved, seven renders out of seven.
 * **A cutaway to something else** — the waves, her hands, the tower — cuts
-  reliably.
+  hard without any speech. The seam that dissolves is the return to the same
+  subject.
 * **A different angle and camera move per shot**, small or static cameras,
   the new shot re-established in full. Six shots all front-facing with the
-  same handheld pan are one take to this model.
-* **At most 3–4 shots** in a clip: 4 at 20 s, 3 at 15, 2 at 10.
+  same handheld pan dissolve at every seam.
+* **The Two-stage 8+3 build.** On one prompt and seed, Single-stage 8-step
+  landed four seams as dissolves; Two-stage landed the same four as one hard
+  cut plus two clean ones at 480p and three hard cuts plus one clean at
+  768p. The refine pass hardens seams the prompt has placed; it adds none.
+  One render per condition, so a lead.
+* **Shots of 3 s or more.** The count itself is honoured, but past about
+  five shots in 20 s they stop reading as shots and the seams land as flash
+  frames.
 
-Create is steered by this on LTX: the shot count is capped by length, fresh
-shots walk the angle cycle rather than front/low/front/low, no two
-consecutive shots share a move, the camera is never fast or two-axis on one
-render, the line is dealt across the shots, and the Light dial never names a
-time of day. The compiler re-identifies the subject by a short tag at every
+Create is steered by this on LTX: shots are held to what the length can
+carry (3 s each, five at most), fresh shots walk the angle cycle rather than
+front/low/front/low, no two consecutive shots share a move, the camera is
+never fast or two-axis on one render, the line is dealt across the shots, and
+the Light dial never names a time of day. The compiler re-identifies the subject by a short tag at every
 cut, and the checker names which case you are in — nobody speaks and every
-shot is the same subject (suggests a cutaway, or Film ▸ Cuts), or only shot 1
-speaks (deal or add a line), and says nothing when the silent shots already
-cut to a different subject. Or take the sure route: **one render per hard
+shot is the same subject (suggests a cutaway, or Film ▸ Cuts), only shot 1
+speaks (deal or add a line), or the build is Single-stage with cuts that
+matter (switch to Two-stage 8+3), and says nothing when the silent shots
+already cut to a different subject. Or take the sure route: **one render per hard
 cut**, joined afterwards (§10b).
 
 ### These settings stick
