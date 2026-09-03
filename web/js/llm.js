@@ -163,14 +163,16 @@ export async function breakdown(idea, project, shotCount = 0) {
    * happening in it. */
   const isFilm = !!project.film?.enabled;
   const duration = isFilm ? filmSpan(project) : project.render.duration;
-  /* LTX-2.5 reads all its cuts from one paragraph, and Lightricks' guide is
-   * firm that 2–4 shots is the working range: a fifth shot takes its seconds
-   * out of the others and the model stops cutting and starts blending. A
-   * film that renders every cut as its own clip is not bound by that. */
+  /* LTX-2.5 reads all its cuts from one paragraph and places a seam at
+   * every one (measured 28 Aug 2026, read by eye 3 Sep: six written cuts in
+   * 20 s came back as seven seams). Lightricks' guide prefers 2–4 shots, and
+   * past five the shots get too short to read, so five is the ceiling and
+   * about one shot per 5 s the suggestion. A film that renders every cut as
+   * its own clip is not bound by that. */
   const ltx = activeEngine(project) === "ltx25";
   const ltxOneRender = ltx && !(isFilm && project.film?.splitAtCuts);
-  const ceiling = isFilm ? 24 : ltxOneRender ? 4 : 8;
-  const suggested = Math.min(ceiling, shotCount || Math.max(1, Math.min(isFilm ? 24 : ltxOneRender ? 4 : 6, Math.round(duration / (isFilm ? 6 : ltxOneRender ? 7 : 5)))));
+  const ceiling = isFilm ? 24 : ltxOneRender ? 5 : 8;
+  const suggested = Math.min(ceiling, shotCount || Math.max(1, Math.min(isFilm ? 24 : ltxOneRender ? 5 : 6, Math.round(duration / (isFilm ? 6 : 5)))));
   const { data, model, ms } = await ask({
     expect: ["shots"],
     system: `${BASE_RULES}
@@ -182,7 +184,7 @@ Return: {"shots":[{"at":0,"shotType":"medium","viewpoint":"front-facing","subjec
   shot: EVERY cut must change the shot scale AND the viewpoint (viewpoints: ${VIEWPOINTS.map(v => v[0]).join(", ")}). Two consecutive
   shots never share a viewpoint. "creative angles" means low-angle, over-the-shoulder, side, high-angle — not front-facing six times.
 - The camera move belongs to ONE shot. Never give consecutive shots the same camera type; the same continuous move on every shot
-  (a pan right in all of them) reads as one unbroken take and the model drops the cuts. Most shots should be "static"; give at most
+  (a pan right in all of them) makes the model dissolve through the cuts instead of cutting. Most shots should be "static"; give at most
   one or two shots a move.
 - Give each shot at least ${Math.max(3, Math.floor(duration / Math.max(1, suggested)) - 1)} seconds so it registers before the next cut.` : ""}
 - "at" is seconds from the start; the first is always 0 and they strictly increase, all inside ${duration} s.

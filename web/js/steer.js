@@ -158,9 +158,11 @@ export function paceToStructure(v, durationSeconds, beatCount = 0, { maxShots = 
   // How many beats this duration has *room* for at this pace.
   const room = clamp(Math.round(durationSeconds / secondsPerBeat), 1, 12);
   // Cuts start appearing in the top half and never go under 3 s apart.
-  // `maxShots` is the engine's ceiling: six for H3's [Shot N] markers, four
-  // on a single LTX-2.5 render, which reads its cuts from prose and stops
-  // cutting past four (Lightricks' guide: 2–4 shots per generation).
+  // `maxShots` is the engine's ceiling: six for H3's [Shot N] markers, five
+  // on a single LTX-2.5 render. Measured (28 Aug 2026, read by eye 3 Sep):
+  // the model places a seam at every written cut, so the ceiling is about
+  // shots staying long enough to read, not about the model refusing to cut
+  // (Lightricks' guide prefers 2–4 per generation).
   const shots = v < 45 ? 1 : clamp(Math.floor(durationSeconds / (9 - (v / 100) * 5)), 1, maxShots);
   // What the creator wrote always wins over what the dial would have picked:
   // a dial may warn that a clip is crowded, it may never quietly bin a beat.
@@ -459,12 +461,13 @@ export function applySteering(draft, { pool = null } = {}) {
    * Pace keeps its say over camera, timing and everything else. */
   const segments = cutSegments(beatPool);
   const authoredCuts = segments.length > 1;
-  /* One LTX-2.5 render reads every cut out of one paragraph, and a cut only
-   * lands there when the next shot is visibly a different shot: a new angle,
-   * and not the same camera move running on through it. Six front-facing
-   * shots that all pan right came back from LTX as one take. */
+  /* One LTX-2.5 render reads every cut out of one paragraph and places a
+   * seam at each; the seam lands as a hard cut only when the next shot is
+   * visibly a different shot: a new angle, and not the same camera move
+   * running on through it. Six front-facing shots that all pan right came
+   * back from LTX with every seam dissolved rather than cut. */
   const ltxOne = activeEngine(draft) === "ltx25" && !(draft.film?.enabled && draft.film?.splitAtCuts);
-  const structure = paceToStructure(dials.pace, duration, beatPool.length, { maxShots: ltxOne ? 4 : 6 });
+  const structure = paceToStructure(dials.pace, duration, beatPool.length, { maxShots: ltxOne ? 5 : 6 });
   void distanceToShot(dials.distance);   // the clip-wide reading; each shot resolves its own below
   const subjectMoves = MOVES_RE.test(beatPool.join(" ") || orderedShots(draft).map(s => (s.beats || []).map(b => b.text).join(" ")).join(" "));
 
@@ -491,12 +494,14 @@ export function applySteering(draft, { pool = null } = {}) {
    * number. Now the cuts past the count fold into the last shot that fits,
    * their beats kept, their headings dropped; and shots past the count are
    * cut, since the number was typed to cut them. */
-  /* On auto, one LTX-2.5 render has its own ceiling, by duration: measured
-   * (28 Aug 2026), six written cuts in 20 s came back as ~3, and four shots
-   * of action in 20 s mostly as one take — 20 s holds 4, 15 s holds 3,
-   * 10 s holds 2. The model's written cuts and a longer existing list both
-   * fold into it, the same way a typed count folds them. */
-  const ltxCap = ltxOne ? clamp(Math.floor(duration / 5), 2, 4) : 0;
+  /* On auto, one LTX-2.5 render has its own ceiling, by duration. Measured
+   * (28 Aug 2026, every render read by eye 3 Sep): the model honours the
+   * written count — six cuts in 20 s came back as seven seams — but shots
+   * under ~3 s stop reading as shots and the seams land as flash frames. So
+   * 10 s holds 3, 15 s holds 5, 20 s and up holds 5. The model's written
+   * cuts and a longer existing list both fold into it, the same way a typed
+   * count folds them. */
+  const ltxCap = ltxOne ? clamp(Math.floor(duration / 3), 2, 5) : 0;
   const cap = fixed || ltxCap;
   if (cap && segments.length > cap) {
     const keep = segments.slice(0, cap);
@@ -581,10 +586,10 @@ export function applySteering(draft, { pool = null } = {}) {
     const moves = shotMoves(shot);
     shot.camera = { ...shot.camera, ...steeredCamera(i, own, dials, { subjectMoves: moves, ltxOne }), custom: "" };
   });
-  /* On one LTX-2.5 render a line in every shot is what anchors the cuts:
-   * the same lighthouse cut at every shot with a sentence per shot and
-   * morphed through all four with the whole line in shot 1. So the deal
-   * happens whether or not the line overflows its shot. */
+  /* On one LTX-2.5 render a line in every shot is what makes a seam land as
+   * a cut: the same lighthouse cut cleanly at every shot with a sentence per
+   * shot and dissolved at all four seams with the whole line in shot 1. So
+   * the deal happens whether or not the line overflows its shot. */
   spreadDialogue({ ...draft, shots }, { always: ltxOne });
 
   draft.shots = shots;
@@ -643,7 +648,7 @@ function steeredCamera(i, own, dials, { subjectMoves = false, ltxOne = false } =
   let cam = energyToCamera(own.energy, { subjectMoves });
   const shared = own.energy === dials.energy;
   /* One LTX-2.5 render, measured (harness, 28 Aug 2026): the same four-shot
-   * lighthouse came back as one continuous take with "arcs left at fast
+   * lighthouse came back with every seam dissolved with "arcs left at fast
    * speed while tilting up" on shot 1 — the camera simply travelled up the
    * tower into shot 2 — and cut cleanly at every shot with a small push-in
    * and static cameras after it. A big, fast, two-axis move is a journey

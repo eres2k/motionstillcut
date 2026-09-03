@@ -204,14 +204,17 @@ through another model — the compiler speaks each model's own dialect:
   letting it look like drift; and the **same image pinned at two or more
   cuts at strength ≥ 0.7 freezes the character** — the checker warns.
 - **Cuts that actually render.** Measured on the model, not read from the
-  guide: a spoken line in every shot anchors cuts; cutaways to a different
-  subject cut reliably; one subject travelling through connected spaces is
-  what the model morphs through instead. There is a cut budget per length
-  (about 4 shots in 20 s), and a different angle and camera move per shot
-  with the new shot re-established makes even a single silent subject cut.
-  Create's generator is steered by this — shot count capped by duration,
-  angle and move varied per shot, dialogue dealt across shots — and the
-  checker flags the "silent cuts" case. Or take the sure route: **one render
+  guide, 21 renders scored per frame and then read frame by frame: LTX-2.5
+  places a seam at nearly every cut you write, and what the prompt decides
+  is whether the seam lands as a hard cut or a dissolve. A spoken line in
+  every shot, a cutaway to a different subject, and a different angle and
+  camera move per shot with the new shot re-established make seams land as
+  cuts; one silent subject travelling through connected spaces dissolves
+  through them. The Two-stage 8+3 build hardens seams the prompt has placed
+  (four dissolves became three hard cuts on the same seed). Create's
+  generator is steered by this — angle and move varied per shot, dialogue
+  dealt across shots, shots held to 3 s or more — and the checker flags the
+  "silent cuts", "only shot 1 speaks" and "single-stage with cuts" cases. Or take the sure route: **one render
   per hard cut**, joined afterwards.
 - **The Engine sweep.** Same timeline, same references, seed pinned, both
   engines — the closest thing to a controlled comparison of what H3's grammar
