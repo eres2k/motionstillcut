@@ -775,7 +775,7 @@ function appendUpscale(graph, { decode, createVideo, project, models, seed, prom
       graph["121"] = { class_type: "LTXVTiledVAEDecode", _meta: { title: "Decode Video (tiled 2×2)" },
         inputs: { vae: L.vae, latents: ["120", 2], horizontal_tiles: 2, vertical_tiles: 2, overlap: 6, last_frame_fix: false } };
       finish("121", `Fit → ${plan.target}`);
-      graph[createVideo].inputs.images = ["62", 0];
+      graph[createVideo].inputs.images = ["202", 0];
       return plan;
     }
 
