@@ -409,6 +409,9 @@ export function blankProject() {
      * the shot list it produces so that re-steering never loses their words. */
     creative: {
       shotCount: 0,           // 0 = auto (Pace and written cuts decide); 1–6 = exactly that many
+      preset: "",             // a scene preset key (presets.js) — its guidance rides on every LLM call while set
+      mood: "",               // a mood preset key — sets style.grade and a guidance line
+      quality: "",            // an image-quality preset key — a guidance line
       stage: "material",      // material → steer → takes
       material: { text: "" },
       proposal: null,         // what the model read out of the material

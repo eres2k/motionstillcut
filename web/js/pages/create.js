@@ -28,6 +28,7 @@ import { DIALS, DEFAULT_DIALS, applySteering, explainDials, DETAIL_BANDS, detail
 import { readMaterial, moreBeats, baseQuestions } from "../interview.js";
 import { compilePrompt, validate } from "../prompt.js";
 import { renderPrompt } from "../prompttext.js";
+import { SCENE_PRESETS, MOOD_PRESETS, QUALITY_PRESETS, applyPreset, applyMood, applyQuality, presetContext, presetByKey, moodByKey, qualityByKey } from "../presets.js";
 import { citeLooseReferences } from "./simple.js";
 import { createPreviz } from "../previz.js";
 import { estimateSeconds, humanTime } from "../workflow.js";
@@ -193,6 +194,39 @@ function materialStage(p) {
     /* How many shots. Auto lets Pace decide, or the cuts the writer wrote;
      * a number is exact — the interview writes that many "Cut to" beats and
      * steering makes that many shots. Ref2V and I2V follow the same rule. */
+    /* A scene preset says what the pictures are for — one room per picture,
+     * one product angle per picture — builds the shots to match, and leaves
+     * a line of guidance every writer reads. Picked here because it decides
+     * the shape before the read, and the read then fills it in. */
+    h("div.cr-row",
+      h("span.cr-label", "Scene preset"),
+      segmented([["", "None", "Start from the idea and the material alone"], ...SCENE_PRESETS.map(t => [t.key, t.name, t.blurb])],
+        creative(p).preset || "",
+        (v) => {
+          const preset = presetByKey(v);
+          const n = preset ? preset.build(presetContext(p)).length : 0;
+          update((draft) => { applyPreset(draft, v); }, "shots");
+          if (preset) toast(`${preset.name}`, `${n} shot${n === 1 ? "" : "s"} over ${getProject().render.duration}s — one per picture, each citing its own.`, "ok");
+          draw();
+        }),
+      h("span.hint", creative(p).preset
+        ? `${presetByKey(creative(p).preset)?.blurb || ""} The preset's guidance rides on every rewrite; attach more pictures and pick it again to rebuild.`
+        : `${presetContext(p).picCount} picture${presetContext(p).picCount === 1 ? "" : "s"} attached — a preset builds one shot per picture, in order, each citing its own.`),
+    ),
+    h("div.cr-row",
+      h("span.cr-label", "Mood"),
+      segmented([["", "None", "The look stays as the Cut page has it"], ...MOOD_PRESETS.map(t => [t.key, t.name, t.guidance])],
+        creative(p).mood || "",
+        (v) => { update((draft) => { applyMood(draft, v); }, "style"); draw(); }),
+      h("span.hint", creative(p).mood ? `${moodByKey(creative(p).mood)?.guidance || ""} Sets the grade; rides on every rewrite.` : "Sets the grade the prompt names and a line on light and feel."),
+    ),
+    h("div.cr-row",
+      h("span.cr-label", "Quality"),
+      segmented([["", "None", "Say nothing about the camera or stock"], ...QUALITY_PRESETS.map(t => [t.key, t.name, t.guidance])],
+        creative(p).quality || "",
+        (v) => { update((draft) => { applyQuality(draft, v); }, "style"); draw(); }),
+      h("span.hint", creative(p).quality ? qualityByKey(creative(p).quality)?.guidance || "" : "What the camera and the stock are — photoreal, 35 mm, anamorphic…"),
+    ),
     h("div.cr-row",
       h("span.cr-label", "How many shots?"),
       segmented([["0", "Auto", "Pace decides — or the cuts written into the beats"], ...[1, 2, 3, 4, 5, 6].map(n => [String(n), String(n), `Exactly ${n} shot${n === 1 ? "" : "s"}`])],
