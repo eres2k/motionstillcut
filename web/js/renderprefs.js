@@ -42,7 +42,7 @@ const KEY = "mscut.render.prefs";
  * reason. If a length really is a habit rather than a decision, the honest
  * place to say so is the Setup memory panel, not a silent carry. */
 const CARRIED = [
-  "resolution", "fps", "precision", "tiledDecode", "refImageSize", "steps",
+  "resolution", "fps", "precision", "tiledDecode", "refImageSize", "steps", "upscale",
   /* The engine is a machine fact too: picking the experimental LTX-2.5 build
    * means its ~40 GB of weights are installed on this box, and that stays
    * true for the next project. In r2v the field is inert (activeEngine in

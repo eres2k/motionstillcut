@@ -108,6 +108,9 @@ const OPTIONAL_NODES = {
   GetVideoComponents:  "reference clip frames + soundtrack (Ref2V)",
   LoadAudio:           "reference audio (Ref2V)",
   VAEDecodeTiled:      "tiled decode on long clips",
+  UpscaleModelLoader:    "ESRGAN upscale (Deliver ▸ Upscale)",
+  ImageUpscaleWithModel: "ESRGAN upscale (Deliver ▸ Upscale)",
+  SeedVR2VideoUpscaler:  "SeedVR2 upscale — the seedvr2_videoupscaler custom pack (Deliver ▸ Upscale)",
 };
 
 /* What the EXPERIMENTAL LTX-2.5 engine additionally needs — its own group in
@@ -133,6 +136,9 @@ const COMFY_FOLDER_SOURCES = {
   vae:              ["VAELoader",            "vae_name"],
   text_encoders:    ["CLIPLoader",           "clip_name"],
   latent_upscale_models: ["LatentUpscaleModelLoader", "model_name"],
+  upscale_models:   ["UpscaleModelLoader",    "model_name"],
+  seedvr2:          ["SeedVR2LoadDiTModel",   "model"],
+  seedvr2_vae:      ["SeedVR2LoadVAEModel",   "model"],
 };
 
 let _objectInfo = { at: 0, data: null, url: "" };
