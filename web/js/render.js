@@ -12,7 +12,8 @@ import { explainRenderError } from "./rendererrors.js";
 import { saveJobOutputs } from "./downloads.js";
 import { getSettings } from "./config.js";
 import { getProject, update, onProjectSwap, activeEngine } from "./state.js";
-import { buildWorkflow, estimateSeconds } from "./workflow.js";
+import { buildWorkflow, estimateSeconds, deliveredSize } from "./workflow.js";
+import { watermarkSettings, watermarkLayout, watermarkFileName, drawWatermark } from "./watermark.js";
 import { getBlob } from "./media.js";
 import { uid, toast } from "./util.js";
 import { library, recordFor } from "./library.js";
@@ -114,6 +115,21 @@ export function uploadName(item) {
   return `mscut_${item.id}_${clean}`;
 }
 
+/** The watermark PNG for this delivery, drawn at the delivered size and put
+ *  in ComfyUI/input under a name that repeats for the same mark, so a
+ *  re-render overwrites it. Null when the mark is off or the name is blank. */
+async function uploadWatermark(p, settings, onStep = () => {}) {
+  const { mode, text } = watermarkSettings(p, settings);
+  if (mode === "off" || !text) return null;
+  const { width, height } = deliveredSize(p);
+  const layout = watermarkLayout(mode, width, height, text);
+  onStep("Drawing the watermark…");
+  const dataUrl = drawWatermark({ mode, text, width, height });
+  const r = await api.upload(watermarkFileName(mode, text, width, height), dataUrl);
+  const file = r?.subfolder ? `${r.subfolder}/${r.name}` : r?.name;
+  return { file, mode, x: layout.x, y: layout.y };
+}
+
 /** Everything the graph expects to find in ComfyUI/input, uploaded if it isn't
  *  there yet. Returns the media list with comfyName filled in. */
 export async function uploadPending(onStep = () => {}, ctx = null) {
@@ -183,8 +199,9 @@ export async function renderNow({
 
   onStep("Uploading media…");
   await uploadPending((msg) => onStep(msg), live ? null : { project: p, commit });
+  const watermark = await uploadWatermark(p, settings, onStep);
 
-  const { prompt, meta, compiled } = buildWorkflow(p, settings);
+  const { prompt, meta, compiled } = buildWorkflow(p, settings, { watermark });
   onStep("Queueing on ComfyUI…");
 
   current = {

@@ -74,6 +74,9 @@ export const DEFAULT_SETTINGS = {
     saver: true,
     releaseAfterRender: false,
   },
+  // The name the Deliver page's watermark writes — the owner's, the same for
+  // every project, so it lives here and not in the project.
+  watermark: { text: "" },
   models: { ...DEFAULT_MODELS },
   render: {
     resolution: "832x480",
