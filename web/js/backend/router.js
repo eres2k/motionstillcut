@@ -111,6 +111,7 @@ const OPTIONAL_NODES = {
   UpscaleModelLoader:    "ESRGAN upscale (Deliver ▸ Upscale)",
   ImageUpscaleWithModel: "ESRGAN upscale (Deliver ▸ Upscale)",
   SeedVR2VideoUpscaler:  "SeedVR2 upscale — the seedvr2_videoupscaler custom pack (Deliver ▸ Upscale)",
+  FlashVSRNode:          "FlashVSR upscale — the ComfyUI-FlashVSR_Ultra_Fast custom pack (Deliver ▸ Upscale)",
 };
 
 /* What the EXPERIMENTAL LTX-2.5 engine additionally needs — its own group in

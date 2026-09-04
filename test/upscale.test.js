@@ -30,25 +30,51 @@ test("off: no upscale nodes, the mux takes the decoded frames", () => {
   assert.equal(meta.stockNodesOnly, true);
 });
 
-test("SeedVR2 to 1080p: loader, VAE and upscaler, short edge 1080, mux rewired", () => {
+test("SeedVR2 to 1080p: loader, VAE and upscaler, short edge 1080, a fit resize, mux rewired", () => {
   const { prompt, meta } = buildWorkflow(project({ engine: "seedvr2" }), settings);
   const [[id, node]] = byType(prompt, "SeedVR2VideoUpscaler");
   assert.equal(node.inputs.resolution, 1080);
   assert.deepEqual(node.inputs.image, ["16", 0]);
   assert.equal(node.inputs.batch_size % 4, 1, "SeedVR2 batches are 4n+1");
-  assert.deepEqual(prompt["18"].inputs.images, [id, 0]);
+  assert.ok(node.inputs.batch_size >= 13, "batches of five visibly flicker");
+  assert.ok(node.inputs.temporal_overlap >= 4);
+  const [[fitId, fit]] = byType(prompt, "ImageScale").filter(([, n]) => n.inputs.image?.[0] === id);
+  assert.equal(fit.inputs.width, 1872);   // 832x480 is 1.733:1, so 1080p is 1872 wide, not 1920
+  assert.equal(fit.inputs.height, 1080);
+  assert.deepEqual(prompt["18"].inputs.images, [fitId, 0]);
   assert.equal(byType(prompt, "SeedVR2LoadDiTModel")[0][1].inputs.model, DEFAULT_MODELS.seedvr2_dit);
-  assert.equal(byType(prompt, "SeedVR2LoadVAEModel")[0][1].inputs.decode_tiled, false, "1080p decodes untiled");
-  assert.equal(meta.upscale.width, 1872);   // 832x480 is 1.733:1, so 1080p is 1872 wide, not 1920
+  assert.equal(byType(prompt, "SeedVR2LoadVAEModel")[0][1].inputs.decode_tiled, true, "the batched decode is what fills the card");
+  assert.equal(meta.upscale.width, 1872);
   assert.equal(meta.upscale.height, 1080);
   assert.equal(meta.stockNodesOnly, false);
   assert.ok(meta.nodeTypes.includes("SeedVR2VideoUpscaler"));
 });
 
-test("SeedVR2 to 4K tiles its VAE", () => {
+test("SeedVR2 to 4K diffuses at 1080p and a Lanczos resize finishes", () => {
   const { prompt, meta } = buildWorkflow(project({ engine: "seedvr2", target: "2160p" }), settings);
-  assert.equal(byType(prompt, "SeedVR2LoadVAEModel")[0][1].inputs.decode_tiled, true);
+  const [[id, node]] = byType(prompt, "SeedVR2VideoUpscaler");
+  assert.equal(node.inputs.resolution, 1080);
+  const [[, resize]] = byType(prompt, "ImageScale").filter(([, n]) => n.inputs.image?.[0] === id);
+  assert.equal(resize.inputs.height, 2160);
+  assert.equal(resize.inputs.upscale_method, "lanczos");
   assert.equal(meta.upscale.height, 2160);
+});
+
+test("FlashVSR: ×2 for a 1080p target from 480p, ×4 above, long mode past ten seconds", () => {
+  const short = buildWorkflow(project({ engine: "flashvsr" }), settings);
+  const [[id, node]] = byType(short.prompt, "FlashVSRNode");
+  assert.deepEqual(node.inputs.frames, ["16", 0]);
+  assert.equal(node.inputs.scale, 4);        // 480 → 1080 is ×2.25, past what ×2 gives
+  assert.equal(node.inputs.mode, "tiny");
+  assert.deepEqual(short.prompt["18"].inputs.images, ["62", 0]);
+  assert.equal(short.prompt["62"].inputs.image[0], id);
+  assert.equal(short.meta.stockNodesOnly, false);
+  const p = project({ engine: "flashvsr", target: "720p" });
+  p.render.duration = 15;
+  const long = buildWorkflow(p, settings);
+  const [[, longNode]] = byType(long.prompt, "FlashVSRNode");
+  assert.equal(longNode.inputs.scale, 2);    // 480 → 720 is ×1.5
+  assert.equal(longNode.inputs.mode, "tiny-long");
 });
 
 test("ESRGAN: ×4 model then an exact Lanczos resize, stock nodes only", () => {
@@ -85,4 +111,33 @@ test("old projects without the field default to off; the ETA grows with the pass
   const esr = estimateSeconds(project({ engine: "esrgan" }));
   const seed = estimateSeconds(project({ engine: "seedvr2" }));
   assert.ok(esr > base && seed > esr, `${base} < ${esr} < ${seed}`);
+});
+
+test("LTX-2.5 refine on an H3 render: loads the LTX pack, trims to 8k+1 frames, doubles, refines, fits", () => {
+  const { prompt, meta } = buildWorkflow(project({ engine: "ltx25" }), settings);   // 124 frames at 832x480
+  assert.equal(prompt["100"].class_type, "UNETLoader");
+  assert.equal(prompt["100"].inputs.unet_name, DEFAULT_MODELS.ltx25_dit);
+  assert.equal(prompt["107"].class_type, "ImageFromBatch");
+  assert.equal(prompt["107"].inputs.length, 121);
+  assert.deepEqual(prompt["108"].inputs.pixels, ["107", 0]);
+  assert.equal(prompt["110"].class_type, "LTXVLatentUpsampler");
+  assert.equal(prompt["111"].inputs.frames_number, 121);
+  assert.deepEqual(prompt["114"].inputs.model, ["100", 0]);
+  assert.equal(prompt["117"].inputs.sigmas[0], "113");
+  assert.equal(prompt["119"].class_type, "VAEDecodeTiled");
+  assert.deepEqual(prompt["62"].inputs.image, ["119", 0]);
+  assert.equal(prompt["62"].inputs.height, 1080);
+  assert.deepEqual(prompt["18"].inputs.images, ["62", 0]);
+  assert.deepEqual(prompt["18"].inputs.audio, ["17", 0], "the render's own soundtrack is kept");
+  assert.equal(meta.stockNodesOnly, false);
+});
+
+test("LTX-2.5 refine on an LTX render reuses its loaders and needs no trim", () => {
+  const { prompt } = buildWorkflow(project({ engine: "ltx25", renderEngine: "ltx25" }), settings);   // 121 frames
+  assert.equal(prompt["100"], undefined);
+  assert.equal(prompt["107"], undefined);
+  assert.deepEqual(prompt["108"].inputs.pixels, ["32", 0]);
+  assert.deepEqual(prompt["114"].inputs.model, ["1", 0]);
+  assert.deepEqual(prompt["114"].inputs.positive, ["7", 0]);
+  assert.deepEqual(prompt["34"].inputs.images, ["62", 0]);
 });

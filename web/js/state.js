@@ -340,7 +340,7 @@ export function blankProject() {
       refImageSize: "match",
       // Post-render upscale — after the decode, before the mux. The clip is
       // generated at the canvas size and delivered larger.
-      upscale: { engine: "off", target: "1080p" },   // engine: off | seedvr2 | esrgan · target: 720p | 1080p | 1440p | 2160p
+      upscale: { engine: "off", target: "1080p" },   // engine: off | seedvr2 | flashvsr | ltx25 | esrgan · target: 720p | 1080p | 1440p | 2160p
       outputPrefix: "",
     },
     shots: [newShot(0)],
