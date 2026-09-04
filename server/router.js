@@ -23,7 +23,8 @@ import { WEB_DIR, loadSettings, saveSettings, publicSettings, DEFAULT_MODELS } f
 import { claim, releaseAll, vramState, comfyFetch, llmFetch, llmHeaders, renderStarted, renderFinished, freeComfy, unloadLLM } from "./vram.js";
 import * as store from "./store.js";
 import * as projects from "./projects.js";
-import { ffmpegAvailable, lastFrame, assemble, filmPath } from "./film.js";
+import { ffmpegAvailable, lastFrame, assemble, filmPath, exportEdit, probeSource } from "./film.js";
+import { voiceHealth, listVoices, speak, addReferenceVoice, removeReferenceVoice, ENGINES as VOICE_ENGINES } from "./voice.js";
 
 export const CUT_VERSION = "1.0.0";
 
@@ -1162,6 +1163,68 @@ export function createCutHandler({ auth = null, login = null } = {}) {
             id: body.id || null,
           });
           return sendJson(res, 200, { ok: true, ...r });
+        }
+
+        /* ── The edit: anything after anything ───────────
+         * The Editor page's export — clips of any origin trimmed, fitted and
+         * joined, with audio mixed under — and the probe it uses to learn a
+         * clip's length before that. Same rule as the film: 503 without
+         * ffmpeg, and the result lands where /film/view already serves it. */
+        case "/edit/export": {
+          if (method !== "POST") return sendJson(res, 405, { ok: false, error: "POST {id, name, fps, width, height, clips, audio}" });
+          if (!(await ffmpegAvailable())) {
+            return sendJson(res, 503, { ok: false, code: "no-ffmpeg", error: "ffmpeg is not installed on the Cut server — the clips are all there, but nothing here can cut them together." });
+          }
+          const r = await exportEdit({
+            id: body.id || null,
+            name: body.name,
+            fps: Number(body.fps) || 24,
+            width: Number(body.width) || 0,
+            height: Number(body.height) || 0,
+            clips: Array.isArray(body.clips) ? body.clips : [],
+            audio: Array.isArray(body.audio) ? body.audio : [],
+          });
+          return sendJson(res, 200, { ok: true, ...r });
+        }
+
+        // ── Voice-over ───────────────────────────────────
+        // The two TTS services on the Nexus box, reached from here so the
+        // browser never has to (they have no CORS, and the gateway wants a
+        // cookie). See server/voice.js.
+        case "/voice/health":
+          return sendJson(res, 200, { ok: true, engines: await voiceHealth(), labels: Object.fromEntries(Object.entries(VOICE_ENGINES).map(([k, v]) => [k, v.label])) });
+
+        case "/voice/voices": {
+          const engine = String(url.searchParams.get("engine") || body.engine || "qwen");
+          return sendJson(res, 200, { ok: true, ...(await listVoices(engine)) });
+        }
+
+        case "/voice/speak": {
+          if (method !== "POST") return sendJson(res, 405, { ok: false, error: "POST {engine, text, voice, language, speed, instruct}" });
+          const r = await speak(String(body.engine || "qwen"), body);
+          return sendJson(res, 200, {
+            ok: true, engine: r.engine, voice: r.voice, language: r.language, sampleRate: r.sampleRate, ms: r.ms,
+            bytes: r.bytes.length, mime: r.mime, audio: `data:${r.mime};base64,${r.bytes.toString("base64")}`,
+          });
+        }
+
+        case "/voice/reference": {
+          if (method === "DELETE") return sendJson(res, 200, { ok: true, ...removeReferenceVoice(String(body.engine || "qwen"), body.id) });
+          if (method !== "POST") return sendJson(res, 405, { ok: false, error: "POST {engine, name, data, transcript, engines} · DELETE {engine, id}" });
+          const r = await addReferenceVoice(String(body.engine || "qwen"), {
+            name: body.name, data: body.data, transcript: body.transcript || "",
+            engines: Array.isArray(body.engines) && body.engines.length ? body.engines : null,
+          });
+          return sendJson(res, 200, { ok: true, ...r });
+        }
+
+        case "/edit/probe": {
+          if (method !== "POST") return sendJson(res, 405, { ok: false, error: "POST {source: {filename, subfolder, type} | {mediaId}}" });
+          if (!(await ffmpegAvailable())) {
+            return sendJson(res, 503, { ok: false, code: "no-ffmpeg", error: "ffmpeg is not installed on the Cut server — a clip's length cannot be read without it." });
+          }
+          const info = await probeSource(body.source || {});
+          return sendJson(res, 200, { ok: true, ...info });
         }
 
         case "/film/view": {

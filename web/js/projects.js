@@ -27,14 +27,26 @@ export const setOpenProjectId = (id) => {
   try { if (id) localStorage.setItem(OPEN_KEY, id); else localStorage.removeItem(OPEN_KEY); } catch { /* private mode */ }
 };
 
-/* Every media item a project references, whatever kind it is. */
+/* Every media item a project references, whatever kind it is.
+ *
+ * The Editor's clips and audio tracks count too. They do not hold a media
+ * item — they point at one by `mediaId` — so they are shaped into one here,
+ * because a saved project whose cut refers to a dropped file the server never
+ * received would export fine on this machine and fail on every other. Once
+ * per id: the same file cut in twice is still one upload. */
 function mediaOf(project) {
-  return [
+  const seen = new Set();
+  const own = [
     project.frames?.first,
     ...(project.refs?.images || []),
     ...(project.refs?.videos || []),
     ...(project.refs?.audios || []),
-  ].filter(m => m?.id);
+  ];
+  const cut = [
+    ...(project.edit?.clips || []).filter(c => c?.kind === "media"),
+    ...(project.edit?.audio || []),
+  ].map(e => (e?.mediaId ? { id: e.mediaId, name: e.name, kind: e.kind || "video" } : null));
+  return [...own, ...cut].filter(m => m?.id && !seen.has(m.id) && seen.add(m.id));
 }
 
 export const listProjects = () => api.projects();

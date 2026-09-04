@@ -304,6 +304,19 @@ const SECTIONS = [
     ],
   },
   {
+    id: "edit", icon: "⧉", label: "Edit",
+    cards: [
+      {
+        n: "7", page: "edit", title: "Edit — the renders, cut together",
+        body: [
+          "Deliver makes clips; Edit puts them after one another. Every finished render is on the left with a hover-to-play thumbnail — Add puts it at the end of the strip — and a dropped video or sound file joins it. Click a clip to name it, trim it (in and out, in seconds), mute its own sound or move it; a sound on the audio lane has a start time and a gain. The totals under the strip are the export's own numbers, and anything that would stop the export is listed in amber.",
+          "The voice-over box speaks a script on this machine — Qwen3-TTS or VoxCPM2, a language, a built-in or cloned voice, a speed — and lays the file on the audio lane; the director drafts the script from the cut as it stands, at a pace a narrator can speak. Quick clip makes a five- or ten-second intro, B-roll or outro from one line, in this project's look, straight onto the timeline.",
+          "Export is one ffmpeg pass on the local Cut app: name, frame rate, frame size, then a file to play and download. The hosted version keeps the timeline with the project and says where to take it. Everything on the strip is undoable (⌘Z) and saved with the project.",
+        ],
+      },
+    ],
+  },
+  {
     id: "learn", icon: "★", label: "Learn & library",
     cards: [
       {
@@ -432,7 +445,7 @@ const SECTIONS = [
           ["⇧Space", "The readthrough — watch the prompt play"],
           ["`", "Create"],
           ["0", "The Canvas"],
-          ["1 – 6", "Library · Media · Cut · Sound · Deliver · Setup"],
+          ["1 – 7", "Library · Media · Cut · Sound · Deliver · Setup · Edit"],
           ["Space", "Play the previz"],
           ["← →", "Nudge the playhead"],
           ["S", "Split the shot at the playhead"],

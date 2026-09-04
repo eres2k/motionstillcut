@@ -382,6 +382,25 @@ export function blankProject() {
        * their clip. Ignored on MiniMax. */
       splitAtCuts: false,
     },
+    /* The Editor page: rendered clips and dropped files cut together, with
+     * music laid under. This is the timeline of FILES, where `film` above is
+     * the timeline of SHOTS — a film plans what to render, an edit arranges
+     * what has been. The two are kept apart because they answer to different
+     * tools: a film runs through ComfyUI, an edit runs through ffmpeg. See
+     * edit.js for the planner and server/film.js for the export. */
+    edit: {
+      // In order. A clip is a render ({ output: {filename, subfolder, type} })
+      // or a dropped file ({ mediaId }); `in`/`out` are seconds into it, `out`
+      // null meaning "to the end". duration/width/height are what the probe
+      // found — unknown until then, which the export treats as "ask ffprobe".
+      clips: [],   // { id, kind: "render"|"media", name, output?, mediaId?, poster?, duration?, width?, height?, mute: false, in: 0, out: null }
+      // Laid under the whole cut, each at its own offset. Under, not instead:
+      // the clips' own sound stays unless a clip is muted.
+      audio: [],   // { id, mediaId, name, at: 0, gain: 1, duration? }
+      // 0 = take the first clip's size, so an edit of one render exports at
+      // that render's size without anyone typing it in.
+      export: { name: "", fps: 24, width: 0, height: 0 },
+    },
     jobs: [],                 // render history: { id, promptId, at, mode, status, outputs, prompt }
     selectedShot: null,
 
@@ -537,9 +556,14 @@ function migrate(p) {
   const merged = { ...base, ...p };
   // Sub-objects get merged rather than replaced, so a project saved by an
   // older build doesn't come back missing half its controls.
-  for (const key of ["style", "render", "sound", "refs", "ref2v", "prompt", "frames", "creative", "film"]) {
+  for (const key of ["style", "render", "sound", "refs", "ref2v", "prompt", "frames", "creative", "film", "edit"]) {
     merged[key] = { ...base[key], ...(p?.[key] || {}) };
   }
+  // The edit's own sub-object, and its lists as lists — a project from before
+  // the Editor page has neither, and the planner reads both.
+  merged.edit.export = { ...base.edit.export, ...(p?.edit?.export || {}) };
+  if (!Array.isArray(merged.edit.clips)) merged.edit.clips = [];
+  if (!Array.isArray(merged.edit.audio)) merged.edit.audio = [];
   /* Projects saved before full-reference mode used <Subject N> cite their
    * images as <Picture N>. The tag is positional either way, so the rewrite is
    * exact — and leaving them would silently break every citation the moment
@@ -888,6 +912,11 @@ export function shotKeyframes(p = project) {
 }
 
 export function exportProject() {
+  // Only the render history stays behind. `edit` travels with the file on
+  // purpose: a cut is the most deliberate thing in a project, and it refers
+  // to renders by ComfyUI filename and to dropped files by media id — both
+  // of which mean something again wherever the same ComfyUI and media store
+  // are (a saved project carries the media bytes, see projects.js).
   const { jobs, ...rest } = project;
   return JSON.stringify({ ...rest, exportedAt: new Date().toISOString() }, null, 2);
 }

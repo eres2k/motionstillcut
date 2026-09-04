@@ -86,6 +86,80 @@
 #page-deliver .job .name { flex: 1; color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #page-deliver .job .time { font-family: var(--mono); font-size: var(--fs-sm); color: var(--fg-faint); }
 
+/* ── EDIT ─────────────────────────────────────────────────── */
+#page-edit .cols { grid-template-columns: 300px 1fr 340px; }
+#page-edit .src-row {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 6px 9px; border-bottom: 1px solid var(--line-hair);
+}
+#page-edit .src-row:hover { background: #262626; }
+#page-edit .src-thumb {
+  width: 64px; aspect-ratio: 16/9; object-fit: cover; display: block;
+  background: #0b0b0b; border: 1px solid #000; border-radius: 2px;
+}
+#page-edit .src-row .name { color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#page-edit .src-row .meta { font-family: var(--mono); font-size: var(--fs-sm); color: var(--fg-faint); }
+#page-edit .dropzone { padding: 12px; }
+#page-edit .viewer { flex: none; height: min(34vh, 320px); border-bottom: 1px solid var(--line); }
+#page-edit .viewer .empty .t { color: var(--fg-dim); font-size: var(--fs-lg); font-weight: 600; letter-spacing: .02em; }
+#page-edit .viewer .empty .hint { max-width: 34em; margin-left: auto; margin-right: auto; }
+#page-edit .insp { flex: 1; }
+/* The strip: one block per clip, as wide as it is long, the audio lane under
+ * it. Same palette as the previz timeline (.tl-clip) — a clip is a clip. */
+.tl-edit { overflow-x: auto; background: #1a1a1a; border-bottom: 1px solid var(--line); }
+.tl-edit .strip { display: flex; gap: 2px; padding: 8px 8px 4px; min-width: max-content; }
+.tl-edit .strip .empty { padding: 10px 4px; white-space: normal; max-width: 44em; }
+.tl-edit .clip {
+  position: relative; flex: none; height: 54px; box-sizing: border-box;
+  padding: 3px 7px; overflow: hidden; cursor: pointer; border-radius: 3px;
+  border: 1px solid #16283a;
+  background: linear-gradient(180deg, var(--clip-video), var(--clip-video-2)) center/cover no-repeat;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+  transition: filter .1s ease, box-shadow .1s ease;
+}
+.tl-edit .clip.media { border-color: #2d2340; background-image: linear-gradient(180deg, #4a3560, #3a2d47); }
+.tl-edit .clip.poster::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,.2), rgba(0,0,0,.6));
+}
+.tl-edit .clip > * { position: relative; z-index: 1; }
+.tl-edit .clip:hover { filter: brightness(1.18); }
+.tl-edit .clip.sel { border-color: var(--clip-sel); box-shadow: 0 0 0 1px var(--clip-sel), inset 0 1px 0 rgba(255,255,255,.1); }
+.tl-edit .clip .n { font-weight: 700; font-size: var(--fs-sm); color: #dce8f4; letter-spacing: .04em; margin-right: 5px; }
+.tl-edit .clip .t { font-family: var(--mono); font-size: 9px; color: #9fc0dc; }
+.tl-edit .clip .d { display: block; font-size: var(--fs-sm); color: #b8cfe4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-edit .clip .muted {
+  position: absolute; top: 3px; right: 4px; padding: 0 4px; border-radius: 2px;
+  background: rgba(0,0,0,.65); color: var(--amber);
+  font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+}
+.tl-edit .lane {
+  position: relative; height: 34px; margin: 0 8px 8px; border-radius: 3px;
+  background: #191d1b; border: 1px solid var(--line);
+}
+.tl-edit .lane .lbl {
+  position: absolute; left: 8px; top: 50%; transform: translateY(-50%); pointer-events: none;
+  font-family: var(--mono); font-size: 9px; color: var(--fg-faint); letter-spacing: .08em; text-transform: uppercase;
+}
+.tl-edit .lane .a {
+  position: absolute; top: 3px; bottom: 3px; box-sizing: border-box;
+  padding: 0 6px; line-height: 26px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer;
+  border-radius: 3px; border: 1px solid #163023;
+  background: linear-gradient(180deg, var(--clip-audio), #244736);
+  font-size: var(--fs-sm); color: #a8e0c0;
+}
+.tl-edit .lane .a:hover { filter: brightness(1.18); }
+.tl-edit .lane .a.sel { border-color: var(--clip-sel); box-shadow: 0 0 0 1px var(--clip-sel); }
+.tl-edit-totals {
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: var(--fs-sm); color: var(--fg-dim);
+}
+/* The voice engines' health, in the segmented control's labels. */
+.vdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--fg-faint); margin-right: 6px; vertical-align: 1px; }
+.vdot.ok { background: var(--green); box-shadow: 0 0 5px #4b9b58; }
+.vdot.warm { background: var(--amber); }
+.vdot.bad { background: var(--red); }
+
 /* ── SETUP ────────────────────────────────────────────────── */
 #page-setup .cols { grid-template-columns: 1fr 1fr; }
 /* The three facts the page is opened for, above everything else. */
@@ -227,6 +301,7 @@
   #page-cut .cols     { grid-template-columns: 196px 1fr 288px; }
   #page-media .cols   { grid-template-columns: 180px 1fr 280px; }
   #page-deliver .cols { grid-template-columns: 260px 1fr 300px; }
+  #page-edit .cols    { grid-template-columns: 260px 1fr 300px; }
   .field > label { flex-basis: 92px; }
 }
 @media (max-width: 1180px) {
@@ -238,6 +313,8 @@
   #page-media .cols > .panel:first-child { display: none; }
   #page-deliver .cols { grid-template-columns: 268px 1fr; }
   #page-deliver .cols > .panel:last-child { display: none; }
+  #page-edit .cols    { grid-template-columns: 268px 1fr; }
+  #page-edit .cols > .panel:last-child { display: none; }
   #page-sound .cols   { grid-template-columns: 1fr 1fr; }
   #page-sound .cols > .panel:last-child { display: none; }
   #page-setup .cols   { grid-template-columns: 1fr; overflow-y: auto; }
@@ -251,7 +328,7 @@
 @media (max-width: 880px) {
   /* One column. The inspector becomes a bottom sheet under the timeline so a
      tablet in portrait still edits, rather than only playing back. */
-  #page-cut .cols, #page-media .cols, #page-deliver .cols, #page-sound .cols {
+  #page-cut .cols, #page-media .cols, #page-deliver .cols, #page-sound .cols, #page-edit .cols {
     grid-template-columns: 1fr; grid-template-rows: 1fr auto;
   }
   #page-cut .cols > .panel:last-child,

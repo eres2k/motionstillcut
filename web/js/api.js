@@ -166,6 +166,20 @@ export const api = {
   // server mode — where the film lives behind /api.
   filmUrl:       (id) => `${APP_BASE}api/film/view?id=${encodeURIComponent(id)}${_token ? `&_t=${encodeURIComponent(_token)}` : ""}`,
 
+  /* The edit — the Editor page's cut of rendered and dropped clips. The
+   * export is one ffmpeg re-encode of every clip, so its timeout is the
+   * join's; the result is a film like any other and filmUrl(id) plays it.
+   * The probe reads a clip's length and size (server: ffprobe; client: the
+   * browser's decoder, which knows no frame rate — fps comes back 0). */
+  /* Voice-over — spoken on the Nexus box, through the local Cut app. */
+  voiceHealth:   () => request("/voice/health", { timeout: 15000 }),
+  voices:        (engine) => request(`/voice/voices?engine=${encodeURIComponent(engine || "qwen")}`, { timeout: 120000 }),
+  speak:         (body) => request("/voice/speak", { method: "POST", body, timeout: 600000 }),
+  addVoice:      (body) => request("/voice/reference", { method: "POST", body, timeout: 120000 }),
+  removeVoice:   (engine, id) => request("/voice/reference", { method: "DELETE", body: { engine, id }, timeout: 30000 }),
+  editExport:    (body) => request("/edit/export", { method: "POST", body, timeout: 1800000 }),
+  editProbe:     (source) => request("/edit/probe", { method: "POST", body: { source }, timeout: 300000 }),
+
   /* The whole app's state as one downloadable object, and the way back.
    * Client mode only — in server mode the data/ folder is the backup. */
   backupExport:  () => request("/backup", { timeout: 300000 }),
