@@ -74,20 +74,30 @@ export function framingPhrase(camera = {}) {
   return `with the subject framed ${[across, down].filter(Boolean).join(" and ")}`;
 }
 
+/** A camera field's value, or "" when it is unstated in any spelling. */
+const stated = (v) => {
+  const t = String(v ?? "").trim();
+  return /^(none|unstated|n\/a|—|-)$/i.test(t) ? "" : t;
+};
+
 /** The framing sentence: lens, height, where the subject sits, and what the
  *  lens is doing about depth. Separate from the move, because it is true for
  *  the whole shot while the move is what changes during it. Anything left
  *  unstated is left out — an unstated lens is better than a wrong one. */
 export function framingSentence(camera = {}, shotType = "") {
   const bits = [];
-  if (camera.lens) bits.push(`Shot on a ${camera.lens} lens`);
-  if (camera.height) bits.push(bits.length ? `at ${phrase(camera.height)}` : `The camera sits at ${phrase(camera.height)}`);
+  // "" is the unstated value, but "none" arrives too — from an imported
+  // project or a writer that fills every field — and used to print
+  // "Shot on a none lens, at none." Either spelling means say nothing.
+  const lens = stated(camera.lens), height = stated(camera.height);
+  if (lens) bits.push(`Shot on a ${lens} lens`);
+  if (height) bits.push(bits.length ? `at ${phrase(height)}` : `The camera sits at ${phrase(height)}`);
   const where = framingPhrase(camera);
   if (where) bits.push(bits.length ? where : `The frame is composed ${where}`);
   const first = bits.length ? `${bits.join(", ")}.` : "";
   // Depth is its own sentence: a rack focus or a dolly zoom is an event, not an
   // attribute, and burying it in a clause is how it gets dropped.
-  const depth = (camera.depth || "").trim();
+  const depth = stated(camera.depth);
   if (!depth) return first;
   const depthSentence = /^(the|a) /i.test(depth)
     ? `${depth.charAt(0).toUpperCase()}${depth.slice(1)}.`

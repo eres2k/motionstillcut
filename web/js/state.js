@@ -882,3 +882,15 @@ export function exportProject() {
   const { jobs, ...rest } = project;
   return JSON.stringify({ ...rest, exportedAt: new Date().toISOString() }, null, 2);
 }
+
+/** The references a shot cites, in inventory order: every picture, clip or
+ *  sound whose tag appears in the fields the compiled description draws from,
+ *  beats included. One predicate for "which pictures is this shot of", so the
+ *  Cut page's thumbnails and the storyboard agree with the prompt. */
+export function shotCitations(p, shot) {
+  if (!shot) return [];
+  const hay = [shot.subject, shotActionText(shot), shot.setting, shot.details, shot.lighting, shot.sfx,
+    ...(shot.beats || []).map(b => b?.text)].filter(Boolean).join(" ");
+  if (!hay.includes("<")) return [];
+  return referenceInventory(p).filter(e => hay.includes(e.tag));
+}
