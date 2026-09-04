@@ -101,6 +101,20 @@ function settingsPanel(p) {
                 : ltx && p.render.duration > H3_DURATION.max
                   ? `Within LTX-2.5's ${LTX25_DURATION.max}s window — switching back to MiniMax H3 would make this length repeat.`
                   : ""),
+          row("Watermark", segmented([["off", "Off"], ["signature", "Signature"], ["client", "Client preview"]], p.render.watermark || "off", (v) => set({ watermark: v })),
+            p.render.watermark === "client"
+              ? "Your name tiled diagonally across the whole frame at low opacity, plus the signature — on every frame, so it survives a screenshot, a re-encode and a crop. A preview a client can judge and cannot use."
+              : p.render.watermark === "signature"
+                ? "Your name, small, in the bottom-right corner of every frame."
+                : "Nothing stamped on the delivered clip."),
+          (p.render.watermark || "off") !== "off"
+            ? row("Name", h("input", {
+                type: "text", value: getSettings()?.watermark?.text || "", placeholder: "Your name",
+                onchange: (e) => saveSettings({ watermark: { text: e.target.value.trim() } }).then(() => { toast("Saved", "", "ok"); refresh(); }),
+              }), (getSettings()?.watermark?.text || "").trim()
+                ? "Kept in this browser's settings — the same name on every project. Drawn at the delivered size, after the upscale."
+                : "Type the name to stamp. Until there is one, the render goes out unmarked.")
+            : null,
           h("div.hint", { style: { marginTop: "8px" } }, `Rough estimate: ${humanTime(eta)} on a 24 GB card.`),
           h("div.hint", { style: { marginTop: "5px" } },
             "These stick: whatever you choose here is what your next project starts from, in every mode."),

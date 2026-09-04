@@ -74,13 +74,38 @@ function safePrefix(project, settings) {
  * Build the API-format graph for whichever engine the project renders on.
  * @returns {{ prompt: object, meta: object, compiled: object }}
  */
-export function buildWorkflow(project, settings) {
+/** @param extras.watermark  { file, mode, x, y } — a PNG already in
+ *  ComfyUI/input (render.js draws and uploads it), composited over every
+ *  frame after the upscale. Absent on the download-the-JSON path. */
+export function buildWorkflow(project, settings, extras = {}) {
   return activeEngine(project) === "ltx25"
-    ? buildLtxWorkflow(project, settings)
-    : buildMinimaxWorkflow(project, settings);
+    ? buildLtxWorkflow(project, settings, extras)
+    : buildMinimaxWorkflow(project, settings, extras);
 }
 
-function buildMinimaxWorkflow(project, settings) {
+/** The size the clip is delivered at: the upscale target, or the canvas. */
+export function deliveredSize(project) {
+  const plan = upscalePlan(project);
+  return plan ? { width: plan.width, height: plan.height } : dimensions(project);
+}
+
+/* ── Watermark — the last thing before the mux ─────────────────
+ * LoadImage gives the PNG and its alpha as a mask — inverted, ComfyUI's
+ * convention — so InvertMask turns it back into "where the mark is", and
+ * ImageCompositeMasked lays the one image over every frame of the batch. */
+function appendWatermark(graph, { createVideo, watermark }) {
+  if (!watermark?.file) return null;
+  graph["64"] = { class_type: "LoadImage", _meta: { title: `Watermark (${watermark.mode})` }, inputs: { image: watermark.file } };
+  graph["65"] = { class_type: "InvertMask", _meta: { title: "Watermark alpha" }, inputs: { mask: ["64", 1] } };
+  graph["66"] = {
+    class_type: "ImageCompositeMasked", _meta: { title: "Stamp every frame" },
+    inputs: { destination: graph[createVideo].inputs.images, source: ["64", 0], x: watermark.x || 0, y: watermark.y || 0, resize_source: false, mask: ["65", 0] },
+  };
+  graph[createVideo].inputs.images = ["66", 0];
+  return { mode: watermark.mode, file: watermark.file };
+}
+
+function buildMinimaxWorkflow(project, settings, extras = {}) {
   const models = { ...(settings?.models || {}) };
   const { width, height } = dimensions(project);
   const numFrames = frameCount(project);
@@ -233,6 +258,7 @@ function buildMinimaxWorkflow(project, settings) {
     inputs: { video: ["18", 0], filename_prefix: safePrefix(project, settings), format: "auto", codec: "auto" },
   };
   const upscale = appendUpscale(graph, { decode: "16", createVideo: "18", project, models, seed, promptText });
+  const watermark = appendWatermark(graph, { createVideo: "18", watermark: extras.watermark });
 
   const meta = {
     mode: project.mode,
@@ -245,6 +271,7 @@ function buildMinimaxWorkflow(project, settings) {
     shiftVideo: variant.shiftVideo, shiftAudio: variant.shiftAudio,
     tiledDecode: tiled,
     upscale,
+    watermark,
     // SeedVR2 is the one custom pack the graph can reach for, and only when asked.
     stockNodesOnly: !upscale || upscale.engine === "esrgan",
     nodeTypes: [...new Set(Object.values(graph).map(n => n.class_type))].sort(),
@@ -326,7 +353,7 @@ const LTX_NEGATIVE = "pc game, console game, video game, cartoon, childish, ugly
 // chunk — the settings the conv LTX VAE has always decoded with.
 const LTX_DECODE = { tile_size: 768, overlap: 64, temporal_size: 4096, temporal_overlap: 4 };
 
-function buildLtxWorkflow(project, settings) {
+function buildLtxWorkflow(project, settings, extras = {}) {
   const models = { ...(settings?.models || {}) };
   const { width, height } = dimensions(project);
   const numFrames = frameCount(project);            // the 8k+1 grid, per state.js
@@ -539,12 +566,14 @@ function buildLtxWorkflow(project, settings) {
     // The LTX refine reuses this graph's own loaders and clean conditioning.
     ltx: { model: ["1", 0], vae: ["3", 0], audioVae: ["4", 0], positive: ["7", 0], negative: ["7", 1] },
   });
+  const watermark = appendWatermark(graph, { createVideo: "34", watermark: extras.watermark });
 
   const meta = {
     mode: project.mode,
     engine: "ltx25",
     width, height, numFrames, fps, seed, seed2,
     upscale,
+    watermark,
     steps: variant.steps,
     variant: variant.key, variantLabel: `LTX-2.5 ${variant.label}`,
     stages: variant.stages,
