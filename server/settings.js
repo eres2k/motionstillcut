@@ -90,6 +90,9 @@ export const DEFAULT_SETTINGS = {
     // off. Inert to every other model — but if yours echoes it back, set this
     // to "off".
     noThinkTag: "on",
+    // How hard a reasoning model thinks, while thinking is on: default | low |
+    // medium | high. Sent as reasoning_effort; never sent with thinking off.
+    reasoning: "default",
   },
   vram: {
     // The whole point of the mode: one engine on the GPU at a time. The

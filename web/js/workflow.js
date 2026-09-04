@@ -765,3 +765,94 @@ export function humanTime(seconds) {
   const m = Math.floor(seconds / 60), s = Math.round(seconds % 60);
   return m ? `${m}m ${String(s).padStart(2, "0")}s` : `${s}s`;
 }
+
+/* ── Will it fit? ─────────────────────────────────────────────
+ * A VRAM estimate for a MiniMax H3 render, so the app can say "this won't
+ * fit" before ComfyUI spends twenty seconds loading weights and then dies on
+ * the first sampling step. Calibrated on a real failure: 736 frames at
+ * 1344x768 with six references at "max" (~235k tokens) asked for a single
+ * 18.8 GiB tensor on a 32 GB card. The int8 build's matmuls write int32 —
+ * four bytes per value — so every per-layer activation is twice its bf16
+ * size; the NVFP4 build's kernels write bf16 directly, which is why it
+ * halves the activation cost as well as the weights.
+ *
+ * Tokens: H3's VAE is 16x spatial and 4x temporal, the DiT patches 2x2, so a
+ * latent frame is (w/32)·(h/32) tokens; the first latent frame holds one
+ * frame and each later one four. References ride through every step — at
+ * "match" scaled down to the clip's pixel area, at "max" to a 2048 px short
+ * edge. Audio and text tokens are folded in per frame. The numbers are
+ * deliberately rough (it says ≈), but they are on the right side of the
+ * failures we have seen. */
+export const VRAM_MODEL = {
+  activationKBPerToken: { int8: 160, nvfp4: 80 }, // peak per-layer working set
+  ditGB: { int8: 20, nvfp4: 12 },                  // the whole DiT, resident
+  minWeightsGB: { int8: 2.5, nvfp4: 1.5 },         // what the dynamic loader must keep on the card
+  overheadGB: 3,                                   // CUDA context, VAE/TE pins, other tenants
+  extraTokensPerFrame: 50,                         // audio + text conditioning
+  maxRefShortEdge: 2048,
+  assumedMaxRef: { width: 3072, height: 2048 },    // a reference whose size we do not know, at "max"
+};
+
+function latentFrameCount(numFrames) {
+  return 1 + Math.ceil(Math.max(0, numFrames - 1) / 4);
+}
+
+function refImageTokens(img, clipW, clipH, max) {
+  let w = +img?.width || 0, h = +img?.height || 0;
+  if (!w || !h) {
+    if (!max) return Math.floor(clipW / 32) * Math.floor(clipH / 32);
+    ({ width: w, height: h } = VRAM_MODEL.assumedMaxRef);
+  }
+  const s = max
+    ? Math.min(1, VRAM_MODEL.maxRefShortEdge / Math.min(w, h))
+    : Math.min(1, Math.sqrt((clipW * clipH) / (w * h)));
+  return Math.floor((w * s) / 32) * Math.floor((h * s) / 32);
+}
+
+function refVideoTokens(clip, perFrame) {
+  const frames = +clip?.frames || (clip?.duration ? Math.round(clip.duration * 24) : 124);
+  return latentFrameCount(Math.min(frames, 362)) * perFrame;
+}
+
+/** @returns null for engines we have no model for (LTX-2.5), else
+ *  { tokens, activationsGB, needGB, comfortableGB, cardGB, verdict, … } with
+ *  verdict one of "ok" | "tight" | "no" | "unknown" (no card size known). */
+export function estimateVram(project, { cardGB = null } = {}) {
+  if (activeEngine(project) === "ltx25") return null;
+  const { width, height } = dimensions(project);
+  const numFrames = frameCount(project);
+  const perFrame = Math.floor(width / 32) * Math.floor(height / 32);
+  const latentFrames = latentFrameCount(numFrames);
+  const video = latentFrames * perFrame;
+
+  let refs = 0;
+  if (project.mode === "r2v") {
+    const max = project.render?.refImageSize === "max";
+    for (const img of (project.refs?.images || []).slice(0, 9)) refs += refImageTokens(img, width, height, max);
+    for (const clip of (project.refs?.videos || []).slice(0, 3)) refs += refVideoTokens(clip, perFrame);
+  }
+  const extra = numFrames * VRAM_MODEL.extraTokensPerFrame;
+  const tokens = video + refs + extra;
+
+  const precision = project.render?.precision === "nvfp4" ? "nvfp4" : "int8";
+  const activationsGB = (tokens * VRAM_MODEL.activationKBPerToken[precision]) / (1024 * 1024);
+  const needGB = activationsGB + VRAM_MODEL.minWeightsGB[precision] + VRAM_MODEL.overheadGB;
+  const comfortableGB = activationsGB + VRAM_MODEL.ditGB[precision] + VRAM_MODEL.overheadGB;
+  const card = +cardGB || null;
+  const verdict = !card ? "unknown" : needGB > card ? "no" : comfortableGB > card ? "tight" : "ok";
+  return { tokens, video, refs, extra, latentFrames, numFrames, precision, activationsGB, needGB, comfortableGB, cardGB: card, verdict };
+}
+
+/** The levers that would bring a render back under the card, in the order
+ *  they pay off — only the ones this project has not pulled already. */
+export function vramLevers(project, fit) {
+  const out = [];
+  if (!fit) return out;
+  if ((project.render?.duration || 5) > 5) out.push("a shorter clip");
+  const { width, height } = dimensions(project);
+  if (width * height > 832 * 480) out.push("a lower resolution");
+  if (project.mode === "r2v" && project.render?.refImageSize === "max") out.push("references at “match”");
+  if (project.mode === "r2v" && (project.refs?.images || []).length > 3) out.push("fewer reference pictures");
+  if (fit.precision !== "nvfp4") out.push("the NVFP4 build");
+  return out;
+}

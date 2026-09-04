@@ -28,6 +28,7 @@ import { createPreviz, shotAt, framingOrigin, subjectHeightPct } from "../previz
 import { renderNodeGraph, nodeGraphLegend } from "../nodeview.js";
 import { renderPrompt } from "../prompttext.js";
 import { renderBoard } from "../board.js";
+import { shotCitations } from "../state.js";
 import { breakdown, polishShot } from "../llm.js";
 import { assistBar, lastReading, setReading } from "../assist.js";
 import { validateFix, describeFix, applyFix } from "../fixes.js";
@@ -158,6 +159,23 @@ function ensurePrevizBackgrounds(p) {
 }
 
 /* ── Left: shot list + the idea box ───────────────────────── */
+/** The pictures (and clips) a shot cites, as small stills next to its
+ *  number — so a reel that walks through six rooms reads as six rooms, and a
+ *  shot that cites nothing is visibly blank. Stills load from the media store
+ *  after the row paints, exactly as the Canvas does. */
+function citeStrip(p, shot) {
+  const cites = shotCitations(p, shot).filter(e => e.kind !== "audio");
+  if (!cites.length) return null;
+  const shown = cites.slice(0, 4);
+  return h("div.cites", ...shown.map((e) => {
+    const still = h("div.cite-still", { title: `${e.tag} — ${e.ref?.label || e.ref?.name || ""}` }, e.kind === "video" ? "▶" : "");
+    const paint = (src) => { if (src) { still.style.backgroundImage = `url("${src}")`; still.textContent = ""; } };
+    if (e.kind === "video") paint(e.ref?.poster);
+    else if (e.ref?.id) getBlob(e.ref.id).then(paint);
+    return still;
+  }), cites.length > shown.length ? h("div.cite-still.more", `+${cites.length - shown.length}`) : null);
+}
+
 function shotList(p) {
   const shots = orderedShots(p);
   const sel = selectedShot(p);
@@ -175,6 +193,7 @@ function shotList(p) {
       onclick: () => { selectShot(s.id); playhead = s.at; refresh(); },
     },
       h("div.idx", String(i + 1)),
+      citeStrip(p, s),
       h("div.txt",
         h("div.line1", (s.subject || shotActionText(s) || "— empty shot —").slice(0, 60)),
         h("div.line2", `${i > 0 ? `${s.cutVerb === NO_CUT ? "⟶ same take" : `✂ ${transitionLabel(s.cutVerb).replace(/ \(ask first\)/, "")}`} · ` : ""}${shotTime(s.at)} · ${len.toFixed(1)}s · ${s.shotType}${beats ? ` · ${beats} beat${beats > 1 ? "s" : ""}` : ""}`),
