@@ -20,7 +20,7 @@ import { api, onAuthState, signIn } from "./api.js";
 import { TEMPLATES } from "./templates.js";
 import { validate, compilePrompt, setHouseRules, setCast } from "./prompt.js";
 import { rulebook, cast } from "./library.js";
-import { estimateSeconds, humanTime } from "./workflow.js";
+import { estimateSeconds, estimateVram, humanTime } from "./workflow.js";
 import { ingest, kindOf, posterFor, getBlob } from "./media.js";
 import { startResizers, resetAllSizes } from "./resize.js";
 import { applyUiScale, stepUiScale, uiScale } from "./uiscale.js";
@@ -152,6 +152,12 @@ const paintStatus = debounce(() => {
   let report;
   try { report = validate(p); } catch { return; }
   const eta = humanTime(estimateSeconds(p));
+  const fit = estimateVram(p, { cardGB: getHealth()?.comfy?.vramTotalGB || null });
+  const fitChip = fit?.verdict === "no"
+    ? h("span.hint.bad", { title: `About ${Math.round(fit.needGB)} GB of VRAM at peak on a ${Math.round(fit.cardGB)} GB card` }, "won't fit")
+    : fit?.verdict === "tight"
+      ? h("span.hint.warn", { title: `About ${Math.round(fit.needGB)} GB of VRAM at peak on a ${Math.round(fit.cardGB)} GB card — the DiT will page weights` }, "tight fit")
+      : null;
   el.innerHTML = "";
   el.append(
     h("span", {
@@ -165,6 +171,7 @@ const paintStatus = debounce(() => {
     h("span.hint", `${report.wordCount} words`),
     h("span.hint", `${p.shots.length} shot${p.shots.length === 1 ? "" : "s"} · ${p.render.duration}s`),
     h("span.hint", `≈ ${eta}`),
+    fitChip,
     h("span.hint.faint", { id: "save-state" }, "saved"),
   );
 }, 200);
