@@ -17,6 +17,7 @@ import {
   dimensions, frameCount, DURATION_FRAMES, MODES, H3_DURATION, overLength, durationFrames,
  onProjectSwap, ltxGuideIdx, ltxGuideTime, setEngine, ENGINES, activeEngine } from "../state.js";
 import { TEMPLATES } from "../templates.js";
+import { SCENE_PRESETS, applyPreset, presetContext } from "../presets.js";
 import { getBlob, ingest } from "../media.js";
 import { compilePrompt, validate, wordBudget, cameraSentence, framingSentence } from "../prompt.js";
 import { pickCharacter, castLine } from "../knowncast.js";
@@ -749,6 +750,23 @@ export function openTemplates() {
   const body = h("div",
     h("div.note.info", { style: { marginTop: 0 } },
       "A template replaces the shot list and sets the clip length. Everything you have typed into the current shots is lost — export the project first if you want it back."),
+    h("div.hint", { style: { margin: "8px 0 4px", color: "var(--fg-bright)" } }, "Scene presets — one shot per attached picture, each citing its own; the guidance rides on every rewrite"),
+    ...SCENE_PRESETS.map(t => {
+      const n = t.build(presetContext(p)).length;
+      return h("div", {
+        style: { padding: "8px 10px", border: "1px solid var(--line-hair)", borderRadius: "3px", marginBottom: "6px", cursor: "pointer" },
+        onclick: () => {
+          update((proj) => { applyPreset(proj, t.key); }, "shots");
+          closeModal(null);
+          toast(`${t.name} applied`, `${n} shot${n === 1 ? "" : "s"} over ${getProject().render.duration}s.`, "ok");
+          refresh();
+        },
+      },
+        h("div.flex", h("b", { style: { color: "var(--fg-bright)" } }, t.name), h("span.hint", `${n} shot${n === 1 ? "" : "s"} · ${presetContext(p).picCount} picture${presetContext(p).picCount === 1 ? "" : "s"}`), h("span.tag", "R2V")),
+        h("div.hint", { style: { marginTop: "3px" } }, t.blurb),
+      );
+    }),
+    h("div.hint", { style: { margin: "10px 0 4px", color: "var(--fg-bright)" } }, "Shot structures"),
     ...TEMPLATES.map(t => h("div", {
       style: { border: "1px solid var(--line-hair)", borderRadius: "2px", padding: "9px 11px", marginBottom: "7px", cursor: "pointer" },
       onmouseenter: (e) => { e.currentTarget.style.borderColor = "var(--accent)"; },

@@ -11,6 +11,7 @@
  */
 
 import { detailToWriting, DEFAULT_DIALS } from "./steer.js";
+import { presetGuidance } from "./presets.js";
 import { splitCutBeats, stripCutPrefix } from "./shotlist.js";
 import { api } from "./api.js";
 import { getBlob } from "./media.js";
@@ -147,6 +148,7 @@ function projectBrief(project) {
     project.mode === "i2v" && project.frames?.first?.caption ? `The fixed first frame shows: ${project.frames.first.caption}` : "",
     /* How much to say per shot — the Detail dial. It is a target for the
      * writer, so it rides on every call that writes: breakdown, polish, enhance. */
+    presetGuidance(project),
     (() => {
       const w = detailToWriting((project.creative?.dials || {}).detail ?? DEFAULT_DIALS.detail);
       return `Level of detail per shot — ${w.name.toUpperCase()}, about ${w.wordsPerShot} words a shot across its fields: ${w.rules}`;
