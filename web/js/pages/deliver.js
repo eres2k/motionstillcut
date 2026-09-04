@@ -208,7 +208,11 @@ function upscaleGroup(p, set) {
     : up.engine === "ltx25"
       ? (has("LTXVLatentUpsampler") === false
           ? "This ComfyUI has no LTX-2.5 support — the LTX nodes are named on the Setup page."
-          : "LTX-2.5 as the upscaler: the frames are encoded into its latent, doubled by its latent upsampler and put through the three-step refine pass the two-stage build uses, under the clip's own prompt. Core nodes, but the whole LTX-2.5 pack loads for it — quickest from an LTX render, where the weights are already on the card. Detail is re-imagined by a video model, ×2; the target finishes with a resize.")
+          : up.ltxMethod === "refine"
+            ? "The two-stage build's second pass on the encoded frames: latent upsampler ×2, then three steps from σ 0.85 under the clip's own prompt. Core nodes only; gentler than the IC-LoRA and keeps more of the source. The whole LTX-2.5 pack loads for it — quickest from an LTX render."
+            : has("LTXAddVideoICLoRAGuide") === false
+              ? "Lightricks' upscaler needs the ComfyUI-LTXVideo pack's IC-LoRA nodes, which this ComfyUI does not have — install the pack, or pick the refine pass below."
+              : "Lightricks' own Pixel Spatial Upscaler: the clip, Lanczos-doubled, is the starting latent and the in-context reference; the distilled model regenerates it at ×2 over its full eight steps, the reference is cropped off, the frames decode tiled. It synthesises detail rather than sharpening — right for generated footage, wrong for anything that must stay factual. Needs the LoRA (Setup ▸ LTX-2.5 files; gated on Hugging Face).")
     : up.engine === "esrgan"
       ? (has("ImageUpscaleWithModel") === false
           ? "The stock upscale nodes are missing — this ComfyUI is very old."
@@ -221,7 +225,11 @@ function upscaleGroup(p, set) {
       "The decoded frames go through an upscaler before the video is muxed, so the clip is generated at the canvas size — the size the model was trained at — and delivered larger. Nothing about the render itself changes; the VRAM the sampler needs is decided by the canvas, not by this.",
     ),
   },
-    row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · refine ×2"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v })), engineHint),
+    row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · ×2"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v })), engineHint),
+    up.engine === "ltx25"
+      ? row("Method", segmented([["iclora", "IC-LoRA (Lightricks)"], ["refine", "Refine pass"]], up.ltxMethod, (v) => setUp({ ltxMethod: v })),
+        up.ltxMethod === "refine" ? "Three steps, no LoRA to download." : "Eight steps, the official recipe.")
+      : null,
     up.engine !== "off"
       ? row("Output", select(Object.keys(UPSCALE_TARGETS).map(k => [k, UPSCALE_TARGET_LABELS[k]]), up.target, (v) => setUp({ target: v })),
         plan
@@ -756,7 +764,7 @@ function workflowPanel(p) {
           + (built.meta.tiledDecode ? " · tiled decode" : "")),
         h("span.k", "seed"), h("span.v", String(built.meta.seed)),
         built.meta.upscale ? h("span.k", "upscale") : null,
-        built.meta.upscale ? h("span.v", `${{ seedvr2: "SeedVR2", flashvsr: "FlashVSR", ltx25: "LTX-2.5 refine ×2", esrgan: "ESRGAN ×4" }[built.meta.upscale.engine]} → ${built.meta.upscale.width}×${built.meta.upscale.height}`) : null,
+        built.meta.upscale ? h("span.v", `${{ seedvr2: "SeedVR2", flashvsr: "FlashVSR", ltx25: "LTX-2.5 ×2", esrgan: "ESRGAN ×4" }[built.meta.upscale.engine]} → ${built.meta.upscale.width}×${built.meta.upscale.height}`) : null,
         built.meta.guides?.length ? h("span.k", "pins") : null,
         built.meta.guides?.length ? h("span.v", built.meta.guides.map(g => `${g.at}s @ ${g.strength}`).join(" · ")) : null,
         h("span.k", "nodes"), h("span.v", `${nodeCount} · ${built.meta.nodeTypes.length} types · ${built.meta.upscale?.engine === "seedvr2" ? "core + SeedVR2 pack" : built.meta.upscale?.engine === "flashvsr" ? "core + FlashVSR pack" : built.meta.stockNodesOnly === false ? "core + LTX-2 AV" : "stock only"}`),

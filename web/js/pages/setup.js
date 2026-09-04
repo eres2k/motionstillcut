@@ -50,6 +50,7 @@ const LTX_MODEL_FIELDS = [
   ["ltx25_video_vae",    "LTX-2.5 video VAE",              "vae",                   "The convolutional decoder — loads anywhere the 2.3 VAE does"],
   ["ltx25_audio_vae",    "LTX-2.5 audio VAE",              "vae",                   ""],
   ["ltx25_upscaler",     "LTX-2.5 latent upscaler ×2",     "latent_upscale_models", "The two-stage build's refine pass runs through this"],
+  ["ltx25_upscale_lora", "LTX-2.5 IC-LoRA pixel upscaler ×2", "loras",             "Lightricks' official upscaler for Deliver ▸ Upscale — gated on Hugging Face (accept the licence), 327 MB, into models/loras"],
 ];
 
 async function loadFolders() {

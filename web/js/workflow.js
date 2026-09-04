@@ -616,12 +616,19 @@ function buildLtxWorkflow(project, settings, extras = {}) {
  *              upscaler at a fixed ×2 or ×4, through the
  *              ComfyUI-FlashVSR_Ultra_Fast pack. Coherent, conservative,
  *              several times faster than SeedVR2. The middle tier.
- *   ltx25    — LTX-2.5 as the upscaler: the frames are encoded into its
- *              latent, doubled by its latent upsampler and put through the
- *              three-step refine pass the two-stage build uses, under the
- *              clip's own prompt. Core nodes only, but the whole LTX-2.5
- *              pack loads for it; from an LTX render the weights are already
- *              on the card. Detail is re-imagined by a video model, ×2.
+ *   ltx25    — LTX-2.5 as the upscaler, two ways. "iclora" is Lightricks'
+ *              own: their Pixel Spatial Upscaler IC-LoRA (×2, v1.0), wired
+ *              exactly as their ComfyUI-LTXVideo example — the clip, Lanczos-
+ *              doubled, is both the starting latent and the in-context
+ *              reference (the loader hands the guide its downscale factor),
+ *              the distilled model regenerates it over its full eight-step
+ *              ladder at cfg 1 with euler_ancestral, the guide frames are
+ *              cropped off and the result decodes tiled. It synthesises
+ *              detail rather than sharpening. "refine" is the two-stage
+ *              build's second pass on the encoded frames: latent upsampler
+ *              ×2, then three steps from σ 0.85 — core nodes only, gentler.
+ *              The whole LTX-2.5 pack loads for either; from an LTX render
+ *              the weights are already on the card.
  *   esrgan   — RealESRGAN ×4 per frame on stock nodes, then a Lanczos resize
  *              to the exact target. Seconds per clip; fine texture can
  *              shimmer between frames because each is upscaled alone.
@@ -640,6 +647,7 @@ export function upscaleSettings(project) {
   return {
     engine: UPSCALE_ENGINES.includes(u.engine) ? u.engine : "off",
     target: UPSCALE_TARGETS[u.target] ? u.target : "1080p",
+    ltxMethod: u.ltxMethod === "refine" ? "refine" : "iclora",
   };
 }
 
@@ -671,7 +679,8 @@ function upscaleSeconds(project) {
   const diffused = plan.engine === "seedvr2" ? plan.pixels * Math.min(1, (SEEDVR2_DIFFUSE_CAP / plan.shortEdge) ** 2)
     : plan.engine === "ltx25" ? width * height * 4
     : plan.pixels;
-  const perFrame = { seedvr2: 2.8, flashvsr: 1.2, ltx25: 0.35, esrgan: 0.12 }[plan.engine];
+  // The IC-LoRA runs the full eight-step ladder; the refine pass three.
+  const perFrame = { seedvr2: 2.8, flashvsr: 1.2, ltx25: upscaleSettings(project).ltxMethod === "iclora" ? 0.9 : 0.35, esrgan: 0.12 }[plan.engine];
   const load = { seedvr2: 20, flashvsr: 20, ltx25: 45, esrgan: 3 }[plan.engine];
   return Math.round(load + (frames * perFrame * diffused) / (1920 * 1080));
 }
@@ -727,17 +736,53 @@ function appendUpscale(graph, { decode, createVideo, project, models, seed, prom
       graph["107"] = { class_type: "ImageFromBatch", _meta: { title: `Trim to ${keep} frames (8k+1)` }, inputs: { image: from, batch_index: 0, length: keep } };
       frames = ["107", 0];
     }
+    // The refine is an AV pass either way; the audio half is a silent latent
+    // that is thrown away — the mux keeps the render's own soundtrack.
+    graph["111"] = { class_type: "LTXVEmptyLatentAudio", _meta: { title: "Silent Audio Latent (upscale)" }, inputs: { frames_number: keep, frame_rate: fps, batch_size: 1, audio_vae: L.audioVae } };
+
+    if (upscaleSettings(project).ltxMethod === "iclora") {
+      /* Lightricks' Pixel Spatial Upscaler, node for node as their example:
+       * the clip Lanczos-doubled is the starting latent AND the reference
+       * the guide node attaches (it downsamples the guide by the factor the
+       * LoRA loader reports — 2 for this LoRA); the distilled model then
+       * regenerates the whole clip over its full ladder; the appended guide
+       * frames are cropped off before a tiled decode. */
+      const { width, height } = dimensions(project);
+      graph["108"] = { class_type: "ImageScale", _meta: { title: "Lanczos ×2 (start + reference)" },
+        inputs: { image: frames, upscale_method: "lanczos", width: width * 2, height: height * 2, crop: "disabled" } };
+      graph["109"] = { class_type: "VAEEncode", _meta: { title: "Encode Frames (LTX-2.5)" }, inputs: { pixels: ["108", 0], vae: L.vae } };
+      graph["110"] = { class_type: "LTXICLoRALoaderModelOnly", _meta: { title: "IC-LoRA: Pixel Spatial Upscaler ×2" },
+        inputs: { model: L.model, lora_name: models.ltx25_upscale_lora, strength_model: 1 } };
+      graph["112"] = { class_type: "LTXAddVideoICLoRAGuide", _meta: { title: "Reference: the clip itself" },
+        inputs: { positive: L.positive, negative: L.negative, vae: L.vae, latent: ["109", 0], image: ["108", 0],
+          frame_idx: 0, strength: 1, latent_downscale_factor: ["110", 1], crop: "disabled", use_tiled_encode: false, tile_size: 256, tile_overlap: 64 } };
+      graph["113"] = { class_type: "LTXVConcatAVLatent", _meta: { title: "Concat AV Latent (upscale)" }, inputs: { video_latent: ["112", 2], audio_latent: ["111", 0] } };
+      graph["114"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (distilled, 8 steps)" }, inputs: { sigmas: LTX_SIGMAS_PASS1 } };
+      graph["115"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (upscale)" }, inputs: { cfg: 1, model: ["110", 0], positive: ["112", 0], negative: ["112", 1] } };
+      graph["116"] = { class_type: "RandomNoise", _meta: { title: "Noise (upscale)" }, inputs: { noise_seed: seed } };
+      graph["117"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (upscale)" }, inputs: { sampler_name: "euler_ancestral" } };
+      graph["118"] = {
+        class_type: "SamplerCustomAdvanced", _meta: { title: "Sample AV Latent (upscale)" },
+        inputs: { noise: ["116", 0], guider: ["115", 0], sampler: ["117", 0], sigmas: ["114", 0], latent_image: ["113", 0] },
+      };
+      graph["119"] = { class_type: "LTXVSeparateAVLatent", _meta: { title: "Separate AV (upscale)" }, inputs: { av_latent: ["118", 0] } };
+      graph["120"] = { class_type: "LTXVCropGuides", _meta: { title: "Crop the reference off" }, inputs: { positive: ["112", 0], negative: ["112", 1], latent: ["119", 0] } };
+      graph["121"] = { class_type: "LTXVTiledVAEDecode", _meta: { title: "Decode Video (tiled 2×2)" },
+        inputs: { vae: L.vae, latents: ["120", 2], horizontal_tiles: 2, vertical_tiles: 2, overlap: 6, last_frame_fix: false } };
+      finish("121", `Fit → ${plan.target}`);
+      graph[createVideo].inputs.images = ["62", 0];
+      return plan;
+    }
+
     graph["108"] = { class_type: "VAEEncode", _meta: { title: "Encode Frames (LTX-2.5)" }, inputs: { pixels: frames, vae: L.vae } };
     graph["109"] = { class_type: "LatentUpscaleModelLoader", _meta: { title: "Load Latent Upscale Model" }, inputs: { model_name: models.ltx25_upscaler } };
     graph["110"] = { class_type: "LTXVLatentUpsampler", _meta: { title: "Spatial 2× Upscale (refine)" }, inputs: { samples: ["108", 0], upscale_model: ["109", 0], vae: L.vae } };
-    // The refine is an AV pass; the audio half is a silent latent that is
-    // thrown away — the mux keeps the render's own soundtrack.
-    graph["111"] = { class_type: "LTXVEmptyLatentAudio", _meta: { title: "Silent Audio Latent (refine)" }, inputs: { frames_number: keep, frame_rate: fps, batch_size: 1, audio_vae: L.audioVae } };
     graph["112"] = { class_type: "LTXVConcatAVLatent", _meta: { title: "Concat AV Latent (refine)" }, inputs: { video_latent: ["110", 0], audio_latent: ["111", 0] } };
     graph["113"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (refine)" }, inputs: { sigmas: LTX_SIGMAS_PASS2 } };
     graph["114"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (refine)" }, inputs: { cfg: 1, model: L.model, positive: L.positive, negative: L.negative } };
     graph["115"] = { class_type: "RandomNoise", _meta: { title: "Noise (refine)" }, inputs: { noise_seed: seed } };
-    graph["116"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (refine)" }, inputs: { sampler_name: "euler" } };
+    // euler_ancestral: what Lightricks' two-stage example samples the second pass with.
+    graph["116"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (refine)" }, inputs: { sampler_name: "euler_ancestral" } };
     graph["117"] = {
       class_type: "SamplerCustomAdvanced", _meta: { title: "Sample AV Latent (refine)" },
       inputs: { noise: ["115", 0], guider: ["114", 0], sampler: ["116", 0], sigmas: ["113", 0], latent_image: ["112", 0] },

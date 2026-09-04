@@ -112,6 +112,9 @@ const OPTIONAL_NODES = {
   ImageUpscaleWithModel: "ESRGAN upscale (Deliver ▸ Upscale)",
   SeedVR2VideoUpscaler:  "SeedVR2 upscale — the seedvr2_videoupscaler custom pack (Deliver ▸ Upscale)",
   FlashVSRNode:          "FlashVSR upscale — the ComfyUI-FlashVSR_Ultra_Fast custom pack (Deliver ▸ Upscale)",
+  LTXICLoRALoaderModelOnly: "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
+  LTXAddVideoICLoRAGuide:   "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
+  LTXVTiledVAEDecode:       "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
 };
 
 /* What the EXPERIMENTAL LTX-2.5 engine additionally needs — its own group in

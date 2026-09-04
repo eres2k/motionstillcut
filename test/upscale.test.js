@@ -106,38 +106,70 @@ test("the LTX-2.5 graph gets the same pass after its tiled decode", () => {
 test("old projects without the field default to off; the ETA grows with the pass", () => {
   const p = project();
   delete p.render.upscale;
-  assert.deepEqual(upscaleSettings(p), { engine: "off", target: "1080p" });
+  assert.deepEqual(upscaleSettings(p), { engine: "off", target: "1080p", ltxMethod: "iclora" });
   const base = estimateSeconds(project());
   const esr = estimateSeconds(project({ engine: "esrgan" }));
   const seed = estimateSeconds(project({ engine: "seedvr2" }));
   assert.ok(esr > base && seed > esr, `${base} < ${esr} < ${seed}`);
 });
 
-test("LTX-2.5 refine on an H3 render: loads the LTX pack, trims to 8k+1 frames, doubles, refines, fits", () => {
+test("LTX-2.5 IC-LoRA (the default) on an H3 render: Lightricks' wiring, node for node", () => {
   const { prompt, meta } = buildWorkflow(project({ engine: "ltx25" }), settings);   // 124 frames at 832x480
   assert.equal(prompt["100"].class_type, "UNETLoader");
-  assert.equal(prompt["100"].inputs.unet_name, DEFAULT_MODELS.ltx25_dit);
-  assert.equal(prompt["107"].class_type, "ImageFromBatch");
-  assert.equal(prompt["107"].inputs.length, 121);
-  assert.deepEqual(prompt["108"].inputs.pixels, ["107", 0]);
-  assert.equal(prompt["110"].class_type, "LTXVLatentUpsampler");
-  assert.equal(prompt["111"].inputs.frames_number, 121);
-  assert.deepEqual(prompt["114"].inputs.model, ["100", 0]);
-  assert.equal(prompt["117"].inputs.sigmas[0], "113");
-  assert.equal(prompt["119"].class_type, "VAEDecodeTiled");
-  assert.deepEqual(prompt["62"].inputs.image, ["119", 0]);
+  assert.equal(prompt["107"].inputs.length, 121, "trimmed to LTX's 8k+1 grid");
+  assert.deepEqual(prompt["108"].inputs.image, ["107", 0]);
+  assert.equal(prompt["108"].inputs.width, 1664);          // Lanczos-doubled canvas: start latent and reference
+  assert.deepEqual(prompt["109"].inputs.pixels, ["108", 0]);
+  assert.equal(prompt["110"].class_type, "LTXICLoRALoaderModelOnly");
+  assert.equal(prompt["110"].inputs.lora_name, DEFAULT_MODELS.ltx25_upscale_lora);
+  assert.equal(prompt["110"].inputs.strength_model, 1, "the weights ship pre-scaled: full strength is the default");
+  const guide = prompt["112"];
+  assert.equal(guide.class_type, "LTXAddVideoICLoRAGuide");
+  assert.deepEqual(guide.inputs.latent, ["109", 0]);
+  assert.deepEqual(guide.inputs.image, ["108", 0]);
+  assert.deepEqual(guide.inputs.latent_downscale_factor, ["110", 1], "the loader reports the LoRA's factor");
+  assert.deepEqual(prompt["113"].inputs.video_latent, ["112", 2]);
+  assert.equal(prompt["114"].inputs.sigmas.split(",").length, 9, "the full eight-step ladder");
+  assert.deepEqual(prompt["115"].inputs.model, ["110", 0]);
+  assert.deepEqual(prompt["115"].inputs.positive, ["112", 0]);
+  assert.equal(prompt["117"].inputs.sampler_name, "euler_ancestral");
+  assert.deepEqual(prompt["120"].inputs.latent, ["119", 0]);
+  assert.equal(prompt["121"].class_type, "LTXVTiledVAEDecode");
+  assert.deepEqual(prompt["121"].inputs.latents, ["120", 2], "the reference is cropped off before decode");
+  assert.deepEqual(prompt["62"].inputs.image, ["121", 0]);
   assert.equal(prompt["62"].inputs.height, 1080);
   assert.deepEqual(prompt["18"].inputs.images, ["62", 0]);
   assert.deepEqual(prompt["18"].inputs.audio, ["17", 0], "the render's own soundtrack is kept");
   assert.equal(meta.stockNodesOnly, false);
 });
 
-test("LTX-2.5 refine on an LTX render reuses its loaders and needs no trim", () => {
+test("LTX-2.5 refine pass (the fallback): latent upsampler ×2 and three steps, official sampler", () => {
+  const p = project({ engine: "ltx25" });
+  p.render.upscale.ltxMethod = "refine";
+  const { prompt } = buildWorkflow(p, settings);
+  assert.equal(prompt["107"].inputs.length, 121);
+  assert.deepEqual(prompt["108"].inputs.pixels, ["107", 0]);
+  assert.equal(prompt["110"].class_type, "LTXVLatentUpsampler");
+  assert.equal(prompt["113"].inputs.sigmas.split(",").length, 4, "three steps");
+  assert.equal(prompt["116"].inputs.sampler_name, "euler_ancestral");
+  assert.equal(prompt["119"].class_type, "VAEDecodeTiled");
+  assert.deepEqual(prompt["62"].inputs.image, ["119", 0]);
+  assert.deepEqual(prompt["18"].inputs.images, ["62", 0]);
+  assert.equal(byType(prompt, "LTXAddVideoICLoRAGuide").length, 0, "no reference guide on the refine path");
+});
+
+test("LTX-2.5 on an LTX render reuses its loaders and needs no trim", () => {
   const { prompt } = buildWorkflow(project({ engine: "ltx25", renderEngine: "ltx25" }), settings);   // 121 frames
   assert.equal(prompt["100"], undefined);
   assert.equal(prompt["107"], undefined);
-  assert.deepEqual(prompt["108"].inputs.pixels, ["32", 0]);
-  assert.deepEqual(prompt["114"].inputs.model, ["1", 0]);
-  assert.deepEqual(prompt["114"].inputs.positive, ["7", 0]);
+  assert.deepEqual(prompt["108"].inputs.image, ["32", 0]);
+  assert.deepEqual(prompt["110"].inputs.model, ["1", 0]);
+  assert.deepEqual(prompt["112"].inputs.positive, ["7", 0]);
   assert.deepEqual(prompt["34"].inputs.images, ["62", 0]);
+});
+
+test("the IC-LoRA costs more time than the refine pass", () => {
+  const ic = estimateSeconds(project({ engine: "ltx25" }));
+  const p = project({ engine: "ltx25" }); p.render.upscale.ltxMethod = "refine";
+  assert.ok(ic > estimateSeconds(p));
 });
