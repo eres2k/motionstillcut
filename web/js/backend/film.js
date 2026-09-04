@@ -13,6 +13,12 @@
  *   In practice on ComfyUI's H.264 output this lands on the final frame; at
  *   worst it is one frame early, which continues cleanly.
  *
+ *   PROBE — how long a clip is and how big, for the Editor page. The same
+ *   decoder answers: loadedmetadata carries duration and the picture size.
+ *   It does not carry the frame rate, and whether there is a soundtrack is
+ *   only knowable on some browsers — so those come back as 0 and null, and
+ *   the page treats "unknown" as exactly that.
+ *
  *   ASSEMBLE — not possible without ffmpeg, and not faked. The route answers
  *   exactly like a server without ffmpeg did (503, code "no-ffmpeg"), the
  *   health probe reports ffmpeg:false, and the UI already knows what that
@@ -21,6 +27,7 @@
  */
 
 import { comfyFetch } from "./engine.js";
+import { getBlob } from "../media.js";
 
 export const NO_FFMPEG = () => Object.assign(
   new Error("Joining clips needs ffmpeg, which the hosted app does not have. Every clip is rendered and in the Library — download them and join them in any editor, or run the local Cut app with server saving enabled and it joins them for you."),
@@ -79,6 +86,54 @@ export async function lastFrame({ filename, subfolder = "", type = "output" } = 
     if (!canvas.width || !canvas.height) throw new Error("the browser decoded no video frames from the clip");
     canvas.getContext("2d").drawImage(video, 0, 0);
     return canvas.toDataURL("image/png");
+  } finally {
+    video.removeAttribute("src");
+    video.load?.();
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Bytes for a source, as an object URL the caller revokes: a ComfyUI output
+ *  is fetched (so nothing is tainted), a media item comes out of the pool. */
+async function sourceUrl(source) {
+  if (source?.filename) {
+    const qs = new URLSearchParams({ filename: source.filename, subfolder: source.subfolder || "", type: source.type || "output" });
+    const r = await comfyFetch(`/view?${qs}`, { raw: true, timeout: 300000 });
+    if (!r.ok) throw new Error(`ComfyUI would not serve ${source.filename} (HTTP ${r.status})`);
+    return URL.createObjectURL(await r.blob());
+  }
+  if (source?.mediaId) {
+    const dataUrl = await getBlob(source.mediaId);
+    if (!dataUrl) throw new Error("that file is not in this browser's media pool");
+    // A data URL would do as a src, but a very long one is slow to hand to
+    // the decoder; a blob URL is the same bytes without the string.
+    return URL.createObjectURL(await (await fetch(dataUrl)).blob());
+  }
+  throw new Error("a source is {filename, subfolder, type} or {mediaId}");
+}
+
+/** Whether the decoded clip has a soundtrack, where the browser will say. */
+function audioPresence(video) {
+  if (typeof video.mozHasAudio === "boolean") return video.mozHasAudio;
+  if (video.audioTracks && typeof video.audioTracks.length === "number") return video.audioTracks.length > 0;
+  if (typeof video.webkitAudioDecodedByteCount === "number") return video.webkitAudioDecodedByteCount > 0;
+  return null;
+}
+
+/** { duration, width, height, fps: 0, hasAudio } for a source, as the server's
+ *  ffprobe route reports it — minus what a <video> cannot know. An audio file
+ *  loads in a <video> element too; it simply has no picture (0×0). */
+export async function probeSource(source) {
+  const url = await sourceUrl(source);
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+  video.src = url;
+  try {
+    await once(video, "loadedmetadata");
+    const duration = isFinite(video.duration) && video.duration > 0 ? video.duration : null;
+    return { duration, width: video.videoWidth || 0, height: video.videoHeight || 0, fps: 0, hasAudio: audioPresence(video) };
   } finally {
     video.removeAttribute("src");
     video.load?.();

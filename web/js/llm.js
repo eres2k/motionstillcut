@@ -339,6 +339,38 @@ ${tagRules(project)}${instruction ? `\nThe user also asks: ${instruction}` : ""}
  * The soundscape and the score are separate fields for a reason, and the
  * model is strict about what belongs in each. Generating both together is the
  * only way to keep them from overlapping. */
+/** A voice-over script for the clip as it stands — the shots, in order, at a
+ *  pace a narrator can actually speak: about 2.3 words a second, so a 15 s
+ *  clip gets ~35 words, never a paragraph per shot. `language` is the
+ *  language the narration is written in; `tone` is a free phrase. */
+export async function voiceoverScript(project, { seconds = null, language = "de", tone = "", instruction = "" } = {}) {
+  const compiled = compilePrompt(project);
+  const total = seconds || project.render?.duration || 5;
+  const words = Math.max(6, Math.round(total * 2.3));
+  const { data, model, ms } = await ask({
+    expect: ["script"],
+    system: `${BASE_RULES}
+
+Write the narration for this video — a voice-over read over the pictures, not a description of them.
+Return exactly: {"script":"…","lines":[{"at":0,"text":"…"}, …]}
+- The whole script is spoken in about ${total} seconds: at most ${words} words in total. Fewer is better.
+- Write it in ${language === "de" ? "German (Deutsch, natural spoken German, du-form unless the subject calls for Sie)" : language === "en" ? "English" : language}.
+- Speak to the viewer; say what the pictures cannot say (why it matters, what to feel, what to do), not what they show.
+- "lines": the script cut at the moments a new shot starts, with "at" in seconds from the cut times of the shot list; one or two short sentences a line; no line longer than 12 words.
+- No hashtags, no emojis, no stage directions, no quotation marks.${tone ? `
+- Tone: ${tone}.` : ""}${instruction ? `
+The user also asks: ${instruction}` : ""}`,
+    prompt: `${projectBrief(project)}
+
+The video:
+${compiled.description}`,
+    temperature: 0.7,
+    maxTokens: 900,
+  });
+  const lines = Array.isArray(data.lines) ? data.lines.filter(l => l && typeof l.text === "string").map(l => ({ at: Number(l.at) || 0, text: l.text.trim() })) : [];
+  return { script: String(data.script || lines.map(l => l.text).join(" ")).trim(), lines, words, model, ms };
+}
+
 export async function soundFor(project, instruction = "") {
   const compiled = compilePrompt(project);
   const { data, model, ms } = await ask({

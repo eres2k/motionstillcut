@@ -189,6 +189,9 @@ export function sweepMedia() {
     for (const m of [p.frames?.first, ...(p.refs?.images || []), ...(p.refs?.videos || []), ...(p.refs?.audios || [])]) {
       if (m?.id) used.add(m.id);
     }
+    // The editor's imported clips and audio tracks live here too.
+    for (const c of (p.edit?.clips || [])) if (c?.mediaId) used.add(c.mediaId);
+    for (const a of (p.edit?.audio || [])) if (a?.mediaId) used.add(a.mediaId);
   }
   let freed = 0;
   for (const file of readdirSync(MEDIA)) {
