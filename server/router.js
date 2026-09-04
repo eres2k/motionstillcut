@@ -280,7 +280,7 @@ function probeFor(url, model) {
   const key = `${url}::${model}`;
   if (!probes.has(key)) {
     if (probes.size > 20) probes.delete(probes.keys().next().value);
-    probes.set(key, { json: null, quiet: null });
+    probes.set(key, { json: null, quiet: null, strength: null });
   }
   return probes.get(key);
 }
@@ -304,7 +304,7 @@ const COMPLAINT = /unsupported|not supported|unrecognized|unknown (?:field|param
 function rejectsJsonMode(status, data, text) {
   if (![400, 422, 500, 501].includes(status)) return false;
   const msg = String(data?.error?.message || data?.error || text || "").toLowerCase();
-  if (/chat_template_kwargs|enable_thinking|\bthink\b/.test(msg)) return false;   // not ours
+  if (/chat_template_kwargs|enable_thinking|reasoning_effort|\bthink\b/.test(msg)) return false;   // not ours
   return /response_format|json_object|json_schema|json[ _-]?mode|structured output|guided/.test(msg);
 }
 
@@ -314,6 +314,24 @@ function rejectsUnknownField(status, data, text) {
   const msg = String(data?.error?.message || data?.error || text || "").toLowerCase();
   if (/response_format|json_object|json_schema/.test(msg)) return false;           // not ours
   return /chat_template_kwargs|enable_thinking|\bthink(?:ing)?\b/.test(msg) && COMPLAINT.test(msg);
+}
+
+/** A 400 that names the reasoning-strength key. */
+function rejectsStrength(status, data, text) {
+  if (![400, 422, 500, 501].includes(status)) return false;
+  const msg = String(data?.error?.message || data?.error || text || "").toLowerCase();
+  return /reasoning_effort|reasoning_strength/.test(msg) && COMPLAINT.test(msg);
+}
+
+/** Reasoning strength, only while thinking is on. gpt-oss reads
+ *  reasoning_effort natively; llama.cpp binds it — and reasoning_strength —
+ *  into any chat template that reads either ("none" is its off switch, which
+ *  is why this is never sent with thinking off: to a model that treats it as
+ *  a floor, "low" asks for MORE thinking than saying nothing). Other runtimes
+ *  ignore an unknown key, and one that objects gets it dropped on retry. */
+function strengthFor(llm, suppress) {
+  const v = String(llm.reasoning || "default").toLowerCase();
+  return !suppress && ["low", "medium", "high"].includes(v) ? v : "";
 }
 
 async function llmChat(body) {
@@ -384,6 +402,8 @@ async function llmChat(body) {
   };
   const probe = probeFor(llm.url || "", model);
   let useQuiet = suppress && probe.quiet !== false;
+  const effort = strengthFor(llm, suppress);
+  let useStrength = !!effort && probe.strength !== false;
 
   /* Qwen3's soft switch. It is the only lever that survives a runtime which
    * never plumbs chat_template_kwargs through to the template — LM Studio's
@@ -416,6 +436,10 @@ async function llmChat(body) {
   const build = () => {
     const out = { ...base };
     if (!useQuiet) for (const k of QUIET_KEYS) delete out[k];
+    if (useStrength) {
+      out.reasoning_effort = effort;
+      out.chat_template_kwargs = { ...(out.chat_template_kwargs || {}), reasoning_effort: effort, reasoning_strength: effort };
+    }
     if (useFlag) out.response_format = { type: "json_object" };
     return out;
   };
@@ -434,11 +458,13 @@ async function llmChat(body) {
   for (let attempt = 0; attempt < 2 && !r.ok; attempt++) {
     if (useFlag && rejectsJsonMode(r.status, data, text)) { probe.json = false; useFlag = false; }
     else if (useQuiet && rejectsUnknownField(r.status, data, text)) { probe.quiet = false; useQuiet = false; }
+    else if (useStrength && (rejectsStrength(r.status, data, text) || rejectsUnknownField(r.status, data, text))) { probe.strength = false; useStrength = false; }
     else break;
     await send();
   }
   if (r.ok && useFlag) probe.json = true;
   if (r.ok && useQuiet) probe.quiet = true;
+  if (r.ok && useStrength) probe.strength = true;
 
   if (!r.ok) {
     throw Object.assign(new Error(data?.error?.message || data?.error || text.slice(0, 400) || `LLM ${r.status}`), { status: r.status === 404 ? 502 : r.status });

@@ -59,6 +59,9 @@ export const DEFAULT_SETTINGS = {
     jsonMode: "auto",
     thinking: "off",
     noThinkTag: "on",
+    // How hard a reasoning model thinks, while thinking is on: default | low |
+    // medium | high. Sent as reasoning_effort; never sent with thinking off.
+    reasoning: "default",
   },
   vram: {
     saver: true,
