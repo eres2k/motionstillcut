@@ -348,6 +348,18 @@ export const LTX_MAX_ANCHORS = 8;
 // The distill's own schedules — properties of the model, not preferences.
 const LTX_SIGMAS_PASS1 = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0";
 const LTX_SIGMAS_PASS2 = "0.85, 0.7250, 0.4219, 0.0";
+/** Sigma ladders by fidelity for the two LTX upscale methods. On the
+ *  distilled model the sanctioned way to change less is to drop leading
+ *  sigmas, never to invent smaller ones — Lightricks' own note on the IC-LoRA
+ *  workflow. The official ladders re-noise to 0.85 (refine) or start from 1.0
+ *  (IC-LoRA), tuned for a clean LTX stage-1 latent; on footage from another
+ *  model that is where faces drift and lip-sync breaks (MiniMax H3 and Wan
+ *  reports), and the faithful sweet spot sits under 0.45. "balanced" is the
+ *  second-pass noise level Lightricks' own Python pipeline uses (0.909). */
+export const LTX_FIDELITY = {
+  iclora: { creative: LTX_SIGMAS_PASS1, balanced: "0.909375, 0.725, 0.421875, 0.0", faithful: "0.725, 0.421875, 0.0" },
+  refine: { creative: LTX_SIGMAS_PASS2, balanced: "0.7250, 0.4219, 0.0", faithful: "0.4219, 0.0" },
+};
 // Inert at cfg 1 — wired because the guider takes one. Upstream's default.
 const LTX_NEGATIVE = "pc game, console game, video game, cartoon, childish, ugly";
 // One tiling for every clip: spatial tiles, the whole clip in one temporal
@@ -565,7 +577,9 @@ function buildLtxWorkflow(project, settings, extras = {}) {
   const upscale = appendUpscale(graph, {
     decode: "32", createVideo: "34", project, models, seed, promptText,
     // The LTX refine reuses this graph's own loaders and clean conditioning.
-    ltx: { model: ["1", 0], vae: ["3", 0], audioVae: ["4", 0], positive: ["7", 0], negative: ["7", 1] },
+    // …and the render's own audio latent, the way Lightricks' second pass
+    // refines the stage-1 audio rather than an empty one.
+    ltx: { model: ["1", 0], vae: ["3", 0], audioVae: ["4", 0], positive: ["7", 0], negative: ["7", 1], audioLatent: ["30", 1] },
   });
   const watermark = appendWatermark(graph, { createVideo: "34", watermark: extras.watermark });
 
@@ -649,6 +663,7 @@ export function upscaleSettings(project) {
     engine: UPSCALE_ENGINES.includes(u.engine) ? u.engine : "off",
     target: UPSCALE_TARGETS[u.target] ? u.target : "1080p",
     ltxMethod: u.ltxMethod === "refine" ? "refine" : "iclora",
+    ltxFidelity: ["faithful", "balanced", "creative"].includes(u.ltxFidelity) ? u.ltxFidelity : "balanced",
   };
 }
 
@@ -681,7 +696,10 @@ function upscaleSeconds(project) {
     : plan.engine === "ltx25" ? width * height * 4
     : plan.pixels;
   // The IC-LoRA runs the full eight-step ladder; the refine pass three.
-  const perFrame = { seedvr2: 2.8, flashvsr: 1.2, ltx25: upscaleSettings(project).ltxMethod === "iclora" ? 0.9 : 0.35, esrgan: 0.12 }[plan.engine];
+  const u = upscaleSettings(project);
+  const ltxSteps = LTX_FIDELITY[u.ltxMethod][u.ltxFidelity].split(",").length - 1;
+  const ltxPer = (u.ltxMethod === "iclora" ? 0.9 * ltxSteps / 8 : 0.35 * ltxSteps / 3);
+  const perFrame = { seedvr2: 2.8, flashvsr: 1.2, ltx25: ltxPer, esrgan: 0.12 }[plan.engine];
   const load = { seedvr2: 20, flashvsr: 20, ltx25: 45, esrgan: 3 }[plan.engine];
   return Math.round(load + (frames * perFrame * diffused) / (1920 * 1080));
 }
@@ -741,18 +759,26 @@ function appendUpscale(graph, { decode, createVideo, project, models, seed, prom
       graph["107"] = { class_type: "ImageFromBatch", _meta: { title: `Trim to ${keep} frames (8k+1)` }, inputs: { image: from, batch_index: 0, length: keep } };
       frames = ["107", 0];
     }
-    // The refine is an AV pass either way; the audio half is a silent latent
-    // that is thrown away — the mux keeps the render's own soundtrack.
-    graph["111"] = { class_type: "LTXVEmptyLatentAudio", _meta: { title: "Silent Audio Latent (upscale)" }, inputs: { frames_number: keep, frame_rate: fps, batch_size: 1, audio_vae: L.audioVae } };
+    const { ltxMethod, ltxFidelity } = upscaleSettings(project);
+    const sigmas = LTX_FIDELITY[ltxMethod][ltxFidelity];
+    const { width, height } = dimensions(project);
+    // The pass is AV either way. From an LTX render the graph hands over its
+    // own audio latent (the official second pass refines the stage-1 audio);
+    // from an H3 render the audio half is a silent latent that is thrown
+    // away — the mux keeps the render's own soundtrack in both cases.
+    let audioLatent = L.audioLatent || null;
+    if (!audioLatent) {
+      graph["111"] = { class_type: "LTXVEmptyLatentAudio", _meta: { title: "Silent Audio Latent (upscale)" }, inputs: { frames_number: keep, frame_rate: fps, batch_size: 1, audio_vae: L.audioVae } };
+      audioLatent = ["111", 0];
+    }
 
-    if (upscaleSettings(project).ltxMethod === "iclora") {
+    if (ltxMethod === "iclora") {
       /* Lightricks' Pixel Spatial Upscaler, node for node as their example:
        * the clip Lanczos-doubled is the starting latent AND the reference
        * the guide node attaches (it downsamples the guide by the factor the
        * LoRA loader reports — 2 for this LoRA); the distilled model then
        * regenerates the whole clip over its full ladder; the appended guide
        * frames are cropped off before a tiled decode. */
-      const { width, height } = dimensions(project);
       graph["108"] = { class_type: "ImageScale", _meta: { title: "Lanczos ×2 (start + reference)" },
         inputs: { image: frames, upscale_method: "lanczos", width: width * 2, height: height * 2, crop: "disabled" } };
       graph["109"] = { class_type: "VAEEncode", _meta: { title: "Encode Frames (LTX-2.5)" }, inputs: { pixels: ["108", 0], vae: L.vae } };
@@ -761,8 +787,8 @@ function appendUpscale(graph, { decode, createVideo, project, models, seed, prom
       graph["112"] = { class_type: "LTXAddVideoICLoRAGuide", _meta: { title: "Reference: the clip itself" },
         inputs: { positive: L.positive, negative: L.negative, vae: L.vae, latent: ["109", 0], image: ["108", 0],
           frame_idx: 0, strength: 1, latent_downscale_factor: ["110", 1], crop: "disabled", use_tiled_encode: false, tile_size: 256, tile_overlap: 64 } };
-      graph["113"] = { class_type: "LTXVConcatAVLatent", _meta: { title: "Concat AV Latent (upscale)" }, inputs: { video_latent: ["112", 2], audio_latent: ["111", 0] } };
-      graph["114"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (distilled, 8 steps)" }, inputs: { sigmas: LTX_SIGMAS_PASS1 } };
+      graph["113"] = { class_type: "LTXVConcatAVLatent", _meta: { title: "Concat AV Latent (upscale)" }, inputs: { video_latent: ["112", 2], audio_latent: audioLatent } };
+      graph["114"] = { class_type: "ManualSigmas", _meta: { title: `ManualSigmas (${ltxFidelity})` }, inputs: { sigmas } };
       graph["115"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (upscale)" }, inputs: { cfg: 1, model: ["110", 0], positive: ["112", 0], negative: ["112", 1] } };
       graph["116"] = { class_type: "RandomNoise", _meta: { title: "Noise (upscale)" }, inputs: { noise_seed: seed } };
       graph["117"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (upscale)" }, inputs: { sampler_name: "euler_ancestral" } };
@@ -782,8 +808,15 @@ function appendUpscale(graph, { decode, createVideo, project, models, seed, prom
     graph["108"] = { class_type: "VAEEncode", _meta: { title: "Encode Frames (LTX-2.5)" }, inputs: { pixels: frames, vae: L.vae } };
     graph["109"] = { class_type: "LatentUpscaleModelLoader", _meta: { title: "Load Latent Upscale Model" }, inputs: { model_name: models.ltx25_upscaler } };
     graph["110"] = { class_type: "LTXVLatentUpsampler", _meta: { title: "Spatial 2× Upscale (refine)" }, inputs: { samples: ["108", 0], upscale_model: ["109", 0], vae: L.vae } };
-    graph["112"] = { class_type: "LTXVConcatAVLatent", _meta: { title: "Concat AV Latent (refine)" }, inputs: { video_latent: ["110", 0], audio_latent: ["111", 0] } };
-    graph["113"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (refine)" }, inputs: { sigmas: LTX_SIGMAS_PASS2 } };
+    // Re-anchor the first frame after the upsampler (which drops any noise
+    // mask), the way Lightricks' second pass re-applies its start image: the
+    // clip's own first frame, doubled, written into latent frame 0 at full
+    // strength, so the refine cannot wander off the source.
+    graph["122"] = { class_type: "ImageFromBatch", _meta: { title: "First frame" }, inputs: { image: frames, batch_index: 0, length: 1 } };
+    graph["123"] = { class_type: "ImageScale", _meta: { title: "First frame ×2" }, inputs: { image: ["122", 0], upscale_method: "lanczos", width: width * 2, height: height * 2, crop: "disabled" } };
+    graph["124"] = { class_type: "LTXVImgToVideoInplace", _meta: { title: "Anchor the first frame" }, inputs: { vae: L.vae, image: ["123", 0], latent: ["110", 0], strength: 1, bypass: false } };
+    graph["112"] = { class_type: "LTXVConcatAVLatent", _meta: { title: "Concat AV Latent (refine)" }, inputs: { video_latent: ["124", 0], audio_latent: audioLatent } };
+    graph["113"] = { class_type: "ManualSigmas", _meta: { title: `ManualSigmas (${ltxFidelity})` }, inputs: { sigmas } };
     graph["114"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (refine)" }, inputs: { cfg: 1, model: L.model, positive: L.positive, negative: L.negative } };
     graph["115"] = { class_type: "RandomNoise", _meta: { title: "Noise (refine)" }, inputs: { noise_seed: seed } };
     // euler_ancestral: what Lightricks' two-stage example samples the second pass with.

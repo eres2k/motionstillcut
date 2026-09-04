@@ -228,7 +228,15 @@ function upscaleGroup(p, set) {
     row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · ×2"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v })), engineHint),
     up.engine === "ltx25"
       ? row("Method", segmented([["iclora", "IC-LoRA (Lightricks)"], ["refine", "Refine pass"]], up.ltxMethod, (v) => setUp({ ltxMethod: v })),
-        up.ltxMethod === "refine" ? "Three steps, no LoRA to download." : "Eight steps, the official recipe.")
+        up.ltxMethod === "refine" ? "The two-stage build's second pass; no LoRA to download." : "Lightricks' own recipe; needs the LoRA.")
+      : null,
+    up.engine === "ltx25"
+      ? row("Fidelity", segmented([["faithful", "Faithful"], ["balanced", "Balanced"], ["creative", "Creative"]], up.ltxFidelity, (v) => setUp({ ltxFidelity: v })),
+        up.ltxFidelity === "faithful"
+          ? "Least change: the pass starts low (σ 0.42 on the refine, 0.725 for the IC-LoRA). Faces and lip-sync survive; texture gains are modest."
+          : up.ltxFidelity === "creative"
+            ? "Lightricks' full ladders (σ 0.85 on the refine, all eight IC-LoRA steps): the most invented detail. Tuned for a clean LTX stage-1 latent — on footage from another model this is where faces drift."
+            : "Lightricks' own second-pass noise level (σ 0.725 on the refine, 0.91 for the IC-LoRA): sharper, still the same people. The default.")
       : null,
     up.engine !== "off"
       ? row("Output", select(Object.keys(UPSCALE_TARGETS).map(k => [k, UPSCALE_TARGET_LABELS[k]]), up.target, (v) => setUp({ target: v })),

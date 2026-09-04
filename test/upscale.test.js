@@ -106,7 +106,7 @@ test("the LTX-2.5 graph gets the same pass after its tiled decode", () => {
 test("old projects without the field default to off; the ETA grows with the pass", () => {
   const p = project();
   delete p.render.upscale;
-  assert.deepEqual(upscaleSettings(p), { engine: "off", target: "1080p", ltxMethod: "iclora" });
+  assert.deepEqual(upscaleSettings(p), { engine: "off", target: "1080p", ltxMethod: "iclora", ltxFidelity: "balanced" });
   const base = estimateSeconds(project());
   const esr = estimateSeconds(project({ engine: "esrgan" }));
   const seed = estimateSeconds(project({ engine: "seedvr2" }));
@@ -114,7 +114,8 @@ test("old projects without the field default to off; the ETA grows with the pass
 });
 
 test("LTX-2.5 IC-LoRA (the default) on an H3 render: Lightricks' wiring, node for node", () => {
-  const { prompt, meta } = buildWorkflow(project({ engine: "ltx25" }), settings);   // 124 frames at 832x480
+  const p0 = project({ engine: "ltx25" }); p0.render.upscale.ltxFidelity = "creative";   // the official ladder
+  const { prompt, meta } = buildWorkflow(p0, settings);   // 124 frames at 832x480
   assert.equal(prompt["100"].class_type, "UNETLoader");
   assert.equal(prompt["107"].inputs.length, 121, "trimmed to LTX's 8k+1 grid");
   assert.deepEqual(prompt["108"].inputs.image, ["107", 0]);
@@ -145,9 +146,14 @@ test("LTX-2.5 IC-LoRA (the default) on an H3 render: Lightricks' wiring, node fo
 
 test("LTX-2.5 refine pass (the fallback): latent upsampler ×2 and three steps, official sampler", () => {
   const p = project({ engine: "ltx25" });
-  p.render.upscale.ltxMethod = "refine";
+  p.render.upscale.ltxMethod = "refine"; p.render.upscale.ltxFidelity = "creative";
   const { prompt } = buildWorkflow(p, settings);
   assert.equal(prompt["107"].inputs.length, 121);
+  assert.equal(prompt["124"].class_type, "LTXVImgToVideoInplace", "the first frame is re-anchored after the upsampler");
+  assert.deepEqual(prompt["124"].inputs.latent, ["110", 0]);
+  assert.equal(prompt["124"].inputs.strength, 1);
+  assert.deepEqual(prompt["112"].inputs.video_latent, ["124", 0]);
+  assert.deepEqual(prompt["112"].inputs.audio_latent, ["111", 0], "an H3 render gets a silent audio latent");
   assert.deepEqual(prompt["108"].inputs.pixels, ["107", 0]);
   assert.equal(prompt["110"].class_type, "LTXVLatentUpsampler");
   assert.equal(prompt["113"].inputs.sigmas.split(",").length, 4, "three steps");
@@ -165,7 +171,32 @@ test("LTX-2.5 on an LTX render reuses its loaders and needs no trim", () => {
   assert.deepEqual(prompt["108"].inputs.image, ["32", 0]);
   assert.deepEqual(prompt["110"].inputs.model, ["1", 0]);
   assert.deepEqual(prompt["112"].inputs.positive, ["7", 0]);
+  assert.deepEqual(prompt["113"].inputs.audio_latent, ["30", 1], "an LTX render hands over its own audio latent");
+  assert.equal(prompt["111"], undefined, "so no silent one is made");
   assert.deepEqual(prompt["34"].inputs.images, ["202", 0]);
+});
+
+test("fidelity trims the ladder from the top and never invents a sigma", () => {
+  const ladder = (method, fidelity) => {
+    const p = project({ engine: "ltx25" });
+    p.render.upscale.ltxMethod = method; p.render.upscale.ltxFidelity = fidelity;
+    const { prompt } = buildWorkflow(p, settings);
+    const id = method === "iclora" ? "114" : "113";
+    return prompt[id].inputs.sigmas.split(",").map(Number);
+  };
+  const full = ladder("iclora", "creative");
+  assert.equal(full.length, 9);
+  for (const f of ["balanced", "faithful"]) {
+    const l = ladder("iclora", f);
+    assert.deepEqual(l, full.slice(full.length - l.length), `${f} is a suffix of the official ladder`);
+  }
+  assert.equal(ladder("iclora", "balanced")[0], 0.909375);
+  assert.equal(ladder("refine", "creative")[0], 0.85);
+  assert.equal(ladder("refine", "balanced")[0], 0.725);
+  assert.deepEqual(ladder("refine", "faithful"), [0.4219, 0]);
+  assert.equal(upscaleSettings(project({ engine: "ltx25" })).ltxFidelity, "balanced", "the default");
+  assert.ok(estimateSeconds(Object.assign(project({ engine: "ltx25" }), { render: { ...project({ engine: "ltx25" }).render, upscale: { engine: "ltx25", target: "1080p", ltxFidelity: "creative" } } }))
+    > estimateSeconds(Object.assign(project({ engine: "ltx25" }), { render: { ...project({ engine: "ltx25" }).render, upscale: { engine: "ltx25", target: "1080p", ltxFidelity: "faithful" } } })), "more steps, more time");
 });
 
 test("an LTX render with a first frame keeps its pass-1 guide at id 60 — the upscale must not overwrite it", () => {
