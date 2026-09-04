@@ -24,6 +24,7 @@ import { existsSync, mkdirSync, writeFileSync, unlinkSync, readdirSync } from "n
 import { join, basename } from "node:path";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
+import { unloadLLM } from "./vram.js";
 
 const NEXUS = (process.env.CUT_NEXUS_URL || "http://127.0.0.1:3000").replace(/\/+$/, "");
 const PASSWORD = (process.env.CUT_NEXUS_PASSWORD || "").trim();
@@ -109,9 +110,16 @@ export async function speak(engineId, { text, voice = "default", language = "de"
   if (speed && Number(speed) !== 1) payload.speed = Number(speed);
   if (instruct) payload.instruct = instruct;
   const t0 = Date.now();
-  const r = await call(engine, "/tts", { method: "POST", body: payload, timeout: 600000 });
+  let r = await call(engine, "/tts", { method: "POST", body: payload, timeout: 600000 });
+  let detail = r.ok ? "" : await r.text().catch(() => "");
+  if (!r.ok && /out of memory|CUDA|OOM/i.test(detail)) {
+    // The card is full — almost always the language model, which the VRAM
+    // saver knows how to put away. Once, then say what happened.
+    await unloadLLM().catch(() => null);
+    r = await call(engine, "/tts", { method: "POST", body: payload, timeout: 600000 });
+    detail = r.ok ? "" : await r.text().catch(() => "");
+  }
   if (!r.ok) {
-    const detail = await r.text().catch(() => "");
     throw Object.assign(new Error(`${engine.label}: ${detail.slice(0, 300) || r.status}`), { status: r.status >= 400 && r.status < 500 ? r.status : 502 });
   }
   const bytes = Buffer.from(await r.arrayBuffer());
