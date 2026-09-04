@@ -22,7 +22,7 @@ import { loadSettings, saveSettings, publicSettings, rawSettings, restoreSetting
 import { claim, releaseAll, vramState, comfyFetch, llmHeaders, renderStarted, renderFinished, freeComfy, unloadLLM, netHint } from "./engine.js";
 import { llmChat } from "./llm.js";
 import { parseLooseJson, parseLooseJsonDetailed, diagnoseJson } from "./parse.js";
-import { lastFrame, NO_FFMPEG } from "./film.js";
+import { lastFrame, probeSource, NO_FFMPEG } from "./film.js";
 import * as store from "./store.js";
 import * as projects from "./projects.js";
 import { getBlob, putBlob } from "../media.js";
@@ -403,6 +403,27 @@ export async function handle(path, { method = "GET", body = {} } = {}) {
 
     case "/film/assemble":
       throw NO_FFMPEG();
+
+    /* ── The edit ────────────────────────────────────
+     * A clip's length and size come from the browser's own decoder; the
+     * export is a re-encode, which needs ffmpeg, and answers like the join. */
+    case "/edit/probe": {
+      if (method !== "POST") fail(405, "POST {source: {filename, subfolder, type} | {mediaId}}");
+      return { ok: true, ...(await probeSource(body.source || {})) };
+    }
+
+    case "/edit/export":
+      throw NO_FFMPEG();
+
+    // ── Voice-over ───────────────────────────────────
+    // The TTS services sit on the Nexus box behind a cookie login and without
+    // CORS; only the local Cut app can reach them. The hosted page says so.
+    case "/voice/health":
+      return { ok: true, engines: {}, local: false };
+    case "/voice/voices":
+    case "/voice/speak":
+    case "/voice/reference":
+      fail(503, "Voice-over needs the local Cut app (http://127.0.0.1:3091), which talks to the speech services for you — the hosted page cannot reach them.", "no-local");
 
     // ── LLM ─────────────────────────────────────────
     case "/llm/models": {

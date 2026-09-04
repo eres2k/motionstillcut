@@ -38,6 +38,7 @@ import { api } from "./api.js";
 import { projectImages } from "./llm.js";
 import { library, summarise } from "./library.js";
 import { clamp } from "./util.js";
+import { presetGuidance } from "./presets.js";
 
 const ids = (list) => list.map(x => (Array.isArray(x) ? x[0] : x));
 const oneOf = (list) => (v) => ids(list).includes(String(v)) ? String(v) : null;
@@ -443,6 +444,7 @@ export function projectState(p = getProject()) {
   }
   if (p.creative?.dials) {
     lines.push("", `STEERING: ${DIALS.map(d => `${d.id} ${p.creative.dials[d.id] ?? "—"}`).join(", ")}`);
+    if (presetGuidance(p)) lines.push("", presetGuidance(p).toUpperCase());
   }
   if (report.errors || report.warnings) {
     lines.push("", "THE CHECKER SAYS:",
