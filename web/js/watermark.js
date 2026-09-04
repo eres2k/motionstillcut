@@ -40,7 +40,10 @@ export function watermarkLayout(mode, width, height, text = "") {
   return {
     mode: "client", width, height, x: 0, y: 0, font, pad,
     signature: { ...signature, x: width - boxW - margin, y: height - boxH - margin },
-    tile: { font: big, angle: -Math.PI / 6, stepX: Math.ceil(big * 0.58 * Math.max(6, text.length + 10)), stepY: big * 3, opacity: 0.2 },
+    // The label drawn is "<name> · PREVIEW" (ten characters more than the
+    // name); rows sit 2.2 em apart and columns one label plus a short gap,
+    // so no stretch of clean picture is wider than a word.
+    tile: { font: big, angle: -Math.PI / 6, stepX: Math.ceil(big * 0.58 * (text.length + 13)), stepY: Math.round(big * 2.2), opacity: 0.2 },
   };
 }
 
