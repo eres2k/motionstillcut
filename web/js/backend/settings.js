@@ -44,6 +44,10 @@ export const DEFAULT_MODELS = {
   ltx25_video_vae:    "ltx-2.5-video-vae-conv-bf16.safetensors",
   ltx25_audio_vae:    "ltx-2.5-audio-vae-bf16.safetensors",
   ltx25_upscaler:     "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+  // Lightricks' own upscaler: an IC-LoRA that regenerates a clip at 2× with
+  // the clip itself as the reference. Gated on Hugging Face (accept the
+  // licence), 327 MB, into models/loras. Deliver ▸ Upscale ▸ LTX-2.5.
+  ltx25_upscale_lora: "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
 };
 
 export const DEFAULT_SETTINGS = {
