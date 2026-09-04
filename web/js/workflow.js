@@ -232,6 +232,7 @@ function buildMinimaxWorkflow(project, settings) {
     _meta: { title: "Save Video" },
     inputs: { video: ["18", 0], filename_prefix: safePrefix(project, settings), format: "auto", codec: "auto" },
   };
+  const upscale = appendUpscale(graph, { decode: "16", createVideo: "18", project, models, seed, promptText });
 
   const meta = {
     mode: project.mode,
@@ -243,7 +244,9 @@ function buildMinimaxWorkflow(project, settings) {
     sampler: variant.sampler, scheduler: variant.scheduler,
     shiftVideo: variant.shiftVideo, shiftAudio: variant.shiftAudio,
     tiledDecode: tiled,
-    stockNodesOnly: true,
+    upscale,
+    // SeedVR2 is the one custom pack the graph can reach for, and only when asked.
+    stockNodesOnly: !upscale || upscale.engine === "esrgan",
     nodeTypes: [...new Set(Object.values(graph).map(n => n.class_type))].sort(),
     promptChars: promptText.length,
     // Every file the graph expects to already be in ComfyUI/input.
@@ -531,11 +534,17 @@ function buildLtxWorkflow(project, settings) {
     _meta: { title: "Save Video" },
     inputs: { video: ["34", 0], filename_prefix: safePrefix(project, settings), format: "auto", codec: "auto" },
   };
+  const upscale = appendUpscale(graph, {
+    decode: "32", createVideo: "34", project, models, seed, promptText,
+    // The LTX refine reuses this graph's own loaders and clean conditioning.
+    ltx: { model: ["1", 0], vae: ["3", 0], audioVae: ["4", 0], positive: ["7", 0], negative: ["7", 1] },
+  });
 
   const meta = {
     mode: project.mode,
     engine: "ltx25",
     width, height, numFrames, fps, seed, seed2,
+    upscale,
     steps: variant.steps,
     variant: variant.key, variantLabel: `LTX-2.5 ${variant.label}`,
     stages: variant.stages,
@@ -563,6 +572,165 @@ function buildLtxWorkflow(project, settings) {
   return { prompt: graph, meta, compiled };
 }
 
+
+/* ── Upscale — after the decode, before the mux ───────────────
+ * The clip renders at the canvas size and is delivered larger. Two engines:
+ *
+ *   seedvr2  — ByteDance's diffusion video restorer, through the
+ *              seedvr2_videoupscaler custom pack. Frames go through in
+ *              batches (4n+1) with overlap, so motion stays coherent and
+ *              detail is invented rather than sharpened. Slow, and the best
+ *              result. It diffuses at 1080p-class and a Lanczos resize
+ *              finishes 1440p and 4K: true 4K diffusion of a 30 s clip is
+ *              over an hour on a big card for very little over 1080p→4K.
+ *   flashvsr — FlashVSR v1.1 (CVPR 2026), a one-step streaming diffusion
+ *              upscaler at a fixed ×2 or ×4, through the
+ *              ComfyUI-FlashVSR_Ultra_Fast pack. Coherent, conservative,
+ *              several times faster than SeedVR2. The middle tier.
+ *   ltx25    — LTX-2.5 as the upscaler: the frames are encoded into its
+ *              latent, doubled by its latent upsampler and put through the
+ *              three-step refine pass the two-stage build uses, under the
+ *              clip's own prompt. Core nodes only, but the whole LTX-2.5
+ *              pack loads for it; from an LTX render the weights are already
+ *              on the card. Detail is re-imagined by a video model, ×2.
+ *   esrgan   — RealESRGAN ×4 per frame on stock nodes, then a Lanczos resize
+ *              to the exact target. Seconds per clip; fine texture can
+ *              shimmer between frames because each is upscaled alone.
+ *
+ * The target names a short edge, so a 16:9 canvas lands on the familiar
+ * 1920×1080 / 3840×2160 and a 4:3 one on its own honest size. A target no
+ * larger than the canvas is a no-op and the pass is skipped. */
+export const UPSCALE_TARGETS = { "720p": 720, "1080p": 1080, "1440p": 1440, "2160p": 2160 };
+export const UPSCALE_TARGET_LABELS = { "720p": "720p", "1080p": "1080p · Full HD", "1440p": "1440p · QHD", "2160p": "2160p · 4K UHD" };
+export const UPSCALE_ENGINES = ["off", "seedvr2", "flashvsr", "ltx25", "esrgan"];
+/** SeedVR2 diffuses no larger than this short edge; a resize finishes the rest. */
+export const SEEDVR2_DIFFUSE_CAP = 1080;
+
+export function upscaleSettings(project) {
+  const u = project.render?.upscale || {};
+  return {
+    engine: UPSCALE_ENGINES.includes(u.engine) ? u.engine : "off",
+    target: UPSCALE_TARGETS[u.target] ? u.target : "1080p",
+  };
+}
+
+/** What the pass would do, or null when it would do nothing. */
+export function upscalePlan(project) {
+  const { engine, target } = upscaleSettings(project);
+  if (engine === "off") return null;
+  const { width, height } = dimensions(project);
+  const shortEdge = UPSCALE_TARGETS[target];
+  const from = Math.min(width, height);
+  if (shortEdge <= from) return null;
+  const factor = shortEdge / from;
+  const even = (n) => Math.round(n / 2) * 2;
+  const w = even(width * factor), hh = even(height * factor);
+  return { engine, target, shortEdge, factor, width: w, height: hh, pixels: w * hh };
+}
+
+/** Rough wall-clock for the pass — 1080p frames on a big card, scaled by
+ *  pixels. SeedVR2 is diffusion: about a second a frame; ESRGAN is a
+ *  convolution: a few hundredths. */
+function upscaleSeconds(project) {
+  const plan = upscalePlan(project);
+  if (!plan) return 0;
+  const frames = frameCount(project);
+  const { width, height } = dimensions(project);
+  // Per 1080p-class DIFFUSED frame on a 5090: SeedVR2 7B fp8 runs ~0.35 fps,
+  // FlashVSR tiny ×2 ~0.8 fps, the LTX refine is three steps at 2× canvas,
+  // RealESRGAN ×4 ~1.7 fps at 4K (~0.1 s at 1080p).
+  const diffused = plan.engine === "seedvr2" ? plan.pixels * Math.min(1, (SEEDVR2_DIFFUSE_CAP / plan.shortEdge) ** 2)
+    : plan.engine === "ltx25" ? width * height * 4
+    : plan.pixels;
+  const perFrame = { seedvr2: 2.8, flashvsr: 1.2, ltx25: 0.35, esrgan: 0.12 }[plan.engine];
+  const load = { seedvr2: 20, flashvsr: 20, ltx25: 45, esrgan: 3 }[plan.engine];
+  return Math.round(load + (frames * perFrame * diffused) / (1920 * 1080));
+}
+
+/** Append the pass to a graph whose decoded frames come out of `decode` and
+ *  whose mux is `createVideo`; rewires the mux to the upscaled frames. Node
+ *  ids 60-63 and 100-119 are clear of both engines' graphs; 62 is always the
+ *  final resize, so the mux has one place to look. */
+function appendUpscale(graph, { decode, createVideo, project, models, seed, promptText, ltx = null }) {
+  const plan = upscalePlan(project);
+  if (!plan) return null;
+  const from = [decode, 0];
+  const finish = (fromId, title) => {
+    graph["62"] = { class_type: "ImageScale", _meta: { title },
+      inputs: { image: [fromId, 0], upscale_method: "lanczos", width: plan.width, height: plan.height, crop: "disabled" } };
+  };
+  if (plan.engine === "seedvr2") {
+    const diffuseAt = Math.min(plan.shortEdge, SEEDVR2_DIFFUSE_CAP);
+    // The VAE's batched decode is what fills the card — tile it from 1080p up.
+    const tiled = diffuseAt >= 1080;
+    graph["60"] = { class_type: "SeedVR2LoadDiTModel", _meta: { title: "SeedVR2 DiT" },
+      inputs: { model: models.seedvr2_dit, device: "cuda:0" } };
+    graph["61"] = { class_type: "SeedVR2LoadVAEModel", _meta: { title: "SeedVR2 VAE" },
+      inputs: { model: models.seedvr2_vae, device: "cuda:0", encode_tiled: tiled, decode_tiled: tiled,
+        encode_tile_size: 1024, encode_tile_overlap: 128, decode_tile_size: 1024, decode_tile_overlap: 128 } };
+    // Batches of 5 visibly flicker; 13 with a 4-frame overlap is the floor
+    // the pack's own guidance gives for coherent motion.
+    graph["63"] = { class_type: "SeedVR2VideoUpscaler", _meta: { title: `SeedVR2 → ${diffuseAt}p` },
+      inputs: { image: from, dit: ["60", 0], vae: ["61", 0], seed,
+        resolution: diffuseAt, max_resolution: 0, batch_size: 13, uniform_batch_size: true,
+        color_correction: "lab", temporal_overlap: 4, offload_device: "cpu" } };
+    finish("63", diffuseAt < plan.shortEdge ? `Resize → ${plan.target}` : `Fit → ${plan.target}`);
+  } else if (plan.engine === "ltx25") {
+    const fps = project.render?.fps || 24;
+    const numFrames = frameCount(project);
+    // LTX's VAE works on an 8k+1 frame grid. An LTX render already is one;
+    // an H3 clip is trimmed to the nearest grid below — at most seven frames,
+    // under a third of a second, off the end.
+    const keep = numFrames % 8 === 1 ? numFrames : Math.floor((numFrames - 1) / 8) * 8 + 1;
+    let L = ltx;
+    if (!L) {
+      graph["100"] = { class_type: "UNETLoader", _meta: { title: "LTX-2.5 Transformer (refine)" }, inputs: { unet_name: models.ltx25_dit, weight_dtype: "default" } };
+      graph["101"] = { class_type: "CLIPLoader", _meta: { title: "LTX-2.5 Text Encoder (Gemma 4)" }, inputs: { clip_name: models.ltx25_text_encoder, type: "ltxv", device: "default" } };
+      graph["102"] = { class_type: "VAELoader", _meta: { title: "LTX-2.5 Video VAE" }, inputs: { vae_name: models.ltx25_video_vae } };
+      graph["103"] = { class_type: "VAELoader", _meta: { title: "LTX-2.5 Audio VAE" }, inputs: { vae_name: models.ltx25_audio_vae } };
+      graph["104"] = { class_type: "CLIPTextEncode", _meta: { title: "Positive Prompt (refine)" }, inputs: { text: promptText, clip: ["101", 0] } };
+      graph["105"] = { class_type: "CLIPTextEncode", _meta: { title: "Negative Prompt (refine)" }, inputs: { text: LTX_NEGATIVE, clip: ["101", 0] } };
+      graph["106"] = { class_type: "LTXVConditioning", _meta: { title: "LTXVConditioning (refine)" }, inputs: { frame_rate: fps, positive: ["104", 0], negative: ["105", 0] } };
+      L = { model: ["100", 0], vae: ["102", 0], audioVae: ["103", 0], positive: ["106", 0], negative: ["106", 1] };
+    }
+    let frames = from;
+    if (keep !== numFrames) {
+      graph["107"] = { class_type: "ImageFromBatch", _meta: { title: `Trim to ${keep} frames (8k+1)` }, inputs: { image: from, batch_index: 0, length: keep } };
+      frames = ["107", 0];
+    }
+    graph["108"] = { class_type: "VAEEncode", _meta: { title: "Encode Frames (LTX-2.5)" }, inputs: { pixels: frames, vae: L.vae } };
+    graph["109"] = { class_type: "LatentUpscaleModelLoader", _meta: { title: "Load Latent Upscale Model" }, inputs: { model_name: models.ltx25_upscaler } };
+    graph["110"] = { class_type: "LTXVLatentUpsampler", _meta: { title: "Spatial 2× Upscale (refine)" }, inputs: { samples: ["108", 0], upscale_model: ["109", 0], vae: L.vae } };
+    // The refine is an AV pass; the audio half is a silent latent that is
+    // thrown away — the mux keeps the render's own soundtrack.
+    graph["111"] = { class_type: "LTXVEmptyLatentAudio", _meta: { title: "Silent Audio Latent (refine)" }, inputs: { frames_number: keep, frame_rate: fps, batch_size: 1, audio_vae: L.audioVae } };
+    graph["112"] = { class_type: "LTXVConcatAVLatent", _meta: { title: "Concat AV Latent (refine)" }, inputs: { video_latent: ["110", 0], audio_latent: ["111", 0] } };
+    graph["113"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (refine)" }, inputs: { sigmas: LTX_SIGMAS_PASS2 } };
+    graph["114"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (refine)" }, inputs: { cfg: 1, model: L.model, positive: L.positive, negative: L.negative } };
+    graph["115"] = { class_type: "RandomNoise", _meta: { title: "Noise (refine)" }, inputs: { noise_seed: seed } };
+    graph["116"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (refine)" }, inputs: { sampler_name: "euler" } };
+    graph["117"] = {
+      class_type: "SamplerCustomAdvanced", _meta: { title: "Sample AV Latent (refine)" },
+      inputs: { noise: ["115", 0], guider: ["114", 0], sampler: ["116", 0], sigmas: ["113", 0], latent_image: ["112", 0] },
+    };
+    graph["118"] = { class_type: "LTXVSeparateAVLatent", _meta: { title: "Separate AV (refine)" }, inputs: { av_latent: ["117", 0] } };
+    graph["119"] = { class_type: "VAEDecodeTiled", _meta: { title: "Decode Video (refine, tiled)" }, inputs: { ...LTX_DECODE, samples: ["118", 0], vae: L.vae } };
+    finish("119", `Fit → ${plan.target}`);
+  } else if (plan.engine === "flashvsr") {
+    const frames = frameCount(project);
+    graph["61"] = { class_type: "FlashVSRNode", _meta: { title: `FlashVSR ×${plan.factor > 2 ? 4 : 2}` },
+      inputs: { frames: from, model: "FlashVSR-v1.1", mode: frames > 240 ? "tiny-long" : "tiny",
+        scale: plan.factor > 2 ? 4 : 2, tiled_vae: true, tiled_dit: true, unload_dit: true, seed } };
+    finish("61", `Resize → ${plan.target}`);
+  } else {
+    graph["60"] = { class_type: "UpscaleModelLoader", _meta: { title: "ESRGAN ×4" }, inputs: { model_name: models.esrgan } };
+    graph["61"] = { class_type: "ImageUpscaleWithModel", _meta: { title: "Upscale frames ×4" }, inputs: { upscale_model: ["60", 0], image: from } };
+    finish("61", `Resize → ${plan.target}`);
+  }
+  graph[createVideo].inputs.images = ["62", 0];
+  return plan;
+}
+
 /** A rough wall-clock estimate, good enough to sort "grab a coffee" from
  *  "leave it running". Scaled from measured MiniMax H3 runs at 480p/24fps on a
  *  24 GB card; the numbers move with the machine, which is why it says ~. */
@@ -580,7 +748,7 @@ export function estimateSeconds(project) {
     const effectiveSteps = variant.stages === 2 ? 8 * 0.25 + 3 : 8;
     const sample = effectiveSteps * numFrames * 0.017 * pixels;
     const decode = numFrames * 0.06 * pixels;
-    return Math.round(encode + sample + decode);
+    return Math.round(encode + sample + decode) + upscaleSeconds(project);
   }
 
   const variant = variantFor(project.mode, project.render?.variant);
@@ -589,7 +757,7 @@ export function estimateSeconds(project) {
   const perStepPerFrame = 0.019 * pixels;
   const sample = steps * numFrames * perStepPerFrame;
   const decode = numFrames * 0.05 * pixels;
-  return Math.round(encode + sample + decode);
+  return Math.round(encode + sample + decode) + upscaleSeconds(project);
 }
 
 export function humanTime(seconds) {

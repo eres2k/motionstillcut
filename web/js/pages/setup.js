@@ -34,6 +34,13 @@ const MODEL_FIELDS = [
   ["dit_ref2va_nvfp4", "Ref2VA DiT · NVFP4",  "diffusion_models", "Experimental conversion"],
 ];
 
+/* Post-render upscalers — Deliver ▸ Upscale. */
+const UPSCALE_MODEL_FIELDS = [
+  ["seedvr2_dit", "SeedVR2 DiT", "seedvr2",        "3B fp8 downloads itself on first use; a 7B build is the better restorer if the card holds it (~16 GB fp8)"],
+  ["seedvr2_vae", "SeedVR2 VAE", "seedvr2_vae",    ""],
+  ["esrgan",      "ESRGAN ×4",   "upscale_models", "RealESRGAN_x4plus, or any ESRGAN-family model in models/upscale_models"],
+];
+
 /* The experimental second engine's files — the same split, Comfy-aligned pack
  * the main Motionstill app renders LTX-2.5 with. Only needed if the LTX-2.5
  * engine chip is ever picked; the MiniMax modes never touch these. */
@@ -375,6 +382,12 @@ function modelsPanel(s) {
       help: "Only needed for the LTX-2.5 engine chip on the Deliver page. Roughly 40 GB across the five; the MiniMax modes never load any of them.",
     },
       ...LTX_MODEL_FIELDS.map(fieldRow),
+    ),
+    group("Upscalers", {
+      id: "s-up", icon: "⤢", accordion: false, badge: tally(UPSCALE_MODEL_FIELDS),
+      help: "Only used when Deliver ▸ Upscale is on. SeedVR2 needs the seedvr2_videoupscaler custom pack (ComfyUI Manager has it); its loader downloads the 3B fp8 build on first use. ESRGAN runs on stock nodes.",
+    },
+      ...UPSCALE_MODEL_FIELDS.map(fieldRow),
     ),
   );
 }

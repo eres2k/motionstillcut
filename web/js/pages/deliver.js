@@ -14,7 +14,7 @@ import { runFilm, assembleFilm } from "../filmrun.js";
 import { variantsFor, variantFor } from "../vocab.js";
 import { setEngine as switchEngine } from "../state.js";
 import { validate, compilePrompt } from "../prompt.js";
-import { buildWorkflow, estimateSeconds, estimateVram, vramLevers, humanTime, randomSeed, LTX_MAX_ANCHORS } from "../workflow.js";
+import { buildWorkflow, estimateSeconds, estimateVram, vramLevers, humanTime, randomSeed, LTX_MAX_ANCHORS, UPSCALE_TARGETS, UPSCALE_TARGET_LABELS, upscaleSettings, upscalePlan } from "../workflow.js";
 import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js";
 import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending, applyLive } from "../render.js";
 import * as downloads from "../downloads.js";
@@ -137,6 +137,7 @@ function settingsPanel(p) {
             p.render.seed < 0 ? "A fresh seed on every render." : "Pinned — the same prompt gives the same clip."),
         ),
 
+        upscaleGroup(p, set),
         group("Advanced", {
           id: "d-adv", icon: "⚙", accordion: false,
           help: ltx
@@ -172,6 +173,49 @@ function settingsPanel(p) {
   );
 }
 
+
+/* ── Upscale: a post-render pass ──────────────────────────── */
+function upscaleGroup(p, set) {
+  const up = upscaleSettings(p);
+  const nodes = getHealth()?.nodes || {};
+  const known = { ...(nodes.ltx || {}), ...(nodes.optional || {}) };
+  const has = (name) => (known[name] ? !!known[name].present : null);   // null: ComfyUI not probed
+  const plan = upscalePlan(p);
+  const { width, height } = dimensions(p);
+  const setUp = (patch) => set({ upscale: { ...up, ...patch } });
+  const engineHint = up.engine === "seedvr2"
+    ? (has("SeedVR2VideoUpscaler") === false
+        ? "SeedVR2's nodes are not on this ComfyUI — install the seedvr2_videoupscaler pack (ComfyUI Manager has it), then Setup ▸ Upscalers to pick the build."
+        : "Diffusion video restoration in batches of thirteen frames with overlap, so motion stays coherent and detail is invented rather than sharpened. Diffuses at 1080p-class and a resize finishes 1440p and 4K. About three seconds a frame on a big card — a 30 s clip is most of an hour.")
+    : up.engine === "flashvsr"
+      ? (has("FlashVSRNode") === false
+          ? "FlashVSR's node is not on this ComfyUI — install the ComfyUI-FlashVSR_Ultra_Fast pack (models go in models/FlashVSR)."
+          : "FlashVSR v1.1, a one-step streaming diffusion upscaler at ×2 or ×4, tiled, then resized to the target. Coherent and conservative — keeps motion blur rather than inventing texture — and several times faster than SeedVR2.")
+    : up.engine === "ltx25"
+      ? (has("LTXVLatentUpsampler") === false
+          ? "This ComfyUI has no LTX-2.5 support — the LTX nodes are named on the Setup page."
+          : "LTX-2.5 as the upscaler: the frames are encoded into its latent, doubled by its latent upsampler and put through the three-step refine pass the two-stage build uses, under the clip's own prompt. Core nodes, but the whole LTX-2.5 pack loads for it — quickest from an LTX render, where the weights are already on the card. Detail is re-imagined by a video model, ×2; the target finishes with a resize.")
+    : up.engine === "esrgan"
+      ? (has("ImageUpscaleWithModel") === false
+          ? "The stock upscale nodes are missing — this ComfyUI is very old."
+          : "RealESRGAN ×4 on every frame, then a Lanczos resize to the target. Seconds per clip. Each frame is upscaled alone, so fine texture can shimmer.")
+      : "Delivered at the canvas size.";
+  return group("Upscale", {
+    id: "d-up", icon: "⤢", accordion: false,
+    help: h("div",
+      h("b", "After the render. "),
+      "The decoded frames go through an upscaler before the video is muxed, so the clip is generated at the canvas size — the size the model was trained at — and delivered larger. Nothing about the render itself changes; the VRAM the sampler needs is decided by the canvas, not by this.",
+    ),
+  },
+    row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · refine ×2"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v })), engineHint),
+    up.engine !== "off"
+      ? row("Output", select(Object.keys(UPSCALE_TARGETS).map(k => [k, UPSCALE_TARGET_LABELS[k]]), up.target, (v) => setUp({ target: v })),
+        plan
+          ? `${width}×${height} → ${plan.width}×${plan.height}, ×${plan.factor.toFixed(2)} on the short edge.`
+          : `${width}×${height} already has a short edge of ${Math.min(width, height)} — ${up.target} is no larger, so the pass is skipped.`)
+      : null,
+  );
+}
 
 /* ── Centre: the two buttons, the bar, and the history ────── */
 function renderPanel(p) {
@@ -697,9 +741,11 @@ function workflowPanel(p) {
           + (built.meta.shiftVideo != null ? ` · shift ${built.meta.shiftVideo}/${built.meta.shiftAudio}` : ` · ${built.meta.stages === 2 ? "two-stage, 2× latent upscale" : "single-stage"}`)
           + (built.meta.tiledDecode ? " · tiled decode" : "")),
         h("span.k", "seed"), h("span.v", String(built.meta.seed)),
+        built.meta.upscale ? h("span.k", "upscale") : null,
+        built.meta.upscale ? h("span.v", `${{ seedvr2: "SeedVR2", flashvsr: "FlashVSR", ltx25: "LTX-2.5 refine ×2", esrgan: "ESRGAN ×4" }[built.meta.upscale.engine]} → ${built.meta.upscale.width}×${built.meta.upscale.height}`) : null,
         built.meta.guides?.length ? h("span.k", "pins") : null,
         built.meta.guides?.length ? h("span.v", built.meta.guides.map(g => `${g.at}s @ ${g.strength}`).join(" · ")) : null,
-        h("span.k", "nodes"), h("span.v", `${nodeCount} · ${built.meta.nodeTypes.length} types · ${built.meta.stockNodesOnly === false ? "core + LTX-2 AV" : "stock only"}`),
+        h("span.k", "nodes"), h("span.v", `${nodeCount} · ${built.meta.nodeTypes.length} types · ${built.meta.upscale?.engine === "seedvr2" ? "core + SeedVR2 pack" : built.meta.upscale?.engine === "flashvsr" ? "core + FlashVSR pack" : built.meta.stockNodesOnly === false ? "core + LTX-2 AV" : "stock only"}`),
       ) : null,
       built?.meta.droppedPins ? h("div.hint.bad", { style: { marginBottom: "8px" } },
         `${built.meta.droppedPins} pin${built.meta.droppedPins === 1 ? "" : "s"} dropped — over the ${LTX_MAX_ANCHORS}-guide cap or landing on an already-pinned frame`) : null,

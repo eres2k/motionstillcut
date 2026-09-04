@@ -33,6 +33,13 @@ export const DEFAULT_MODELS = {
   dit_ref2va:     "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
   dit_fl2va_nvfp4:  "MiniMax_H3_FL2VA_pruned_nvfp4.safetensors",
   dit_ref2va_nvfp4: "MiniMax_H3_REF2VA_pruned_nvfp4.safetensors",
+  /* Post-render upscalers (Deliver ▸ Upscale). SeedVR2's loader downloads the
+   * 3B fp8 build itself on first use; the 7B builds are the better restorer
+   * on a card that holds them. ESRGAN is any ESRGAN-family file in
+   * models/upscale_models. */
+  seedvr2_dit: "seedvr2_ema_3b_fp8_e4m3fn.safetensors",
+  seedvr2_vae: "ema_vae_fp16.safetensors",
+  esrgan:      "RealESRGAN_x4plus.safetensors",
   text_encoder:   "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
   video_vae:      "minimax_h3_video_vae_fp16.safetensors",
   audio_vae:      "minimax_h3_audio_vae_fp32.safetensors",
