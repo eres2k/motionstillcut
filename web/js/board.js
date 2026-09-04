@@ -11,7 +11,8 @@
  */
 
 import { h, shotTime, timecode } from "./util.js";
-import { orderedShots } from "./state.js";
+import { orderedShots, shotCitations } from "./state.js";
+import { getBlob } from "./media.js";
 import { framingOrigin, subjectHeightPct, endFramingFor } from "./previz.js";
 import { cameraSentence } from "./prompt.js";
 
@@ -54,6 +55,21 @@ function frameThumb(shot, { width = 168 } = {}) {
   });
 }
 
+/** The references this shot cites, as a strip of stills under the framing
+ *  diagram: the diagram says where the subject sits, the stills say who or
+ *  what the subject is. */
+function citedStills(project, shot) {
+  const cites = shotCitations(project, shot).filter(e => e.kind !== "audio");
+  if (!cites.length) return null;
+  return h("div.bd-cites", ...cites.map((e) => {
+    const still = h("div.cite-still", { title: `${e.tag} — ${e.ref?.label || e.ref?.name || ""}` }, e.kind === "video" ? "▶" : "");
+    const paint = (src) => { if (src) { still.style.backgroundImage = `url("${src}")`; still.textContent = ""; } };
+    if (e.kind === "video") paint(e.ref?.poster);
+    else if (e.ref?.id) getBlob(e.ref.id).then(paint);
+    return still;
+  }));
+}
+
 /**
  * One card per beat, in order, across the whole clip.
  * @returns {HTMLElement}
@@ -88,7 +104,8 @@ export function renderBoard(project, { onSelectShot = () => {}, selectedShotId =
             h("span.grow"),
             h("span.hint", `${slot.toFixed(1)}s`),
           ),
-          h("div.bd-shot", `${shot.shotType} · ${shot.viewpoint}${shot.camera?.lens ? ` · ${shot.camera.lens}` : ""}`),
+          bi === 0 ? citedStills(project, shot) : null,
+          h("div.bd-shot", `${shot.shotType} · ${shot.viewpoint}${shot.camera?.lens && shot.camera.lens !== "none" ? ` · ${shot.camera.lens}` : ""}`),
           h("div.bd-beat", beat ? beat.text : (shot.subject || "— nothing written —")),
           bi === 0 ? h("div.bd-cam", cameraSentence(shot.camera)) : null,
           line && bi === 0 ? h("div.bd-dlg", `(${line.speaker}) “${line.text.slice(0, 48)}”`) : null,
