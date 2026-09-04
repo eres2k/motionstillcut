@@ -59,7 +59,7 @@ test("mode comes from the project, the name from the browser's settings", () => 
 
 test("without an uploaded mark the graph is untouched", () => {
   const { prompt, meta } = buildWorkflow(project(), settings);
-  assert.equal(prompt["64"], undefined);
+  assert.equal(prompt["210"], undefined);
   assert.deepEqual(prompt["18"].inputs.images, ["16", 0]);
   assert.equal(meta.watermark, null);
 });
@@ -67,26 +67,26 @@ test("without an uploaded mark the graph is untouched", () => {
 test("with one, three stock nodes stamp every frame last — after the upscale", () => {
   const wm = { file: "mscut_wm_signature_deadbeef.png", mode: "signature", x: 1500, y: 1000 };
   const plain = buildWorkflow(project(), settings, { watermark: wm });
-  assert.equal(plain.prompt["64"].class_type, "LoadImage");
-  assert.equal(plain.prompt["64"].inputs.image, wm.file);
-  assert.deepEqual(plain.prompt["65"].inputs.mask, ["64", 1]);
-  const stamp = plain.prompt["66"];
+  assert.equal(plain.prompt["210"].class_type, "LoadImage");
+  assert.equal(plain.prompt["210"].inputs.image, wm.file);
+  assert.deepEqual(plain.prompt["211"].inputs.mask, ["210", 1]);
+  const stamp = plain.prompt["212"];
   assert.equal(stamp.class_type, "ImageCompositeMasked");
   assert.deepEqual(stamp.inputs.destination, ["16", 0]);
-  assert.deepEqual(stamp.inputs.mask, ["65", 0]);
+  assert.deepEqual(stamp.inputs.mask, ["211", 0]);
   assert.equal(stamp.inputs.x, 1500);
   assert.equal(stamp.inputs.resize_source, false);
-  assert.deepEqual(plain.prompt["18"].inputs.images, ["66", 0]);
+  assert.deepEqual(plain.prompt["18"].inputs.images, ["212", 0]);
   assert.deepEqual(plain.meta.watermark, { mode: "signature", file: wm.file });
   assert.equal(plain.meta.stockNodesOnly, true, "the stamp is stock");
 
   const up = buildWorkflow(project({ upscale: { engine: "esrgan", target: "1080p" } }), settings, { watermark: wm });
-  assert.deepEqual(up.prompt["66"].inputs.destination, ["62", 0], "stamped after the resize");
-  assert.deepEqual(up.prompt["18"].inputs.images, ["66", 0]);
+  assert.deepEqual(up.prompt["212"].inputs.destination, ["202", 0], "stamped after the resize");
+  assert.deepEqual(up.prompt["18"].inputs.images, ["212", 0]);
 
   const ltx = buildWorkflow(project({ engine: "ltx25" }), settings, { watermark: wm });
-  assert.deepEqual(ltx.prompt["66"].inputs.destination, ["32", 0]);
-  assert.deepEqual(ltx.prompt["34"].inputs.images, ["66", 0]);
+  assert.deepEqual(ltx.prompt["212"].inputs.destination, ["32", 0]);
+  assert.deepEqual(ltx.prompt["34"].inputs.images, ["212", 0]);
 });
 
 test("the mark is drawn at the delivered size, upscale included", () => {
