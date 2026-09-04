@@ -1,5 +1,5 @@
 /* The VRAM fit estimate: calibrated on one real failure (736 frames at
- * 1344x768, seven references at "max", on a 32 GB card) and expected to say
+ * 1344x768, six references at "max", on a 32 GB card) and expected to say
  * "no" to it, "ok" to a plain 5 s clip, and to move the right way with every
  * lever the Deliver page offers. */
 import { test } from "node:test";
@@ -9,7 +9,7 @@ import { estimateVram, vramLevers } from "../web/js/workflow.js";
 
 const CARD = 31.4; // what ComfyUI reports for a 32 GB RTX 5090
 
-function refProject({ resolution = "832x480", duration = 5, refs = 7, refImageSize = "match", precision = "int8" } = {}) {
+function refProject({ resolution = "832x480", duration = 5, refs = 6, refImageSize = "match", precision = "int8" } = {}) {
   const p = blankProject();
   p.mode = "r2v";
   p.render.engine = "minimax";
@@ -39,7 +39,7 @@ test("a plain 5 s clip at 480p is fine", () => {
   assert.ok(fit.needGB < 12, `need ${fit.needGB}`);
 });
 
-test("30 s at 480p with seven references at match fits, but tightly", () => {
+test("30 s at 480p with six references at match fits, but tightly", () => {
   const fit = estimateVram(refProject({ duration: 30 }), { cardGB: CARD });
   assert.equal(fit.verdict, "tight");
   assert.ok(fit.tokens > 90_000 && fit.tokens < 130_000, `tokens ${fit.tokens}`);

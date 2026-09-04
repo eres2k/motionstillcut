@@ -602,7 +602,7 @@ export function humanTime(seconds) {
  * A VRAM estimate for a MiniMax H3 render, so the app can say "this won't
  * fit" before ComfyUI spends twenty seconds loading weights and then dies on
  * the first sampling step. Calibrated on a real failure: 736 frames at
- * 1344x768 with seven references at "max" (~235k tokens) asked for a single
+ * 1344x768 with six references at "max" (~235k tokens) asked for a single
  * 18.8 GiB tensor on a 32 GB card. The int8 build's matmuls write int32 —
  * four bytes per value — so every per-layer activation is twice its bf16
  * size; the NVFP4 build's kernels write bf16 directly, which is why it
