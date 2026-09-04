@@ -153,8 +153,8 @@ test("LTX-2.5 refine pass (the fallback): latent upsampler ×2 and three steps, 
   assert.equal(prompt["113"].inputs.sigmas.split(",").length, 4, "three steps");
   assert.equal(prompt["116"].inputs.sampler_name, "euler_ancestral");
   assert.equal(prompt["119"].class_type, "VAEDecodeTiled");
-  assert.deepEqual(prompt["62"].inputs.image, ["119", 0]);
-  assert.deepEqual(prompt["18"].inputs.images, ["62", 0]);
+  assert.deepEqual(prompt["202"].inputs.image, ["119", 0]);
+  assert.deepEqual(prompt["18"].inputs.images, ["202", 0]);
   assert.equal(byType(prompt, "LTXAddVideoICLoRAGuide").length, 0, "no reference guide on the refine path");
 });
 
@@ -189,6 +189,7 @@ test("FlashVSR gets a 32-bit seed too", () => {
   const { prompt } = buildWorkflow(p, settings);
   const [[, node]] = byType(prompt, "FlashVSRNode");
   assert.ok(node.inputs.seed <= 4294967295);
+});
 
 test("the IC-LoRA costs more time than the refine pass", () => {
   const ic = estimateSeconds(project({ engine: "ltx25" }));
