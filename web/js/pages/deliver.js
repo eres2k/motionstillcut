@@ -20,6 +20,8 @@ import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploa
 import * as downloads from "../downloads.js";
 import { variablesFor, variableById, valuesFor, labelOf, runSweep, sweepCost } from "../experiments.js";
 import { api, SERVER_BACKED } from "../api.js";
+import { addRenderClip, renderOutput } from "../edit.js";
+import { resolveButton, onResolveChange } from "../resolve.js";
 import {
   listQueue, enqueue, removeFromQueue, moveInQueue, clearQueue, openQueued,
   runQueue, isQueueRunning, requeue, onQueueChange,
@@ -720,6 +722,18 @@ function historyStrip(p) {
         h("span", { class: `badge ${j.status === "done" ? "ok" : j.status === "error" ? "bad" : ""}` }, h("span.dot"), j.status),
         h("span.name", `${j.mode?.toUpperCase()} · ${j.meta?.variantLabel || ""} · ${j.meta?.numFrames || "?"}f`),
         h("span.time", new Date(j.at).toLocaleTimeString()),
+        j.status === "done" && renderOutput(j)?.filename ? h("button.btn.sm", {
+          title: "Add this render to the multi-clip edit",
+          onclick: () => {
+            update(d => addRenderClip(d, j), "shots");
+            window.dispatchEvent(new CustomEvent("mscut:page", { detail: "edit" }));
+          },
+        }, "Add to edit") : null,
+        j.status === "done" && renderOutput(j)?.filename ? resolveButton((() => {
+          const single = { ...p, edit: { clips: [], audio: [], export: { fps: 24, width: 0, height: 0, name: j.name || renderOutput(j).filename } } };
+          addRenderClip(single, j);
+          return single;
+        })(), { compact: true }) : null,
         j.outputs?.[0] ? h("button.btn.sm", {
           onclick: () => window.open(api.viewUrl(j.outputs[0]), "_blank"),
         }, "Open") : null,
@@ -1107,4 +1121,5 @@ export function render(el) {
   draw();
 }
 export function refresh() { if (root) draw(); }
+onResolveChange(() => { if (root?.classList.contains("active")) draw(); });
 export { doRender, doDownload };

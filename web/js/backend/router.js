@@ -412,6 +412,10 @@ export async function handle(path, { method = "GET", body = {} } = {}) {
       return { ok: true, ...(await probeSource(body.source || {})) };
     }
 
+    case "/resolve/status":
+      return { ok: true, connected: false, ready: false, message: "Send to Resolve needs the local Cut app with server saving enabled." };
+    case "/resolve/send":
+      throw Object.assign(new Error("Send to Resolve needs the local Cut app with server saving enabled."), { status: 503, code: "no-local" });
     case "/edit/export":
       throw NO_FFMPEG();
 

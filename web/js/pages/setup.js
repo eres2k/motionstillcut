@@ -15,6 +15,7 @@ import { getSettings, saveSettings, getHealth, refreshHealth, refreshVram, loadS
 import { renderPrefs, forgetRenderPrefs } from "../renderprefs.js";
 import { resetAllSizes } from "../resize.js";
 import { SCALES, uiScale, setUiScale } from "../uiscale.js";
+import { resolveSettings, onResolveChange } from "../resolve.js";
 
 let root = null;
 let folders = null;       // ComfyUI's model enums, loaded lazily
@@ -584,7 +585,7 @@ function draw() {
           h("button.btn.sm", { onclick: async () => { await refreshHealth(); await refreshVram(); loadFolders(); loadLlmModels(); refresh(); } }, "⟳ Re-check")),
         h("div.bd",
           statusStrip(health),
-          h("div.insp", comfyPanel(s, health), llmPanel(s, health), vramPanel(s, health))),
+          h("div.insp", resolveSettings(), comfyPanel(s, health), llmPanel(s, health), vramPanel(s, health))),
       ),
       h("div.panel",
         h("div.hd", h("span.title", "Models & this machine")),
@@ -602,3 +603,4 @@ export function render(el) {
   refreshHealth().then(refresh);
 }
 export function refresh() { if (root) draw(); }
+onResolveChange(() => { if (root?.classList.contains("active")) draw(); });

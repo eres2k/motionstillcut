@@ -26,6 +26,7 @@ import { currentJob, onRenderChange, patchLive } from "../render.js";
 import { ingest, getBlob, posterFor } from "../media.js";
 import { library } from "../library.js";
 import { humanTime } from "../workflow.js";
+import { resolveButton, resolveGroup, onResolveChange } from "../resolve.js";
 
 let root = null;
 let unsub = null;
@@ -420,8 +421,8 @@ function timelinePanel(p, plan) {
     + ` · ${plan.width ? `${plan.width}×${plan.height}` : "size of the first clip"} · ${plan.fps} fps`
     + (audio.length ? ` · ${audio.length} audio` : "");
 
-  return h("div.panel",
-    h("div.hd", h("span.title", "Timeline"), h("span.spacer"),
+  return h("div.panel.edit-timeline",
+    h("div.hd", h("span.title", "Timeline"), h("span.spacer"), resolveButton(p, { compact: true }),
       h("span", { class: `badge ${plan.ok ? "ok" : clips.length ? "busy" : ""}` }, h("span.dot"),
         plan.ok ? "ready to export" : clips.length ? `${plan.problems.length} to fix` : "empty"),
     ),
@@ -433,6 +434,7 @@ function timelinePanel(p, plan) {
         clip ? clipInspector(p, clip, plan)
           : track ? audioInspector(p, track)
           : clips.length ? h("div.empty-state.tight", h("div.hint", "Select a clip on the strip to name, trim, mute or move it — or a sound on the lane to place it.")) : null,
+        resolveGroup(p),
         exportGroup(p, plan),
       ),
     ),
@@ -682,6 +684,7 @@ export function render(el) {
   draw();
 }
 export function refresh() { if (root) draw(); }
+onResolveChange(() => { if (root?.classList.contains("active")) draw(); });
 
 export const shortcuts = {
   Delete: () => {

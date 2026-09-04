@@ -45,6 +45,10 @@ editor — it **operates the app**:
 
 - **The interview.** Paste a rough idea, drop your pictures, and Create
   interviews you — *reading the images* — then builds a working shot canvas.
+  The clip settings use labeled dropdowns for scene, mood, image style, shot
+  count, writing detail, model and length. Pick from 17 scene presets grouped
+  into spaces, products and stories; **Rebuild shots** updates the chosen
+  structure when you add reference pictures.
 - **The director (⌘J).** "Bring her closer." "Why does it keep adding music?"
   It answers with a plan of concrete edits, each with its reason and a
   checkbox. Nothing lands until you press Apply; one ⌘Z takes it all back.
@@ -170,6 +174,43 @@ wizard (`/setup`) with the one choice that matters:
 Env (all optional): `CUT_PORT` `CUT_HOST` `CUT_PW` `CUT_COMFY_URL`
 `CUT_LLM_URL` `CUT_LLM_KEY` `CUT_VRAM_SAVER` `CUT_SAVING` `CUT_NO_OPEN`
 `CUT_DATA` `CUT_FFMPEG`.
+
+### Edit clips and DaVinci Resolve
+
+**Edit clips** is in the top workflow bar, available from Create, Canvas and
+Studio (shortcut **7**). Finished renders on Deliver offer **Add to edit** and
+**Send to Resolve**. The Edit page sends the assembled timeline, including
+source trims, clip names, muted clip audio and positioned audio tracks.
+
+With local server saving enabled, set **Setup → DaVinci Resolve → MCP endpoint**
+to `http://127.0.0.1:8765/mcp`, then **Test Resolve connection**. Start Resolve
+and open the destination project. The MCP server must be on the same host as
+Cut, with `resolve_status` and the checked `import_timeline` tool from the
+local `~/ai/resolve-mcp` integration. The latter accepts `file_path`, `name`,
+`expected_project`, `expected_clips` and `request_id`.
+
+On this installation the MCP HTTP service starts at login:
+
+```sh
+systemctl --user status resolve-mcp.service
+# Or run the server manually:
+~/ai/resolve-mcp/.venv/bin/resolve-mcp --transport http --port 8765
+```
+
+Each send imports a new FCPXML timeline and saves the open Resolve project.
+Existing timelines are preserved; repeated names receive a numeric suffix.
+Media is prepared under `data/resolve/<transfer-id>/` (or `CUT_DATA/resolve`).
+Keep that directory while Resolve references it. On Linux, the default media
+preparation copies supported video streams into MOV with PCM audio, converts
+other video codecs to ProRes, and prepares separate audio as WAV. Disable it
+in Setup to use original media. ffmpeg is required for probing and preparation.
+
+MCP sessions, streaming replies, tool errors and timeouts are handled by the
+local Cut server. Transfer receipts and Resolve timeline markers guard against
+duplicate sends. Resolve must still have the same destination project open
+when the import begins. The hosted browser-only version explains how to use
+the local app instead. Optional environment overrides: `CUT_RESOLVE_URL` and
+`CUT_RESOLVE_KEY`; access tokens stay on the Cut server.
 
 ## What it needs to render
 

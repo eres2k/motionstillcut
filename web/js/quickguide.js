@@ -90,8 +90,8 @@ const SECTIONS = [
       {
         n: "1", title: "Create → Canvas → Studio",
         body: [
-          "Create is where a new project opens. Which model? comes first, because H3 and LTX-2.5 read different prompts. Paste a rough idea, drop pictures and audio, and it interviews you — reading the images — then steers the result with seven dials in plain language. Its last step is Build the canvas.",
-          "How many shots? is a CEILING, written cuts included: ask for four and the model's fifth \"Cut to\" folds into the last shot that fits. On Auto, H3 gets up to six; one LTX-2.5 render is capped by length — 4 shots at 20 s, 3 at 15, 2 at 10 — because that is how many cuts it was measured to render. Beats are dealt evenly, so the last shot never comes up empty.",
+          "Create is where a new project opens. Paste an idea, drop pictures and audio, then use Shape your clip to choose the scene, mood, image style, shot count, writing detail, video model and length. Its dropdowns include 17 scene presets grouped into Spaces & places, Products & brands, and People & stories. Rebuild shots reapplies the scene to your current pictures. Read my material then interviews you — reading the images — before you steer the result and build the canvas.",
+          "Shot count is a CEILING, written cuts included: ask for four and the model's fifth \"Cut to\" folds into the last shot that fits. On Auto, H3 gets up to six; one LTX-2.5 render is capped by length — 4 shots at 20 s, 3 at 15, 2 at 10 — because that is how many cuts it was measured to render. Beats are dealt evenly, so the last shot never comes up empty.",
           "Canvas is a node graph laid out as a timeline: shots left to right, the pictures each shot cites above it, the clip-wide things — steering, sound, the director — on a shelf underneath, the render at the end. Uncited material waits in an amber inbox.",
           "Studio is everything below: per-beat timing, dialogue, retention markers, lens and height, the framing box, the seed ladder. The two views edit the SAME fields — the same editor drawn twice, so they cannot disagree.",
           "` opens Create, 0 the Canvas, 2 the Cut page.",
@@ -309,9 +309,10 @@ const SECTIONS = [
       {
         n: "7", page: "edit", title: "Edit — the renders, cut together",
         body: [
-          "Deliver makes clips; Edit puts them after one another. Every finished render is on the left with a hover-to-play thumbnail — Add puts it at the end of the strip — and a dropped video or sound file joins it. Click a clip to name it, trim it (in and out, in seconds), mute its own sound or move it; a sound on the audio lane has a start time and a gain. The totals under the strip are the export's own numbers, and anything that would stop the export is listed in amber.",
+          "Open Edit clips in the top workflow bar from any view (or press 7). Deliver makes clips; Edit puts them after one another. Add to edit beside a finished render opens the multi-clip timeline. A dropped video or sound file joins it. Click a clip to name it, trim it (in and out, in seconds), mute its own sound or move it; a sound on the audio lane has a start time and a gain. The totals under the strip are the export's own numbers, and anything that would stop the export is listed in amber.",
           "The voice-over box speaks a script on this machine — Qwen3-TTS or VoxCPM2, a language, a built-in or cloned voice, a speed — and lays the file on the audio lane; the director drafts the script from the cut as it stands, at a pace a narrator can speak. Quick clip makes a five- or ten-second intro, B-roll or outro from one line, in this project's look, straight onto the timeline.",
           "Export is one ffmpeg pass on the local Cut app: name, frame rate, frame size, then a file to play and download. The hosted version keeps the timeline with the project and says where to take it. Everything on the strip is undoable (⌘Z) and saved with the project.",
+          "Send to Resolve creates a new editable timeline in the project open in DaVinci Resolve, carrying clip order, source trims, muted audio and the audio lane. Set the MCP endpoint in Setup → DaVinci Resolve and test the connection. The local Cut app prepares media on disk; the Linux option converts sound to PCM and keeps supported video streams. Keep the prepared media folder while the Resolve project uses it. A timed-out send keeps its transfer ID to prevent duplicates — check Resolve before starting a new transfer.",
         ],
       },
     ],

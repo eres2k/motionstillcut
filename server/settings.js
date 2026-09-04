@@ -63,6 +63,12 @@ export const DEFAULT_MODELS = {
 };
 
 export const DEFAULT_SETTINGS = {
+  resolve: {
+    url: "http://127.0.0.1:8765/mcp",
+    apiKey: "",
+    comfyOutputDir: existsSync("/opt/ComfyUI/output") ? "/opt/ComfyUI/output" : "",
+    prepareAudio: process.platform === "linux",
+  },
   comfy: {
     // ComfyUI streams the sampler's own frames over its websocket when it was
     // started with --preview-method. Showing them costs a little bandwidth and
@@ -159,6 +165,8 @@ function stripTrailingSlash(url) {
  * colliding with COMFYUI_HOST / LMSTUDIO_BASE. */
 function envPatch() {
   const p = {};
+  if (process.env.CUT_RESOLVE_URL) p.resolve = { url: process.env.CUT_RESOLVE_URL };
+  if (process.env.CUT_RESOLVE_KEY) p.resolve = { ...(p.resolve || {}), apiKey: process.env.CUT_RESOLVE_KEY };
   const comfy = process.env.CUT_COMFY_URL
     || (process.env.COMFYUI_HOST || process.env.COMFYUI_PORT
         ? `http://${process.env.COMFYUI_HOST || "127.0.0.1"}:${process.env.COMFYUI_PORT || 8188}`
@@ -221,6 +229,7 @@ export function publicSettings() {
   return {
     ...s,
     llm: { ...s.llm, apiKey: undefined, hasApiKey: !!s.llm.apiKey },
+    resolve: { ...s.resolve, apiKey: undefined, hasApiKey: !!s.resolve.apiKey },
     dataFile: SETTINGS_FILE,
   };
 }

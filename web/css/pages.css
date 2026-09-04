@@ -761,7 +761,43 @@ body.simple-view #mode-badge { display: none; }   /* the canvas shows it in its 
 
 .cr-row { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
 .cr-label { color: var(--fg-dim); }
-.cr-actions { margin: 26px 0 40px; display: flex; align-items: center; }
+.cr-settings {
+  min-inline-size: 0; margin: 24px 0 0; padding: 22px;
+  border: 1px solid #303740; border-radius: 12px; background: #1a1e24;
+  scroll-margin-top: 64px;
+}
+.cr-settings-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.cr-settings-heading h3 { margin: 0 0 5px; color: var(--fg-bright); font-size: 16px; font-weight: 600; }
+.cr-settings-heading p { margin: 0; color: #9ca8b6; font-size: 12px; line-height: 1.5; }
+.cr-reference-count { flex: none; border: 1px solid #364251; border-radius: 20px; padding: 5px 9px; color: #adc5df; font-size: 11px; }
+.cr-settings label { display: block; margin-bottom: 8px; color: #d5dce5; font-size: 12px; font-weight: 600; }
+.cr-settings select {
+  width: 100%; min-width: 0; height: 42px; padding: 0 11px; border-radius: 6px;
+  border: 1px solid #38414d; background-color: #11161c; box-shadow: none;
+  color: #eef2f7; font-size: 13px; text-overflow: ellipsis;
+}
+.cr-settings select:hover { border-color: #596b80; }
+.cr-settings select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cr-settings select:disabled { opacity: .65; cursor: not-allowed; }
+.cr-settings select[aria-invalid="true"] { border-color: var(--amber); }
+.cr-scene-setting { padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid #303740; }
+.cr-scene-controls { display: flex; align-items: center; gap: 10px; }
+.cr-scene-controls .btn { height: 42px; padding: 0 13px; flex: none; border-radius: 6px; font-size: 12px; }
+.cr-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 20px; }
+.cr-setting { min-width: 0; }
+.cr-setting-help { margin: 8px 0 0; color: #9ca8b6; font-size: 12px; line-height: 1.6; }
+.cr-length-warning { display: flex; align-items: center; gap: 14px; margin-top: 20px; padding: 13px; border: 1px solid #68542b; border-radius: 7px; background: #2b261a; color: #dfcda7; font-size: 12px; line-height: 1.5; }
+.cr-length-warning p { margin: 4px 0 0; }
+.cr-length-warning .btn { flex: none; height: 34px; padding: 0 10px; }
+@media (max-width: 600px) {
+  .cr-settings { padding: 17px; }
+  .cr-settings-heading { flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .cr-settings-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .cr-scene-controls, .cr-length-warning { flex-wrap: wrap; }
+  .cr-scene-controls select { flex-basis: 100%; }
+  .cr-setting-help { font-size: 12px; }
+}
+.cr-actions { margin: 26px 0 40px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .cr-go {
   height: 44px; padding: 0 26px; border-radius: 22px; border: 0; cursor: pointer;
   background: linear-gradient(180deg, #5a95d6, #3d76b4); color: #fff;
@@ -1173,6 +1209,11 @@ button.st-tag.on:hover { background: #3a3116; color: #ffe9b8; }
  * Three equal buttons said "three places to be". Create sits before an arrow,
  * numbered; the two views of the same project are grouped after it. */
 .viewflow { display: flex; align-items: center; gap: 7px; }
+.edit-step { white-space: nowrap; }
+.edit-clip-count { padding: 0 5px; border-radius: 8px; background: rgba(128,128,128,.22); font-size: 10px; }
+.resolve-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.resolve-status { margin-top: 8px; line-height: 1.5; overflow-wrap: anywhere; }
+.resolve-send { white-space: nowrap; }
 .stepbtn {
   display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 5px;
   border-radius: 12px; border: 1px solid var(--line); background: transparent;

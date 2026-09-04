@@ -14,13 +14,13 @@
 
 import {
   h, mount, clear, toast, timecode, clamp, debounce, modal, copyText, download,
-  segmented,
+  segmented, select,
 } from "../util.js";
 import {
   getProject, update, orderedShots, shotActionText, newShot, newBeat,
-  DURATION_FRAMES, dimensions, MODES, referenceInventory, normaliseMedia, H3_DURATION, overLength,
+  dimensions, MODES, referenceInventory, normaliseMedia, H3_DURATION, overLength,
   clearShotWriting,
- onProjectSwap, activeEngine, setEngine, durationFrames, LTX25_DURATION } from "../state.js";
+ onProjectSwap, activeEngine, setEngine, durationFrames } from "../state.js";
 import { ingest, getBlob, delBlob, posterFor, kindOf } from "../media.js";
 import { queueLength } from "../queue.js";
 import { polishShot } from "../llm.js";
@@ -28,7 +28,7 @@ import { DIALS, DEFAULT_DIALS, applySteering, explainDials, DETAIL_BANDS, detail
 import { readMaterial, moreBeats, baseQuestions } from "../interview.js";
 import { compilePrompt, validate } from "../prompt.js";
 import { renderPrompt } from "../prompttext.js";
-import { SCENE_PRESETS, MOOD_PRESETS, QUALITY_PRESETS, applyPreset, applyMood, applyQuality, presetContext, presetByKey, moodByKey, qualityByKey } from "../presets.js";
+import { SCENE_PRESETS, SCENE_PRESET_GROUPS, MOOD_PRESETS, QUALITY_PRESETS, applyPreset, applyMood, applyQuality, presetContext, presetByKey, moodByKey, qualityByKey } from "../presets.js";
 import { citeLooseReferences } from "./simple.js";
 import { createPreviz } from "../previz.js";
 import { estimateSeconds, humanTime } from "../workflow.js";
@@ -135,6 +135,68 @@ function materialTiles(p) {
   );
 }
 
+function materialSettings(p) {
+  const c = creative(p), ctx = presetContext(p), scene = presetByKey(c.preset);
+  const detail = detailToWriting(c.dials?.detail ?? DEFAULT_DIALS.detail);
+  const engine = activeEngine(p), tooLong = overLength(p.render.duration, p);
+  const field = (id, label, control, help) => h("div.cr-setting",
+    h("label", { for: id }, label), control,
+    h("p.cr-setting-help", { id: `${id}-help` }, help));
+  const props = id => ({ id, "aria-describedby": `${id}-help` });
+  const pickScene = key => {
+    update(draft => applyPreset(draft, key), "shots");
+    if (key) {
+      const next = getProject();
+      toast(`${presetByKey(key).name} applied`, `${next.shots.length} shot${next.shots.length === 1 ? "" : "s"} across ${next.render.duration} seconds.`, "ok");
+    }
+    draw();
+  };
+  const scenes = h("select", { ...props("cr-scene"), onchange: e => pickScene(e.target.value) },
+    h("option", { value: "", selected: !scene }, "Custom — your own scene"),
+    ...SCENE_PRESET_GROUPS.map(label => h("optgroup", { label },
+      ...SCENE_PRESETS.filter(s => s.category === label).map(s => h("option", {
+        value: s.key, selected: s.key === scene?.key, title: s.blurb,
+      }, s.name)))));
+
+  return h("fieldset.cr-settings", { disabled: busy, "aria-label": "Clip settings" },
+    h("div.cr-settings-heading", h("div", h("h3", "Shape your clip"), h("p", "Choose a scene, a look and a pace.")),
+      h("span.cr-reference-count", `${ctx.picCount} reference image${ctx.picCount === 1 ? "" : "s"}`)),
+    h("div.cr-scene-setting",
+      h("label", { for: "cr-scene" }, "Scene preset"),
+      h("div.cr-scene-controls", scenes,
+        scene ? h("button.btn", { type: "button", onclick: () => pickScene(scene.key), title: "Rebuild the shots using the pictures currently attached" }, "Rebuild shots") : null),
+      h("p.cr-setting-help", { id: "cr-scene-help" }, scene?.blurb || "Give your references a structure, or keep your own idea. Applying a preset replaces the shot list."),
+    ),
+    h("div.cr-settings-grid",
+      field("cr-mood", "Mood", select([["", "Keep current look"], ...MOOD_PRESETS.map(m => [m.key, m.name])], c.mood || "",
+        v => { update(d => applyMood(d, v), "style"); draw(); }, props("cr-mood")),
+        moodByKey(c.mood)?.guidance || "Set the light, colour and atmosphere."),
+      field("cr-quality", "Image style", select([["", "Keep current style"], ...QUALITY_PRESETS.map(q => [q.key, q.name])], c.quality || "",
+        v => { update(d => applyQuality(d, v), "style"); draw(); }, props("cr-quality")),
+        qualityByKey(c.quality)?.guidance || "Choose the camera character and texture of the image."),
+      field("cr-shots", "Shot count", select([["0", "Auto — follow the pace"], ...[1,2,3,4,5,6,7,8].map(n => [String(n), `${n} shot${n === 1 ? "" : "s"}`])], String(Number(c.shotCount) || 0),
+        v => { update(d => { d.creative.shotCount = Number(v); if (d.shots.some(s => s.subject?.trim())) applySteering(d); }, "creative"); draw(); }, props("cr-shots")),
+        Number(c.shotCount) ? "Each shot has its own cut. Existing shots stay until you remove them." : "Let the pace and the cuts in your writing set the number of shots."),
+      field("cr-detail", "Writing detail", select(DETAIL_BANDS.map(b => [String(b.wordsPerShot), `${b.name[0].toUpperCase()}${b.name.slice(1)} · about ${b.wordsPerShot} words / shot`]), String(detail.wordsPerShot),
+        v => {
+          const band = DETAIL_BANDS.find(b => String(b.wordsPerShot) === v), idx = DETAIL_BANDS.indexOf(band);
+          const lo = idx === 0 ? 0 : DETAIL_BANDS[idx - 1].max + 1;
+          update(d => { d.creative.dials = { ...DEFAULT_DIALS, ...d.creative.dials, detail: Math.round((lo + band.max) / 2) }; }, "creative"); draw();
+        }, props("cr-detail")), "How much the writer describes in each shot. You can adjust this again while steering."),
+      field("cr-engine", "Video model", select([["minimax", "MiniMax H3"], ["ltx25", "LTX-2.5 · experimental"]], engine,
+        v => { setEngine(v); draw(); }, { ...props("cr-engine"), disabled: p.mode === "r2v" }),
+        p.mode === "r2v" ? "Multiple references use MiniMax H3. LTX-2.5 supports text or a single opening image."
+          : engine === "ltx25" ? "Up to 30 seconds, with keyframe pins and cuts in prose." : "Clips up to 15 seconds, with dialogue and multiple shots."),
+      field("cr-duration", "Clip length", select(Object.keys(durationFrames(p)).map(d => [d, `${d} seconds${overLength(d, p) ? " · over H3 limit" : ""}`]), String(p.render.duration),
+        v => { update(d => { d.render.duration = Number(v); }, "render"); draw(); }, { ...props("cr-duration"), "aria-invalid": String(tooLong) }),
+        tooLong ? "This length exceeds the model's single-clip limit." : "The duration of one generated clip. Join clips in Edit to make a longer film."),
+    ),
+    tooLong ? h("div.cr-length-warning", { role: "status" },
+      h("div", h("b", `H3 supports up to ${H3_DURATION.max} seconds per clip.`), h("p", "Longer clips repeat. Use 15 seconds or assemble a longer film in Edit clips.")),
+      h("button.btn", { type: "button", onclick: () => { update(d => { d.render.duration = H3_DURATION.max; }, "render"); draw(); } }, "Use 15 seconds")) : null,
+  );
+}
+
 function materialStage(p) {
   const text = creative(p).material?.text || "";
   const health = getHealth();
@@ -173,116 +235,13 @@ function materialStage(p) {
 
     materialTiles(p),
 
-    /* The model is a real authoring choice now, not a render setting: the
-     * two read different prompts — MiniMax its [Shot N] grammar, LTX-2.5 one
-     * paragraph with the cuts in prose — and they disagree about how long a
-     * clip may be. So it is asked here, before anything is written for it.
-     * Ref2V is MiniMax-only and the row says so instead of pretending. */
-    h("div.cr-row",
-      h("span.cr-label", "Which model?"),
-      p.mode === "r2v"
-        ? h("span.hint", "Reference-to-video renders on MiniMax H3 — LTX-2.5 has no reference pipeline.")
-        : segmented([
-            ["minimax", "MiniMax H3", `Native engine · ${H3_DURATION.min}–${H3_DURATION.max} s · dialogue, [Shot N] cuts with timestamps`],
-            ["ltx25", "LTX-2.5", `Experimental · ${LTX25_DURATION.min}–${LTX25_DURATION.max} s · cuts in prose, timeline pins, one render per cut`],
-          ], activeEngine(p), (v) => { setEngine(v); draw(); }),
-      h("span.hint", activeEngine(p) === "ltx25"
-        ? "Up to 30 s, cuts written the way Lightricks' guide asks, keyframe pins on the timeline. Switchable later from the title bar."
-        : "The native model: 4–15 s, the [Shot N] grammar its guide specifies, native dialogue. Switchable later from the title bar."),
-    ),
-
-    /* How many shots. Auto lets Pace decide, or the cuts the writer wrote;
-     * a number is exact — the interview writes that many "Cut to" beats and
-     * steering makes that many shots. Ref2V and I2V follow the same rule. */
-    /* A scene preset says what the pictures are for — one room per picture,
-     * one product angle per picture — builds the shots to match, and leaves
-     * a line of guidance every writer reads. Picked here because it decides
-     * the shape before the read, and the read then fills it in. */
-    h("div.cr-row",
-      h("span.cr-label", "Scene preset"),
-      segmented([["", "None", "Start from the idea and the material alone"], ...SCENE_PRESETS.map(t => [t.key, t.name, t.blurb])],
-        creative(p).preset || "",
-        (v) => {
-          const preset = presetByKey(v);
-          const n = preset ? preset.build(presetContext(p)).length : 0;
-          update((draft) => { applyPreset(draft, v); }, "shots");
-          if (preset) toast(`${preset.name}`, `${n} shot${n === 1 ? "" : "s"} over ${getProject().render.duration}s — one per picture, each citing its own.`, "ok");
-          draw();
-        }),
-      h("span.hint", creative(p).preset
-        ? `${presetByKey(creative(p).preset)?.blurb || ""} The preset's guidance rides on every rewrite; attach more pictures and pick it again to rebuild.`
-        : `${presetContext(p).picCount} picture${presetContext(p).picCount === 1 ? "" : "s"} attached — a preset builds one shot per picture, in order, each citing its own.`),
-    ),
-    h("div.cr-row",
-      h("span.cr-label", "Mood"),
-      segmented([["", "None", "The look stays as the Cut page has it"], ...MOOD_PRESETS.map(t => [t.key, t.name, t.guidance])],
-        creative(p).mood || "",
-        (v) => { update((draft) => { applyMood(draft, v); }, "style"); draw(); }),
-      h("span.hint", creative(p).mood ? `${moodByKey(creative(p).mood)?.guidance || ""} Sets the grade; rides on every rewrite.` : "Sets the grade the prompt names and a line on light and feel."),
-    ),
-    h("div.cr-row",
-      h("span.cr-label", "Quality"),
-      segmented([["", "None", "Say nothing about the camera or stock"], ...QUALITY_PRESETS.map(t => [t.key, t.name, t.guidance])],
-        creative(p).quality || "",
-        (v) => { update((draft) => { applyQuality(draft, v); }, "style"); draw(); }),
-      h("span.hint", creative(p).quality ? qualityByKey(creative(p).quality)?.guidance || "" : "What the camera and the stock are — photoreal, 35 mm, anamorphic…"),
-    ),
-    h("div.cr-row",
-      h("span.cr-label", "How many shots?"),
-      segmented([["0", "Auto", "Pace decides — or the cuts written into the beats"], ...[1, 2, 3, 4, 5, 6].map(n => [String(n), String(n), `Exactly ${n} shot${n === 1 ? "" : "s"}`])],
-        String(Number(creative(p).shotCount) || 0),
-        (v) => { update((draft) => { draft.creative.shotCount = Number(v) || 0; if ((draft.shots || []).some(s => (s.subject || "").trim())) applySteering(draft); }, "creative"); draw(); }),
-      h("span.hint", (Number(creative(p).shotCount) || 0)
-        ? `${creative(p).shotCount} shot${creative(p).shotCount === 1 ? "" : "s"}, each with its own Cut. Fewer than you already have keeps what you have — remove a shot with its own ✕.`
-        : "Auto: the Pace dial picks a count — and a beat written as \"Cut to close-up, …\" always starts a new shot, whatever the dial says."),
-    ),
-
-    /* How much each shot says. It is asked here, on the first screen,
-     * because "Read my material" writes to it — and that button is on this
-     * screen, before the dial rail is ever shown. Same field as the Detail
-     * dial on the next stage; the two stay in step. */
-    h("div.cr-row",
-      h("span.cr-label", "How detailed?"),
-      segmented(DETAIL_BANDS.map(b => [String(b.wordsPerShot), b.name, `${b.name}: about ${b.wordsPerShot} words a shot`]),
-        String(detailToWriting((creative(p).dials || {}).detail ?? DEFAULT_DIALS.detail).wordsPerShot),
-        (v) => {
-          const band = DETAIL_BANDS.find(b => String(b.wordsPerShot) === String(v)) || DETAIL_BANDS[1];
-          const idx = DETAIL_BANDS.indexOf(band);
-          // The middle of the band, so the dial on the next screen reads the same word.
-          const lo = idx === 0 ? 0 : DETAIL_BANDS[idx - 1].max + 1;
-          update((draft) => { draft.creative.dials = { ...DEFAULT_DIALS, ...(draft.creative.dials || {}), detail: Math.round((lo + band.max) / 2) }; }, "creative");
-          draw();
-        }),
-      h("span.hint", `${detailToWriting((creative(p).dials || {}).detail ?? DEFAULT_DIALS.detail).rules.split(".")[1]?.trim() || ""}. Read my material, Polish and Enhance write to this.`),
-    ),
-
-    h("div.cr-row",
-      h("span.cr-label", "How long?"),
-      h("div.seg",
-        ...Object.keys(durationFrames(p)).map(d => h("button", {
-          class: `${String(p.render.duration) === d ? "on" : ""}${overLength(d) ? " over" : ""}`,
-          title: overLength(d, p) ? `Past H3's ${H3_DURATION.max}s ceiling — the clip repeats` : "",
-          onclick: () => { update((draft) => { draft.render.duration = Number(d); }, "render"); draw(); },
-        }, `${d}s`)),
-      ),
-    ),
-    /* This used to read "past about 15 seconds H3 holds together better with
-     * cuts — the pace dial will add them", which is the front door telling a
-     * first-time user to solve a model limit with prompt syntax. Cuts do not
-     * extend the generation window. MiniMax's card gives the output duration
-     * as 4–15 seconds and the node renders longer without complaining, so the
-     * extra time comes back as a repeat. */
-    overLength(p.render.duration)
-      ? h("div.note.warn", { style: { marginTop: "-4px" } },
-          h("b", `H3 renders up to ${H3_DURATION.max} seconds. `),
-          `A ${p.render.duration}s clip is past that: the model has nothing trained beyond it and repeats itself to fill the last ${p.render.duration - H3_DURATION.max}s. Cuts do not help — a shot list is prompt syntax, not a longer window. For something longer, render it as separate clips and join them.`)
-      : null,
+    materialSettings(p),
 
     h("div.cr-actions",
       h("button.cr-go", {
-        class: busy ? "disabled" : "",
+        class: busy ? "disabled" : "", disabled: busy, "aria-busy": String(busy),
         onclick: (e) => runRead(e.currentTarget, p),
-      }, busy ? "reading…" : canRead ? "Read my material →" : "Start steering →"),
+      }, busy ? "Reading your material…" : canRead ? "Read my material →" : "Start steering →"),
       canRead ? null : h("div.hint", { style: { marginTop: "8px" } },
         "No LLM connected, so this goes straight to the dials — Studio ▸ Setup connects one and it will read your material first."),
     ),
@@ -861,6 +820,9 @@ const referenceCount = (p) =>
 
 /* ── Draw ─────────────────────────────────────────────────── */
 function draw() {
+  // State updates redraw this page; keep keyboard users on their chosen field.
+  const focused = root?.contains(document.activeElement) && document.activeElement.matches(".cr-settings select")
+    ? document.activeElement.id : null;
   const p = getProject();
   const at = stage(p);
   mount(root,
@@ -877,6 +839,7 @@ function draw() {
         : takesStage(p),
     ),
   );
+  if (focused) document.getElementById(focused)?.focus({ preventScroll: true });
 }
 
 export function render(el) {

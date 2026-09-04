@@ -62,16 +62,23 @@ function showPage(name) {
   document.body.classList.toggle("projects-view", name === "projects");
   const view = name === "simple" ? "simple"
     : name === "create" ? "create"
-      : name === "projects" ? "projects" : "studio";
-  $$("#view-seg button, .stepbtn").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+      : name === "projects" ? "projects" : name === "edit" ? "edit" : "studio";
+  $$("#view-seg button, .stepbtn").forEach(b => {
+    b.classList.toggle("on", b.dataset.view === view);
+    b.setAttribute("aria-pressed", String(b.dataset.view === view));
+  });
   // The pair dims while you are in Create: it is the step before them, not a
   // third peer alongside them.
   $(".viewflow")?.classList.toggle("at-create", view === "create" || view === "projects");
   for (const [key, page] of Object.entries(PAGES)) {
     page.el.classList.toggle("active", key === name);
   }
-  $$(".page-btn").forEach(b => b.classList.toggle("active", b.dataset.page === name));
-  if (name !== "simple" && name !== "create" && name !== "projects") lastStudioPage = name;
+  $$(".page-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.page === name);
+    if (b.dataset.page === name) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  if (!["simple", "create", "projects", "edit"].includes(name)) lastStudioPage = name;
   const page = PAGES[name];
   if (!page.drawn) { page.mod.render(page.el); page.drawn = true; }
   else page.mod.refresh?.();
@@ -111,6 +118,12 @@ function paintBadges() {
 
 function paintTitlebar() {
   const p = getProject();
+  const editCount = $("#edit-clip-count");
+  if (editCount) {
+    const n = p.edit?.clips?.length || 0;
+    editCount.hidden = !n;
+    editCount.textContent = String(n);
+  }
   const name = $("#project-name");
   if (document.activeElement !== name) name.value = p.name;
   const badge = $("#mode-badge");
@@ -524,6 +537,7 @@ async function boot() {
   });
 
   $("#btn-palette").addEventListener("click", () => togglePalette());
+  window.addEventListener("mscut:page", e => showPage(e.detail));
 
   // Dismissing the password prompt used to leave no way back in short of a
   // reload; now the title bar keeps a button until a request succeeds.
@@ -563,7 +577,7 @@ async function boot() {
     // Create is the front door: it is where a rough idea becomes a canvas.
     let stored = "create";
     try { stored = localStorage.getItem("mscut.view") || "create"; } catch { /* private mode */ }
-    startPage = stored === "studio" ? "cut" : stored === "simple" ? "simple" : stored === "projects" ? "projects" : "create";
+    startPage = stored === "studio" ? "cut" : ["simple", "projects", "edit"].includes(stored) ? stored : "create";
   }
   {
     const { validate } = await import("./prompt.js");

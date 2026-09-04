@@ -45,6 +45,7 @@ function perPicture(ctx, per, grammar) {
 export const SCENE_PRESETS = [
   {
     key: "apartment",
+    category: "Spaces & places",
     soundscape: "Quiet room tone of an empty apartment: the hum of the building, a distant street through the glass, the faint tick of a radiator; no footsteps, no voices.",
     name: "Apartment showcase",
     blurb: "One room per picture, in the order the pictures are attached. Each shot cites its own room and nothing else; slow moves, no people, room tone.",
@@ -58,6 +59,7 @@ export const SCENE_PRESETS = [
   },
   {
     key: "product",
+    category: "Products & brands",
     soundscape: "A hushed studio bed: the soft whirr of a light, a faint air tone, one delicate contact sound as the item is revealed.",
     name: "Product showcase",
     blurb: "One picture per shot — each angle or item gets its own close-up with a small orbit, on a clean set.",
@@ -71,6 +73,7 @@ export const SCENE_PRESETS = [
   },
   {
     key: "character",
+    category: "People & stories",
     soundscape: "The ambience of the place they stand in — light wind or room tone, their footsteps and the movement of clothing as they turn.",
     name: "Character introduction",
     blurb: "The pictures are one person or one creature. Wide to close in three shots; identity fully preserved.",
@@ -89,6 +92,7 @@ export const SCENE_PRESETS = [
   },
   {
     key: "location",
+    category: "Spaces & places",
     soundscape: "The place's own ambience — wind, distant water or traffic, birds where there would be birds; no music, no voices.",
     name: "Location montage",
     blurb: "One place per picture: wide, slow, atmospheric. Travel, architecture, landscape.",
@@ -107,6 +111,7 @@ export const SCENE_PRESETS = [
 SCENE_PRESETS.push(
   {
     key: "vehicle",
+    category: "Products & brands",
     name: "Vehicle showcase",
     blurb: "One angle per picture: exterior sweeps, detail, interior. The car stays exactly the car.",
     mode: "r2v", perShot: 2.5, perPicture: true,
@@ -120,6 +125,7 @@ SCENE_PRESETS.push(
   },
   {
     key: "food",
+    category: "Products & brands",
     name: "Food & drink",
     blurb: "One dish or drink per picture, close and appetising: steam, pour, garnish.",
     mode: "r2v", perShot: 2, perPicture: true,
@@ -133,6 +139,7 @@ SCENE_PRESETS.push(
   },
   {
     key: "fashion",
+    category: "People & stories",
     name: "Fashion lookbook",
     blurb: "One look per picture: the outfit worn, walked, turned. Garments exact.",
     mode: "r2v", perShot: 3, perPicture: true,
@@ -146,6 +153,7 @@ SCENE_PRESETS.push(
   },
   {
     key: "hospitality",
+    category: "Spaces & places",
     name: "Hotel & restaurant",
     blurb: "One space per picture: lobby, room, terrace, table. Warm, inviting, unhurried.",
     mode: "r2v", perShot: 2.5, perPicture: true,
@@ -159,6 +167,7 @@ SCENE_PRESETS.push(
   },
   {
     key: "retail",
+    category: "Products & brands",
     name: "Store & product range",
     blurb: "Storefront, then the range: one picture per shot, each item or display exact.",
     mode: "r2v", perShot: 2, perPicture: true,
@@ -168,6 +177,107 @@ SCENE_PRESETS.push(
       shotType: i === 0 ? "wide" : i % 2 ? "close-up" : "medium", viewpoint: i % 3 === 2 ? "three-quarter" : "front-facing",
       camera: i === 0 ? { type: "push in", amplitude: "small", speed: "slow" } : i % 2 ? { type: "static" } : { type: "truck left", amplitude: "small", speed: "slow" },
       beats: [i === 0 ? "arriving at the storefront" : "the camera browses the display"],
+    })),
+  },
+);
+
+export const SCENE_PRESET_GROUPS = ["Spaces & places", "Products & brands", "People & stories"];
+
+SCENE_PRESETS.push(
+  {
+    key: "architecture", category: "Spaces & places", name: "Architecture & exteriors",
+    blurb: "A building or exterior per picture. Measured reveals of the facade, entrance and surrounding space.",
+    mode: "r2v", perShot: 3, perPicture: true,
+    soundscape: "A light outdoor breeze, distant traffic and the quiet ambience of the pictured location; no voices or music.",
+    guidance: "An architectural film. Each shot shows only the building or exterior in its own reference, in attachment order. Keep proportions, windows, materials, landscaping and surrounding buildings exact. Use restrained low-angle or wide compositions and slow straight camera moves; no invented storeys, additions, people or text overlays.",
+    build: ctx => perPicture(ctx, 3, i => ({
+      shotType: i % 2 ? "medium wide" : "wide", viewpoint: i % 2 ? "front-facing" : "low-angle",
+      camera: i % 2 ? { type: "truck right", amplitude: "small", speed: "slow" } : { type: "push in", amplitude: "small", speed: "slow" },
+      beats: ["the camera reveals the facade, holding the building's vertical lines steady"],
+    })),
+  },
+  {
+    key: "interior_details", category: "Spaces & places", name: "Interior details",
+    blurb: "Furniture, finishes and design details. One reference per shot, with close framing and gentle movement.",
+    mode: "r2v", perShot: 2.5, perPicture: true,
+    soundscape: "Quiet interior ambience, soft room tone and a faint breeze through an open window; no voices.",
+    guidance: "An interior design detail reel. Each shot stays inside its own reference and focuses on one existing piece of furniture, finish or architectural detail. Keep colour, material, geometry and placement unchanged. Alternate medium and close views with slow pushes or lateral moves that reveal texture; no added decoration, rearranged furniture, people or text.",
+    build: ctx => perPicture(ctx, 2.5, i => ({
+      shotType: i % 2 ? "close-up" : "medium", viewpoint: "three-quarter",
+      camera: i % 2 ? { type: "push in", amplitude: "small", speed: "slow" } : { type: "truck left", amplitude: "small", speed: "slow" },
+      beats: ["the camera moves gently across the existing finishes, revealing texture and edges"],
+    })),
+  },
+  {
+    key: "jewelry", category: "Products & brands", name: "Jewellery & watches",
+    blurb: "Precise close-ups of metal, stones and watch details, with subtle travelling reflections.",
+    mode: "r2v", perShot: 2.5, perPicture: true,
+    soundscape: "A hushed studio ambience, with a faint natural contact sound only when an item moves; no music or voices.",
+    guidance: "A jewellery or watch film. Each shot presents only the piece in its own reference, preserving stone count and setting, engraving, dial markings, metal colour and proportions. Close framing, controlled reflections and small camera moves; sparkle comes from a changing reflection, never from animated glitter. No invented hands, branding or text overlays.",
+    build: ctx => perPicture(ctx, 2.5, i => ({
+      shotType: i % 2 ? "extreme close-up" : "close-up", viewpoint: "three-quarter",
+      camera: i % 2 ? { type: "static" } : { type: "arc right", amplitude: "small", speed: "slow" },
+      beats: ["a soft reflection travels across the metal and catches the fine edges"],
+    })),
+  },
+  {
+    key: "beauty", category: "Products & brands", name: "Beauty & skincare",
+    blurb: "Bottles, packaging and visible textures. Clean beauty shots that keep the product and label intact.",
+    mode: "r2v", perShot: 2, perPicture: true,
+    soundscape: "Soft studio room tone and a subtle cap or glass contact when visible movement calls for it; no dialogue.",
+    guidance: "A beauty product reel. Each shot uses only its own pictured bottle, jar, packaging or texture. Preserve labels, logos, fill levels and container shapes. Use soft directional light, a clean background and gentle close camera movement. Only show a pour or application if the reference provides that action; no invented hands, before-and-after results or text overlays.",
+    build: ctx => perPicture(ctx, 2, i => ({
+      shotType: i % 2 ? "close-up" : "medium close-up", viewpoint: i % 2 ? "three-quarter" : "front-facing",
+      camera: { type: "push in", amplitude: "small", speed: "slow" },
+      beats: ["soft light rolls across the pictured packaging and surface texture"],
+    })),
+  },
+  {
+    key: "craft", category: "Products & brands", name: "Craft & making",
+    blurb: "Materials, hands and finished objects. A tactile workshop story, one photographed step at a time.",
+    mode: "r2v", perShot: 3, perPicture: true,
+    soundscape: "The pictured workshop's natural sounds: light tool contact, material moving and quiet room tone; no speech.",
+    guidance: "A craft process reel. Each shot stays with the material, tool, hands or finished object shown in its own reference, in order. Preserve the maker's identity and the object's geometry. Give visible hands one small plausible action with the pictured tool; object-only references get a gentle camera move. No invented process steps, instant transformations or extra tools.",
+    build: ctx => perPicture(ctx, 3, i => ({
+      shotType: i % 2 ? "close-up" : "medium close-up", viewpoint: i % 2 ? "top-down" : "three-quarter",
+      camera: { type: "static" },
+      beats: ["the pictured making step continues with one careful movement, revealing the material's texture"],
+    })),
+  },
+  {
+    key: "wedding", category: "People & stories", name: "Wedding & celebration",
+    blurb: "People, flowers and meaningful details. Gentle movement through the moments in your pictures.",
+    mode: "r2v", perShot: 3, perPicture: true,
+    soundscape: "A soft gathering ambience, light fabric movement and the pictured venue's room tone; no invented speeches.",
+    guidance: "A celebration keepsake. Each shot animates only the moment in its own reference, preserving every person's identity, clothing, flowers, decor and relationships. Subtle glances, breathing or fabric movement for people; a gentle push for detail photographs. Do not invent a kiss, a guest, a speech or an event that the picture does not show. No text overlays.",
+    build: ctx => perPicture(ctx, 3, i => ({
+      shotType: i % 2 ? "medium close-up" : "medium wide", viewpoint: "front-facing",
+      camera: { type: "push in", amplitude: "small", speed: "slow" },
+      beats: ["the photographed moment comes gently to life with small, natural movement"],
+    })),
+  },
+  {
+    key: "fitness", category: "People & stories", name: "Fitness & movement",
+    blurb: "One athlete or exercise per reference, with clear framing and a short, controlled movement.",
+    mode: "r2v", perShot: 2.5, perPicture: true,
+    soundscape: "Natural breathing, shoes contacting the floor and the equipment sounds implied by the picture; no dialogue or music.",
+    guidance: "A fitness reel. Each shot shows only the athlete, pose and equipment in its own reference. Preserve body proportions, identity, clothing and grip. Continue a small part of the pictured movement with stable anatomy and grounded contact; no added equipment, new exercise or impossible weight movement. Keep the body and relevant equipment inside the frame.",
+    build: ctx => perPicture(ctx, 2.5, i => ({
+      shotType: i % 2 ? "medium wide" : "wide", viewpoint: i % 2 ? "side" : "three-quarter",
+      camera: { type: "static" },
+      beats: ["continues the pictured movement in one controlled motion and settles"],
+    })),
+  },
+  {
+    key: "pets", category: "People & stories", name: "Pets & animals",
+    blurb: "Natural animal portraits: a blink, a small head turn or a shift of attention, with markings preserved.",
+    mode: "r2v", perShot: 3, perPicture: true,
+    soundscape: "The ambience of the pictured setting, gentle breathing and subtle fur or feather movement; no human voices.",
+    guidance: "An animal portrait reel. Every shot features only the animal or animals already in its own reference. Preserve species, size, coat pattern, eye colour, anatomy and surroundings. One natural action such as blinking, a slight head turn or looking toward a sound; no talking, human gestures, invented animals or sudden running. Use quiet, steady framing.",
+    build: ctx => perPicture(ctx, 3, i => ({
+      shotType: i % 2 ? "close-up" : "medium", viewpoint: "front-facing",
+      camera: i % 2 ? { type: "static" } : { type: "push in", amplitude: "small", speed: "slow" },
+      beats: ["blinks and makes a small, natural shift of attention"],
     })),
   },
 );

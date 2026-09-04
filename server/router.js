@@ -25,6 +25,7 @@ import * as store from "./store.js";
 import * as projects from "./projects.js";
 import { ffmpegAvailable, lastFrame, assemble, filmPath, exportEdit, probeSource } from "./film.js";
 import { voiceHealth, listVoices, speak, addReferenceVoice, removeReferenceVoice, ENGINES as VOICE_ENGINES } from "./voice.js";
+import { resolveStatus, sendToResolve } from "./resolve.js";
 
 export const CUT_VERSION = "1.0.0";
 
@@ -1170,6 +1171,14 @@ export function createCutHandler({ auth = null, login = null } = {}) {
          * joined, with audio mixed under — and the probe it uses to learn a
          * clip's length before that. Same rule as the film: 503 without
          * ffmpeg, and the result lands where /film/view already serves it. */
+        case "/resolve/status": {
+          if (method !== "GET") return sendJson(res, 405, { ok: false, error: "GET required" });
+          return sendJson(res, 200, await resolveStatus());
+        }
+        case "/resolve/send": {
+          if (method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
+          return sendJson(res, 200, await sendToResolve(body));
+        }
         case "/edit/export": {
           if (method !== "POST") return sendJson(res, 405, { ok: false, error: "POST {id, name, fps, width, height, clips, audio}" });
           if (!(await ffmpegAvailable())) {

@@ -57,7 +57,7 @@ const ensure = (dir) => { if (!existsSync(dir)) mkdirSync(dir, { recursive: true
 
 /** Run ffmpeg. Resolves with { code, stderr } — never rejects on a non-zero
  *  exit, because a failed stream copy is a normal step here, not an error. */
-function ffmpeg(args, { timeout = 900000 } = {}) {
+export function ffmpeg(args, { timeout = 900000 } = {}) {
   return new Promise((resolve) => {
     let proc;
     try {
@@ -223,7 +223,7 @@ export async function assemble({ clips = [], name = "film", audio = "keep", id =
 export async function probe(file) {
   const { code, stdout, stderr } = await capture(FFPROBE, [
     "-v", "error",
-    "-show_entries", "stream=codec_type,width,height,r_frame_rate,duration:format=duration",
+    "-show_entries", "stream=codec_type,codec_name,width,height,r_frame_rate,duration,channels,sample_rate:format=duration",
     "-of", "json", file,
   ]);
   if (code !== 0) throw new Error(`ffprobe could not read the file — ${lastLines(stderr)}`);
@@ -246,6 +246,10 @@ export async function probe(file) {
     height: Number(video?.height) || 0,
     fps: video ? rate(video.r_frame_rate) : 0,
     hasAudio: !!audio,
+    videoCodec: video?.codec_name || "",
+    audioCodec: audio?.codec_name || "",
+    audioChannels: Number(audio?.channels) || 0,
+    sampleRate: Number(audio?.sample_rate) || 0,
   };
 }
 
@@ -277,7 +281,7 @@ function readMedia(mediaId, label) {
 }
 
 /** Pull a source's bytes into `dir` under `stem`, and return the path. */
-async function fetchSource(source, dir, stem, label) {
+export async function fetchSource(source, dir, stem, label) {
   if (isRender(source)) {
     const file = join(dir, `${stem}.mp4`);
     writeFileSync(file, await fetchOutput(source));

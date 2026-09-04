@@ -179,6 +179,8 @@ export const api = {
   removeVoice:   (engine, id) => request("/voice/reference", { method: "DELETE", body: { engine, id }, timeout: 30000 }),
   editExport:    (body) => request("/edit/export", { method: "POST", body, timeout: 1800000 }),
   editProbe:     (source) => request("/edit/probe", { method: "POST", body: { source }, timeout: 300000 }),
+  resolveStatus: () => request("/resolve/status", { timeout: 60000 }),
+  resolveSend:   (body) => request("/resolve/send", { method: "POST", body, timeout: 1800000 }),
 
   /* The whole app's state as one downloadable object, and the way back.
    * Client mode only — in server mode the data/ folder is the backup. */

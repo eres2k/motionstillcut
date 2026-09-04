@@ -92,8 +92,20 @@
 }
 
 /* ── Under 600px: a phone ─────────────────────────────────── */
+@media (max-width: 880px) {
+  #page-edit .cols { display: flex; flex-direction: column; overflow-y: auto; }
+  #page-edit .cols > .panel { display: flex; flex: 0 0 auto; order: 1; }
+  #page-edit .cols > .edit-timeline { order: 0; }
+  #page-edit .cols > .panel > .bd { flex: none; overflow: visible; }
+  #page-edit .cols > .sz-gut { display: none; }
+}
 @media (max-width: 600px) {
+  .app { grid-template-rows: calc(72px + env(safe-area-inset-top)) 1fr calc(46px + env(safe-area-inset-bottom)); }
   .titlebar .brand { display: none; }
+  .titlebar { flex-wrap: wrap; height: auto; min-height: 36px; padding-bottom: 4px; }
+  .titlebar .viewflow { flex: 1 1 100%; order: 2; justify-content: center; }
+  .titlebar .project { display: none; }
+  .titlebar .vsep { display: none; }
   #btn-quickguide { display: none; }
   #badge-gpu { display: none; }
 
@@ -176,6 +188,9 @@
   .app { grid-template-rows: calc(30px + env(safe-area-inset-top)) 1fr calc(34px + env(safe-area-inset-bottom)); }
   .pagebar .page-btn { height: 32px; font-size: 0; gap: 0; }
   .pagebar .page-btn svg { width: 18px; height: 18px; }
+}
+@media (max-width: 600px) and (max-height: 460px) and (orientation: landscape) {
+  .app { grid-template-rows: calc(72px + env(safe-area-inset-top)) 1fr calc(34px + env(safe-area-inset-bottom)); }
 }
 
 
