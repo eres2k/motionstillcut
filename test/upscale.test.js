@@ -66,8 +66,8 @@ test("FlashVSR: ×2 for a 1080p target from 480p, ×4 above, long mode past ten 
   assert.deepEqual(node.inputs.frames, ["16", 0]);
   assert.equal(node.inputs.scale, 4);        // 480 → 1080 is ×2.25, past what ×2 gives
   assert.equal(node.inputs.mode, "tiny");
-  assert.deepEqual(short.prompt["18"].inputs.images, ["62", 0]);
-  assert.equal(short.prompt["62"].inputs.image[0], id);
+  assert.deepEqual(short.prompt["18"].inputs.images, ["202", 0]);
+  assert.equal(short.prompt["202"].inputs.image[0], id);
   assert.equal(short.meta.stockNodesOnly, false);
   const p = project({ engine: "flashvsr", target: "720p" });
   p.render.duration = 15;
@@ -125,9 +125,9 @@ test("LTX-2.5 refine on an H3 render: loads the LTX pack, trims to 8k+1 frames, 
   assert.deepEqual(prompt["114"].inputs.model, ["100", 0]);
   assert.equal(prompt["117"].inputs.sigmas[0], "113");
   assert.equal(prompt["119"].class_type, "VAEDecodeTiled");
-  assert.deepEqual(prompt["62"].inputs.image, ["119", 0]);
-  assert.equal(prompt["62"].inputs.height, 1080);
-  assert.deepEqual(prompt["18"].inputs.images, ["62", 0]);
+  assert.deepEqual(prompt["202"].inputs.image, ["119", 0]);
+  assert.equal(prompt["202"].inputs.height, 1080);
+  assert.deepEqual(prompt["18"].inputs.images, ["202", 0]);
   assert.deepEqual(prompt["18"].inputs.audio, ["17", 0], "the render's own soundtrack is kept");
   assert.equal(meta.stockNodesOnly, false);
 });
@@ -139,5 +139,28 @@ test("LTX-2.5 refine on an LTX render reuses its loaders and needs no trim", () 
   assert.deepEqual(prompt["108"].inputs.pixels, ["32", 0]);
   assert.deepEqual(prompt["114"].inputs.model, ["1", 0]);
   assert.deepEqual(prompt["114"].inputs.positive, ["7", 0]);
-  assert.deepEqual(prompt["34"].inputs.images, ["62", 0]);
+  assert.deepEqual(prompt["34"].inputs.images, ["202", 0]);
+});
+
+test("an LTX render with a first frame keeps its pass-1 guide at id 60 — the upscale must not overwrite it", () => {
+  const p = project({ engine: "seedvr2", renderEngine: "ltx25" });
+  p.mode = "i2v";
+  p.frames.first = { id: "ff", name: "first.png", kind: "image", comfyName: "first.png" };
+  p.render.seed = 624119881696;   // the seed that failed validation on the 5090
+  const { prompt } = buildWorkflow(p, settings);
+  assert.equal(prompt["60"]?.class_type, "LTXVAddGuide", "pass-1 guide survives");
+  assert.equal(prompt["15"].inputs.positive[0], "60");
+  assert.equal(prompt["200"].class_type, "SeedVR2LoadDiTModel");
+  const [[, seedvr]] = byType(prompt, "SeedVR2VideoUpscaler");
+  assert.ok(seedvr.inputs.seed <= 4294967295 && seedvr.inputs.seed >= 0, `32-bit seed, got ${seedvr.inputs.seed}`);
+  assert.deepEqual(prompt["34"].inputs.images, ["202", 0]);
+  for (const id of ["60", "70", "50"]) assert.notEqual(prompt[id]?.class_type, "SeedVR2LoadDiTModel");
+});
+
+test("FlashVSR gets a 32-bit seed too", () => {
+  const p = project({ engine: "flashvsr" });
+  p.render.seed = 91967862911;
+  const { prompt } = buildWorkflow(p, settings);
+  const [[, node]] = byType(prompt, "FlashVSRNode");
+  assert.ok(node.inputs.seed <= 4294967295);
 });
