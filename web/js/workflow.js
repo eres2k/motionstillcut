@@ -95,13 +95,14 @@ export function deliveredSize(project) {
  * ImageCompositeMasked lays the one image over every frame of the batch. */
 function appendWatermark(graph, { createVideo, watermark }) {
   if (!watermark?.file) return null;
-  graph["64"] = { class_type: "LoadImage", _meta: { title: `Watermark (${watermark.mode})` }, inputs: { image: watermark.file } };
-  graph["65"] = { class_type: "InvertMask", _meta: { title: "Watermark alpha" }, inputs: { mask: ["64", 1] } };
-  graph["66"] = {
+  // Ids 210-212: clear of the LTX graph's guides (60+, 70+) and anchors (50+).
+  graph["210"] = { class_type: "LoadImage", _meta: { title: `Watermark (${watermark.mode})` }, inputs: { image: watermark.file } };
+  graph["211"] = { class_type: "InvertMask", _meta: { title: "Watermark alpha" }, inputs: { mask: ["210", 1] } };
+  graph["212"] = {
     class_type: "ImageCompositeMasked", _meta: { title: "Stamp every frame" },
-    inputs: { destination: graph[createVideo].inputs.images, source: ["64", 0], x: watermark.x || 0, y: watermark.y || 0, resize_source: false, mask: ["65", 0] },
+    inputs: { destination: graph[createVideo].inputs.images, source: ["210", 0], x: watermark.x || 0, y: watermark.y || 0, resize_source: false, mask: ["211", 0] },
   };
-  graph[createVideo].inputs.images = ["66", 0];
+  graph[createVideo].inputs.images = ["212", 0];
   return { mode: watermark.mode, file: watermark.file };
 }
 
@@ -687,32 +688,36 @@ function upscaleSeconds(project) {
 
 /** Append the pass to a graph whose decoded frames come out of `decode` and
  *  whose mux is `createVideo`; rewires the mux to the upscaled frames. Node
- *  ids 60-63 and 100-119 are clear of both engines' graphs; 62 is always the
- *  final resize, so the mux has one place to look. */
+ *  Node ids 200-203 (and 100-119 for the LTX refine) sit clear of both
+ *  engines' graphs — the LTX graph numbers its pass-1 guides 60+, its pass-2
+ *  guides 70+, its anchor images 50+, which is exactly where these used to
+ *  land. 202 is always the final resize, so the mux has one place to look. */
 function appendUpscale(graph, { decode, createVideo, project, models, seed, promptText, ltx = null }) {
   const plan = upscalePlan(project);
   if (!plan) return null;
   const from = [decode, 0];
+  // SeedVR2's and FlashVSR's seed inputs are 32-bit; Cut's seeds are not.
+  const seed32 = Math.abs(Number(seed) || 0) % 4294967296;
   const finish = (fromId, title) => {
-    graph["62"] = { class_type: "ImageScale", _meta: { title },
+    graph["202"] = { class_type: "ImageScale", _meta: { title },
       inputs: { image: [fromId, 0], upscale_method: "lanczos", width: plan.width, height: plan.height, crop: "disabled" } };
   };
   if (plan.engine === "seedvr2") {
     const diffuseAt = Math.min(plan.shortEdge, SEEDVR2_DIFFUSE_CAP);
     // The VAE's batched decode is what fills the card — tile it from 1080p up.
     const tiled = diffuseAt >= 1080;
-    graph["60"] = { class_type: "SeedVR2LoadDiTModel", _meta: { title: "SeedVR2 DiT" },
+    graph["200"] = { class_type: "SeedVR2LoadDiTModel", _meta: { title: "SeedVR2 DiT" },
       inputs: { model: models.seedvr2_dit, device: "cuda:0" } };
-    graph["61"] = { class_type: "SeedVR2LoadVAEModel", _meta: { title: "SeedVR2 VAE" },
+    graph["201"] = { class_type: "SeedVR2LoadVAEModel", _meta: { title: "SeedVR2 VAE" },
       inputs: { model: models.seedvr2_vae, device: "cuda:0", encode_tiled: tiled, decode_tiled: tiled,
         encode_tile_size: 1024, encode_tile_overlap: 128, decode_tile_size: 1024, decode_tile_overlap: 128 } };
     // Batches of 5 visibly flicker; 13 with a 4-frame overlap is the floor
     // the pack's own guidance gives for coherent motion.
-    graph["63"] = { class_type: "SeedVR2VideoUpscaler", _meta: { title: `SeedVR2 → ${diffuseAt}p` },
-      inputs: { image: from, dit: ["60", 0], vae: ["61", 0], seed,
+    graph["203"] = { class_type: "SeedVR2VideoUpscaler", _meta: { title: `SeedVR2 → ${diffuseAt}p` },
+      inputs: { image: from, dit: ["200", 0], vae: ["201", 0], seed: seed32,
         resolution: diffuseAt, max_resolution: 0, batch_size: 13, uniform_batch_size: true,
         color_correction: "lab", temporal_overlap: 4, offload_device: "cpu" } };
-    finish("63", diffuseAt < plan.shortEdge ? `Resize → ${plan.target}` : `Fit → ${plan.target}`);
+    finish("203", diffuseAt < plan.shortEdge ? `Resize → ${plan.target}` : `Fit → ${plan.target}`);
   } else if (plan.engine === "ltx25") {
     const fps = project.render?.fps || 24;
     const numFrames = frameCount(project);
@@ -792,16 +797,16 @@ function appendUpscale(graph, { decode, createVideo, project, models, seed, prom
     finish("119", `Fit → ${plan.target}`);
   } else if (plan.engine === "flashvsr") {
     const frames = frameCount(project);
-    graph["61"] = { class_type: "FlashVSRNode", _meta: { title: `FlashVSR ×${plan.factor > 2 ? 4 : 2}` },
+    graph["201"] = { class_type: "FlashVSRNode", _meta: { title: `FlashVSR ×${plan.factor > 2 ? 4 : 2}` },
       inputs: { frames: from, model: "FlashVSR-v1.1", mode: frames > 240 ? "tiny-long" : "tiny",
-        scale: plan.factor > 2 ? 4 : 2, tiled_vae: true, tiled_dit: true, unload_dit: true, seed } };
-    finish("61", `Resize → ${plan.target}`);
+        scale: plan.factor > 2 ? 4 : 2, tiled_vae: true, tiled_dit: true, unload_dit: true, seed: seed32 } };
+    finish("201", `Resize → ${plan.target}`);
   } else {
-    graph["60"] = { class_type: "UpscaleModelLoader", _meta: { title: "ESRGAN ×4" }, inputs: { model_name: models.esrgan } };
-    graph["61"] = { class_type: "ImageUpscaleWithModel", _meta: { title: "Upscale frames ×4" }, inputs: { upscale_model: ["60", 0], image: from } };
-    finish("61", `Resize → ${plan.target}`);
+    graph["200"] = { class_type: "UpscaleModelLoader", _meta: { title: "ESRGAN ×4" }, inputs: { model_name: models.esrgan } };
+    graph["201"] = { class_type: "ImageUpscaleWithModel", _meta: { title: "Upscale frames ×4" }, inputs: { upscale_model: ["200", 0], image: from } };
+    finish("201", `Resize → ${plan.target}`);
   }
-  graph[createVideo].inputs.images = ["62", 0];
+  graph[createVideo].inputs.images = ["202", 0];
   return plan;
 }
 
