@@ -28,7 +28,7 @@ import { DIALS, DEFAULT_DIALS, applySteering, explainDials, DETAIL_BANDS, detail
 import { readMaterial, moreBeats, baseQuestions } from "../interview.js";
 import { compilePrompt, validate } from "../prompt.js";
 import { renderPrompt } from "../prompttext.js";
-import { SCENE_PRESETS, applyPreset, presetContext, presetByKey } from "../presets.js";
+import { SCENE_PRESETS, MOOD_PRESETS, QUALITY_PRESETS, applyPreset, applyMood, applyQuality, presetContext, presetByKey, moodByKey, qualityByKey } from "../presets.js";
 import { citeLooseReferences } from "./simple.js";
 import { createPreviz } from "../previz.js";
 import { estimateSeconds, humanTime } from "../workflow.js";
@@ -212,6 +212,20 @@ function materialStage(p) {
       h("span.hint", creative(p).preset
         ? `${presetByKey(creative(p).preset)?.blurb || ""} The preset's guidance rides on every rewrite; attach more pictures and pick it again to rebuild.`
         : `${presetContext(p).picCount} picture${presetContext(p).picCount === 1 ? "" : "s"} attached — a preset builds one shot per picture, in order, each citing its own.`),
+    ),
+    h("div.cr-row",
+      h("span.cr-label", "Mood"),
+      segmented([["", "None", "The look stays as the Cut page has it"], ...MOOD_PRESETS.map(t => [t.key, t.name, t.guidance])],
+        creative(p).mood || "",
+        (v) => { update((draft) => { applyMood(draft, v); }, "style"); draw(); }),
+      h("span.hint", creative(p).mood ? `${moodByKey(creative(p).mood)?.guidance || ""} Sets the grade; rides on every rewrite.` : "Sets the grade the prompt names and a line on light and feel."),
+    ),
+    h("div.cr-row",
+      h("span.cr-label", "Quality"),
+      segmented([["", "None", "Say nothing about the camera or stock"], ...QUALITY_PRESETS.map(t => [t.key, t.name, t.guidance])],
+        creative(p).quality || "",
+        (v) => { update((draft) => { applyQuality(draft, v); }, "style"); draw(); }),
+      h("span.hint", creative(p).quality ? qualityByKey(creative(p).quality)?.guidance || "" : "What the camera and the stock are — photoreal, 35 mm, anamorphic…"),
     ),
     h("div.cr-row",
       h("span.cr-label", "How many shots?"),

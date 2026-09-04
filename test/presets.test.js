@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { blankProject, shotCitations, DURATION_FRAMES } from "../web/js/state.js";
-import { SCENE_PRESETS, applyPreset, presetContext, presetDuration, presetGuidance } from "../web/js/presets.js";
+import { SCENE_PRESETS, MOOD_PRESETS, QUALITY_PRESETS, applyPreset, applyMood, applyQuality, presetContext, presetDuration, presetGuidance } from "../web/js/presets.js";
 import { compilePrompt, validate } from "../web/js/prompt.js";
 
 function flat(n) {
@@ -69,4 +69,27 @@ test("lengths snap up to the grid", () => {
   assert.equal(presetDuration(1, 2.5), 5);
   assert.equal(presetDuration(3, 3.5, 10), 15);
   assert.equal(presetDuration(40, 3), 30, "capped at the longest the grid offers");
+});
+
+test("mood sets the grade the prompt names and adds its line; quality adds its own; both clear", () => {
+  const p = flat(2);
+  applyPreset(p, "vehicle");
+  applyMood(p, "noir");
+  applyQuality(p, "film35");
+  assert.match(p.style.grade, /bleach-bypass/);
+  const g = presetGuidance(p).split("\n");
+  assert.equal(g.length, 3);
+  assert.match(g[0], /^Scene preset — Vehicle showcase/);
+  assert.match(g[1], /^Mood — Noir/);
+  assert.match(g[2], /^Image quality — 35 mm film/);
+  assert.match(compilePrompt(p).text, /bleach-bypass/, "the grade reaches the compiled prompt");
+  applyMood(p, ""); applyQuality(p, "");
+  assert.equal(presetGuidance(p).split("\n").length, 1);
+  assert.equal(p.creative.mood, "");
+});
+
+test("every mood and quality preset has a key, a name and guidance; moods name a real grade or none", () => {
+  for (const m of MOOD_PRESETS) { assert.ok(m.key && m.name && m.guidance.length > 40, m.key); assert.equal(typeof m.grade, "string"); }
+  for (const q of QUALITY_PRESETS) assert.ok(q.key && q.name && q.guidance.length > 40, q.key);
+  assert.ok(SCENE_PRESETS.length >= 9);
 });
