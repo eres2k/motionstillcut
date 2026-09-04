@@ -153,7 +153,13 @@ async function objectInfo(maxAgeMs = 60000) {
 
 function enumOf(info, node, input) {
   const spec = info?.[node]?.input?.required?.[input] ?? info?.[node]?.input?.optional?.[input];
-  const list = Array.isArray(spec) ? spec[0] : null;
+  if (!Array.isArray(spec)) return [];
+  // Two schemas. The older nodes put the list itself in the first slot; the
+  // V3 nodes (ComfyUI 0.34 moved the core loaders, and every recent pack
+  // ships this way) put the word "COMBO" there and the list under options.
+  const list = Array.isArray(spec[0]) ? spec[0]
+    : spec[0] === "COMBO" && Array.isArray(spec[1]?.options) ? spec[1].options
+    : null;
   return Array.isArray(list) ? list.filter(v => typeof v === "string") : [];
 }
 
