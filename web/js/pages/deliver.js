@@ -14,7 +14,7 @@ import { runFilm, assembleFilm } from "../filmrun.js";
 import { variantsFor, variantFor } from "../vocab.js";
 import { setEngine as switchEngine } from "../state.js";
 import { validate, compilePrompt } from "../prompt.js";
-import { buildWorkflow, estimateSeconds, humanTime, randomSeed, LTX_MAX_ANCHORS, UPSCALE_TARGETS, UPSCALE_TARGET_LABELS, upscaleSettings, upscalePlan } from "../workflow.js";
+import { buildWorkflow, estimateSeconds, estimateVram, vramLevers, humanTime, randomSeed, LTX_MAX_ANCHORS, UPSCALE_TARGETS, UPSCALE_TARGET_LABELS, upscaleSettings, upscalePlan } from "../workflow.js";
 import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js";
 import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending, applyLive } from "../render.js";
 import * as downloads from "../downloads.js";
@@ -40,6 +40,7 @@ function settingsPanel(p) {
   const frames = durationFrames(p);
   const { width, height } = dimensions(p);
   const eta = estimateSeconds(p);
+  const fit = estimateVram(p, { cardGB: getHealth()?.comfy?.vramTotalGB || null });
 
   /* Switching engines swaps the whole variant family — "turbo" is not a name
    * an LTX build answers to — so the switch reaches for whichever build was
@@ -115,7 +116,7 @@ function settingsPanel(p) {
                 ? "Kept in this browser's settings — the same name on every project. Drawn at the delivered size, after the upscale."
                 : "Type the name to stamp. Until there is one, the render goes out unmarked.")
             : null,
-          h("div.hint", { style: { marginTop: "8px" } }, `Rough estimate: ${humanTime(eta)} on a 24 GB card.`),
+          fitLine(p, eta, fit),
           h("div.hint", { style: { marginTop: "5px" } },
             "These stick: whatever you choose here is what your next project starts from, in every mode."),
         ),
@@ -802,6 +803,53 @@ async function doDownload(p) {
   } catch (err) { toast("Could not build the graph", err.message, "err"); }
 }
 
+/* ── Will it fit on the card? ──────────────────────────────── */
+const gb = (n) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10);
+
+/** One line under the render settings: the wall-clock guess, and — for
+ *  MiniMax H3, where we have a model of it — how much of the card the
+ *  render needs. Amber when the DiT will have to page, red when it will
+ *  not fit at all. */
+function fitLine(p, eta, fit) {
+  const time = `Rough estimate: ${humanTime(eta)}`;
+  if (!fit) return h("div.hint", { style: { marginTop: "8px" } }, `${time} on a 24 GB card.`);
+  const tokens = `≈${Math.round(fit.tokens / 1000)}k tokens through the DiT`;
+  if (fit.verdict === "unknown") {
+    return h("div.hint", { style: { marginTop: "8px" } }, `${time} · about ${gb(fit.needGB)} GB of VRAM at peak (${tokens}) — ComfyUI is offline, so the card size is unknown.`);
+  }
+  const need = `needs about ${gb(fit.needGB)} of the card's ${gb(fit.cardGB)} GB`;
+  if (fit.verdict === "ok") return h("div.hint", { style: { marginTop: "8px" } }, `${time} · ${need} (${tokens}).`);
+  if (fit.verdict === "tight") {
+    return h("div.hint.warn", { style: { marginTop: "8px" } },
+      `${time} · ${need} (${tokens}). Fits, but the DiT cannot stay resident, so it will page weights every step and run slower.`);
+  }
+  const levers = vramLevers(p, fit);
+  return h("div.hint.bad", { style: { marginTop: "8px" } },
+    `${time} · ${need} (${tokens}) — this will not fit.${levers.length ? ` What would bring it back: ${levers.join(", ")}.` : ""}`);
+}
+
+/** The pre-render gate for VRAM. Only a hard "no" interrupts — a tight fit
+ *  is slow, not broken, and the line under the settings already says so. */
+async function okForVram(p, { verb = "Render" } = {}) {
+  const fit = estimateVram(p, { cardGB: getHealth()?.comfy?.vramTotalGB || null });
+  if (!fit || fit.verdict !== "no") return true;
+  const levers = vramLevers(p, fit);
+  return !!(await modal({
+    title: `${verb} anyway?`,
+    body: h("div",
+      h("div.note.bad", "This render probably will not fit on the card."),
+      h("div.hint", `Needs about ${gb(fit.needGB)} GB of VRAM at peak — ≈${Math.round(fit.tokens / 1000)}k tokens through the DiT on the ${fit.precision === "nvfp4" ? "NVFP4" : "int8"} build — and ComfyUI reports a ${gb(fit.cardGB)} GB card.`),
+      h("div.hint", "ComfyUI would spend the load time, then stop on the first sampling step with an out-of-memory error."),
+      levers.length ? h("div.hint", { style: { marginTop: "8px" } }, `What would bring it back: ${levers.join(", ")}.`) : null,
+      h("div.hint.faint", { style: { marginTop: "8px" } }, "The estimate is rough. If you know this machine fits it, go ahead."),
+    ),
+    actions: [
+      { label: "Change it first", onClick: (done) => done(false) },
+      { label: `${verb} anyway`, kind: "record", onClick: (done) => done(true) },
+    ],
+  }));
+}
+
 /**
  * The checks, at every door a graph leaves by.
  *
@@ -817,6 +865,7 @@ async function doDownload(p) {
  * entitled to. Returns true if the caller should go ahead.
  */
 async function okToSubmit(p, { verb = "Render", cost = "" } = {}) {
+  if (!(await okForVram(p, { verb }))) return false;
   const report = validate(p);
   if (!report.errors) return true;
   return !!(await modal({

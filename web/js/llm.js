@@ -119,7 +119,9 @@ THE ATTACHED REFERENCES HAVE NAMES, AND YOU MUST USE THEM:
 ${inv.map(e => `  ${e.tag} — ${e.ref?.label || e.ref?.name || e.kind}${e.ref?.caption ? `: ${e.ref.caption}` : ""}`).join("\n")}
 Write the tag inline in "subject" for every reference the shot is of, exactly as shown —
 e.g. "${inv[0]?.tag || "<Subject 1>"}, a woman in a grey wool coat". Describing the picture is NOT
-enough: an attached reference that no part of the prompt names is ignored by the model. Never
+enough: an attached reference that no part of the prompt names is ignored by the model. Cite a
+reference in the shots that are OF it, not in every shot — a clip that walks through several
+pictures (rooms of a flat, items in a range) cites one per shot, in order. Never
 invent a tag that is not listed here, and never change one label into another — <Subject N> is a
 person, an object or a place to reproduce; <Picture N> is an image used as an actual frame of the
 video; <Video N> is a clip whose motion or structure is followed; <Audio N> is a sound.`;
@@ -269,7 +271,7 @@ Return exactly: ${schema}
 - Keep every concrete detail the draft gives: names, wardrobe, props, locations, quoted dialogue,
   camera moves and their amplitude/speed. Add only what is implied. Invent no new camera motion.
 - Keep every <d>[Language] … </d> tag and every (S1)/(S2) speaker id byte-for-byte.
-${isRef ? "- Keep every <Picture N>/<Video N>/<Audio N> tag exactly as given, and cite each attached reference for what it actually shows. Never cite a tag that is not attached.\n" : ""}${project.mode === "i2v" ? "- The opening must match the fixed first frame exactly — same subject, appearance, clothing and setting — and then narrate forward from it. Cite <Picture 1> where you establish it, and say what is preserved: \"the young woman shown in <Picture 1> remains beside the window, preserving her appearance, clothing and seat position\".\n" : ""}- Dialogue and music never appear in overall_soundscape.
+${isRef ? "- Keep every <Picture N>/<Video N>/<Audio N> tag exactly as given, and cite each attached reference for what it actually shows, in the shot that shows it. A shot names only the subjects it is of — never list every subject in every shot. Never cite a tag that is not attached.\n" : ""}${project.mode === "i2v" ? "- The opening must match the fixed first frame exactly — same subject, appearance, clothing and setting — and then narrate forward from it. Cite <Picture 1> where you establish it, and say what is preserved: \"the young woman shown in <Picture 1> remains beside the window, preserving her appearance, clothing and seat position\".\n" : ""}- Dialogue and music never appear in overall_soundscape.
 ${instruction ? `\nThe user also asks: ${instruction}` : ""}`,
     prompt: [
       projectBrief(project),

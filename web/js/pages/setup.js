@@ -272,8 +272,13 @@ function llmPanel(s, health) {
     ),
     more("Answer format & thinking",
       row("Thinking", select([["off", "Off — ask the model not to think"], ["auto", "Auto — leave the model alone"]],
-        s.llm.thinking || "off", (v) => saveSettings({ llm: { thinking: v } })),
+        s.llm.thinking || "off", (v) => saveSettings({ llm: { thinking: v } }).then(refresh)),
         "The commonest cause of \"the model did not answer\" is a reasoning model (Qwen3, DeepSeek-R1, gpt-oss, GLM) spending its whole budget thinking. Off sends every backend's spelling of \"skip the reasoning\"; the reasoning is stripped either way, and a reply that ran out of room is retried with a bigger budget."),
+      (s.llm.thinking || "off") !== "off"
+        ? row("Reasoning strength", select([["default", "Model default"], ["low", "Low — quick"], ["medium", "Medium"], ["high", "High — slow and thorough"]],
+          s.llm.reasoning || "default", (v) => saveSettings({ llm: { reasoning: v } })),
+          "Sent as reasoning_effort while thinking is on. gpt-oss reads it natively; llama.cpp hands it to any chat template that reads reasoning_effort or reasoning_strength; other models ignore it. Give Max tokens room to match.")
+        : null,
       row("JSON mode", select([["auto", "Auto — ask once, stop if refused"], ["off", "Off — never ask"]],
         s.llm.jsonMode || "auto", (v) => saveSettings({ llm: { jsonMode: v } })),
         "llama.cpp, some LM Studio runtimes and most proxies reject response_format. On Auto the server probes once, then stops asking; answers are parsed out of prose regardless."),
