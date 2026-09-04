@@ -32,6 +32,7 @@ import * as mediaPage from "./pages/media.js";
 import * as cutPage from "./pages/cut.js";
 import * as soundPage from "./pages/sound.js";
 import * as deliverPage from "./pages/deliver.js";
+import * as editPage from "./pages/edit.js";
 import * as libraryPage from "./pages/library.js";
 import * as setupPage from "./pages/setup.js";
 
@@ -43,6 +44,7 @@ const PAGES = {
   cut:     { mod: cutPage,     el: null, drawn: false },
   sound:   { mod: soundPage,   el: null, drawn: false },
   deliver: { mod: deliverPage, el: null, drawn: false },
+  edit:    { mod: editPage,    el: null, drawn: false },
   library: { mod: libraryPage, el: null, drawn: false },
   setup:   { mod: setupPage,   el: null, drawn: false },
 };
@@ -203,7 +205,7 @@ function askDirector(request = "", runner = null) {
 }
 
 /* ── Keyboard ─────────────────────────────────────────────── */
-const PAGE_KEYS = { "`": "create", 0: "simple", 1: "library", 2: "media", 3: "cut", 4: "sound", 5: "deliver", 6: "setup", 9: "projects" };
+const PAGE_KEYS = { "`": "create", 0: "simple", 1: "library", 2: "media", 3: "cut", 4: "sound", 5: "deliver", 6: "setup", 7: "edit", 9: "projects" };
 
 function onKey(e) {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
@@ -304,6 +306,7 @@ function installCommands() {
     { id: "page.cut",     group: "Go to", label: "Cut",         hint: "3", run: go("cut") },
     { id: "page.sound",   group: "Go to", label: "Sound",       hint: "4", run: go("sound") },
     { id: "page.deliver", group: "Go to", label: "Deliver",     hint: "5", run: go("deliver") },
+    { id: "page.edit",    group: "Go to", label: "Edit — cut the renders together", hint: "7", keywords: ["editor", "timeline", "voice-over", "voiceover", "export", "ffmpeg", "quick clip"], run: go("edit") },
     { id: "page.library", group: "Go to", label: "Library — every render and its prompt", hint: "1", keywords: ["history", "compare", "rated"], run: go("library") },
     { id: "page.setup",   group: "Go to", label: "Setup",       hint: "6", run: go("setup") },
 
@@ -432,8 +435,11 @@ function installGlobalDrop() {
   window.addEventListener("dragover", (e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); });
   window.addEventListener("drop", async (e) => {
     if (!e.dataTransfer?.files?.length) return;
-    e.preventDefault();
     depth = 0; veil.style.display = "none";
+    // A page's own drop zone (Media's bins, Edit's imports) has already taken
+    // the files; only the veil was left to clear.
+    if (e.defaultPrevented) return;
+    e.preventDefault();
     const p = getProject();
     let added = 0, ignored = 0;
     for (const file of e.dataTransfer.files) {
