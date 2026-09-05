@@ -103,6 +103,63 @@ test("defaults survive a project saved before the card existed", () => {
   assert.equal(g["12"].class_type, "LTXVEmptyLatentAudio");
 });
 
+/* ── Voice cloning — LTXVReferenceAudio ─────────────────────
+ * The reference patches model AND conditioning, and every consumer has to
+ * read the patched refs: a guider still on ["1", 0] renders fine and sounds
+ * like a stranger — the identity silently never applies. */
+
+const voice = (over = {}) => ({ item: { id: "v1", name: "anna.mp3", kind: "audio", comfyName: "anna.mp3" }, scale: 2, ...over });
+
+test("a voice reference patches the model and both passes read the patch", () => {
+  const p = ltxProject();
+  p.render.ltxVoice = voice({ scale: 2.5 });
+  const g = build(p);
+  assert.equal(g["86"].inputs.audio, "anna.mp3");
+  assert.equal(g["87"].inputs.duration, 5, "trimmed to the ~5 s the node was trained on");
+  assert.equal(g["88"].class_type, "LTXVReferenceAudio");
+  assert.equal(g["88"].inputs.identity_guidance_scale, 2.5);
+  assert.deepEqual(g["88"].inputs.model, ["1", 0]);
+  assert.deepEqual(g["15"].inputs.model, ["88", 0], "pass 1 samples the patched model");
+  assert.deepEqual(g["26"].inputs.model, ["88", 0], "pass 2 refines with it too");
+  // No anchors in this project, so the guiders read the patched refs directly.
+  assert.deepEqual(g["15"].inputs.positive, ["88", 1]);
+  assert.deepEqual(g["15"].inputs.negative, ["88", 2]);
+});
+
+test("no reference — nothing patched, the stock refs stand", () => {
+  const g = build(ltxProject());
+  for (const id of ["86", "87", "88"]) assert.equal(g[id], undefined);
+  assert.deepEqual(g["15"].inputs.model, ["1", 0]);
+  assert.deepEqual(g["15"].inputs.positive, ["7", 0]);
+});
+
+test("a track and a voice compose — the track is the sound, the voice the speaker", () => {
+  const p = ltxProject();
+  p.render.ltxAudio = track();
+  p.render.ltxVoice = voice();
+  const g = build(p);
+  assert.equal(g["12"].class_type, "LTXVAudioVAEEncode");
+  assert.deepEqual(g["13"].inputs.audio_latent, ["85", 0]);
+  assert.deepEqual(g["15"].inputs.model, ["88", 0]);
+  const { meta } = buildWorkflow(p, { models: MODELS });
+  assert.deepEqual(meta.voiceClone, { name: "anna.mp3", scale: 2 });
+  assert.ok(meta.inputs.some(i => i.role === "voice reference" && i.name === "anna.mp3"));
+});
+
+test("the checker knows a voice needs an engine and lines to carry", () => {
+  const p = ltxProject();
+  p.render.ltxVoice = voice();
+  p.render.engine = "minimax";
+  p.render.variant = "turbo";
+  assert.ok(msgs(p).some(m => m.startsWith("warn:") && m.includes("voice reference") && m.includes("ignores it")),
+    "MiniMax + a voice must warn");
+  p.render.engine = "ltx25";
+  p.render.variant = "ltx_two";
+  assert.ok(msgs(p).some(m => m.includes("no shot has dialogue")), "a voice with nothing to say must warn");
+  p.shots[0].dialogue = [{ ...p.shots[0].dialogue?.[0], id: "d1", speaker: "S1", text: "Guten Morgen.", language: "German" }];
+  assert.ok(!msgs(p).some(m => m.includes("voice reference")), "with a line to speak, the voice is silent in the report");
+});
+
 test("the checker calls out a track the engine will ignore", () => {
   const p = ltxProject();
   p.render.ltxAudio = track();

@@ -374,6 +374,17 @@ export function ltxAudioSettings(project) {
   return { item: null, startSec: 0, separateVocals: false, vocalsOnly: false, ...(project.render?.ltxAudio || {}) };
 }
 
+/** The voice-clone settings (LTXVReferenceAudio), same contract as above.
+ *  `scale` is identity_guidance_scale — the node defaults to 3.0, the LTX
+ *  Director reference workflow recommends 2.0, and that is what the main
+ *  Motionstill app ships. */
+export function ltxVoiceSettings(project) {
+  return { item: null, scale: 2, ...(project.render?.ltxVoice || {}) };
+}
+// LTXVReferenceAudio was trained on ~5 s references — the trim is a property
+// of the model, not a preference; longer clips degrade identity transfer.
+const LTX_VOICE_REF_SECONDS = 5;
+
 function buildLtxWorkflow(project, settings, extras = {}) {
   const models = { ...(settings?.models || {}) };
   const { width, height } = dimensions(project);
@@ -402,6 +413,18 @@ function buildLtxWorkflow(project, settings, extras = {}) {
   const condAudio = audioCond.item && inputName(audioCond.item) ? audioCond.item : null;
   const separateVocals = !!(condAudio && audioCond.separateVocals);
   const vocalsOnly = !!(separateVocals && audioCond.vocalsOnly);
+
+  /* Native voice cloning — LTXVReferenceAudio, a core 2.5 node. Five seconds
+   * of any voice (an mp3 is enough) patch the MODEL and the CONDITIONING
+   * with that speaker's identity, so whatever the prompt says is spoken is
+   * spoken IN THAT VOICE. It patches upstream of everything: the guide
+   * chain, both passes' guiders and the crop guides all read the patched
+   * refs, exactly as the main Motionstill app wires it. Independent of the
+   * conditioning track above — a track fixes WHAT the audio is, the
+   * reference fixes WHO speaks when the model does the speaking. */
+  const voiceCond = ltxVoiceSettings(project);
+  const voiceRef = voiceCond.item && inputName(voiceCond.item) ? voiceCond.item : null;
+  const modelRef = voiceRef ? ["88", 0] : ["1", 0];
 
   /* The anchor list: the I2V first frame at 0, then every pinned shot at its
    * cut time. Indices snap to the VAE's temporal stride of 8 and collide
@@ -501,10 +524,29 @@ function buildLtxWorkflow(project, settings, extras = {}) {
     graph["84"] = { class_type: "SolidMask", _meta: { title: "Audio Preserve Mask (0)" }, inputs: { value: 0, width: 1024, height: 1024 } };
     graph["85"] = { class_type: "SetLatentNoiseMask", _meta: { title: "Preserve Audio Latent" }, inputs: { samples: ["12", 0], mask: ["84", 0] } };
   }
+  if (voiceRef) {
+    graph["86"] = { class_type: "LoadAudio", _meta: { title: "Load Voice Reference" }, inputs: { audio: inputName(voiceRef) } };
+    graph["87"] = {
+      class_type: "TrimAudioDuration",
+      _meta: { title: "Trim Voice Reference" },
+      inputs: { audio: ["86", 0], start_index: 0, duration: LTX_VOICE_REF_SECONDS },
+    };
+    graph["88"] = {
+      class_type: "LTXVReferenceAudio",
+      _meta: { title: "LTXV Reference Audio (ID-LoRA)" },
+      inputs: {
+        model: ["1", 0], positive: ["7", 0], negative: ["7", 1],
+        reference_audio: ["87", 0], audio_vae: ["4", 0],
+        identity_guidance_scale: Number(voiceCond.scale) || 2,
+        start_percent: 0, end_percent: 1,
+      },
+    };
+  }
 
   /* ── The pass-1 guide chain — each anchor conditions the last one's
    * output, so one chain carries the first frame and every pin. ── */
-  let pos1 = ["7", 0], neg1 = ["7", 1], videoLatent1 = ["11", 0];
+  // With a voice reference, every consumer reads the identity-patched refs.
+  let pos1 = voiceRef ? ["88", 1] : ["7", 0], neg1 = voiceRef ? ["88", 2] : ["7", 1], videoLatent1 = ["11", 0];
   usable.forEach((a, i) => {
     const id = String(60 + i);
     graph[id] = {
@@ -527,7 +569,7 @@ function buildLtxWorkflow(project, settings, extras = {}) {
 
   /* ── Pass 1: the full 8-step schedule, cfg 1 ──────────── */
   graph["14"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (Pass 1)" }, inputs: { sigmas: LTX_SIGMAS_PASS1 } };
-  graph["15"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (Pass 1)" }, inputs: { cfg: 1, model: ["1", 0], positive: pos1, negative: neg1 } };
+  graph["15"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (Pass 1)" }, inputs: { cfg: 1, model: modelRef, positive: pos1, negative: neg1 } };
   graph["16"] = { class_type: "RandomNoise", _meta: { title: "Noise (Pass 1)" }, inputs: { noise_seed: seed } };
   graph["17"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (Pass 1)" }, inputs: { sampler_name: "euler_ancestral" } };
   graph["18"] = {
@@ -582,7 +624,7 @@ function buildLtxWorkflow(project, settings, extras = {}) {
       inputs: { video_latent: videoLatent2, audio_latent: ["19", 1] },
     };
     graph["25"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (Pass 2)" }, inputs: { sigmas: LTX_SIGMAS_PASS2 } };
-    graph["26"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (Pass 2)" }, inputs: { cfg: 1, model: ["1", 0], positive: pos2, negative: neg2 } };
+    graph["26"] = { class_type: "CFGGuider", _meta: { title: "CFGGuider (Pass 2)" }, inputs: { cfg: 1, model: modelRef, positive: pos2, negative: neg2 } };
     graph["27"] = { class_type: "RandomNoise", _meta: { title: "Noise (Pass 2)" }, inputs: { noise_seed: seed2 } };
     graph["28"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (Pass 2)" }, inputs: { sampler_name: "euler" } };
     graph["29"] = {
@@ -661,6 +703,8 @@ function buildLtxWorkflow(project, settings, extras = {}) {
     audioConditioning: condAudio
       ? { name: inputName(condAudio), startSec: Number(audioCond.startSec) || 0, separateVocals, vocalsOnly }
       : null,
+    // Whose voice the model speaks with — null when it invents one.
+    voiceClone: voiceRef ? { name: inputName(voiceRef), scale: Number(voiceCond.scale) || 2 } : null,
     nodeTypes: [...new Set(Object.values(graph).map(n => n.class_type))].sort(),
     promptChars: promptText.length,
     inputs: [
@@ -669,6 +713,7 @@ function buildLtxWorkflow(project, settings, extras = {}) {
         name: inputName(a.media), media: a.media,
       })),
       ...(condAudio ? [{ role: "conditioning audio", name: inputName(condAudio), media: condAudio }] : []),
+      ...(voiceRef ? [{ role: "voice reference", name: inputName(voiceRef), media: voiceRef }] : []),
     ],
   };
 

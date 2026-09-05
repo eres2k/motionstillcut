@@ -152,6 +152,7 @@ export async function uploadPending(onStep = () => {}, ctx = null) {
   if (activeEngine(p) === "ltx25") {
     (p.shots || []).forEach(s => { if (s.keyframe) collect(s.keyframe, `kf:${s.id}`); });
     collect(p.render?.ltxAudio?.item, "ltxAudio");
+    collect(p.render?.ltxVoice?.item, "ltxVoice");
   }
   let done = 0;
   for (const { item, where } of pending) {
@@ -164,6 +165,8 @@ export async function uploadPending(onStep = () => {}, ctx = null) {
       if (where === "first" && proj.frames.first?.id === item.id) proj.frames.first.comfyName = comfyName;
       else if (where === "ltxAudio") {
         if (proj.render?.ltxAudio?.item?.id === item.id) proj.render.ltxAudio.item.comfyName = comfyName;
+      } else if (where === "ltxVoice") {
+        if (proj.render?.ltxVoice?.item?.id === item.id) proj.render.ltxVoice.item.comfyName = comfyName;
       } else if (where.startsWith("kf:")) {
         const s = (proj.shots || []).find(x => x.id === where.slice(3));
         if (s?.keyframe?.id === item.id) s.keyframe.comfyName = comfyName;

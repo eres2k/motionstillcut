@@ -23,6 +23,7 @@ import {
  onProjectSwap, activeEngine, setEngine, durationFrames, shotCitations } from "../state.js";
 import { ingest, getBlob, delBlob, posterFor, kindOf } from "../media.js";
 import { linesBlock } from "../lines.js";
+import { trackPicker, voicePicker } from "../conditioning.js";
 import { queueLength } from "../queue.js";
 import { polishShot } from "../llm.js";
 import { DIALS, DEFAULT_DIALS, applySteering, explainDials, DETAIL_BANDS, detailToWriting } from "../steer.js";
@@ -202,6 +203,19 @@ function materialSettings(p) {
       linesBlock(p, draw),
       h("p.cr-setting-help", "Your exact words, or a rough direction ✎ writes from. → puts them in the prompt so they are SPOKEN in the clip; on LTX-2.5, ● records your own take and the render lip-syncs to it (fine-tuning under Deliver ▸ Audio)."),
     ),
+    /* The clip's two audio givens, decided here with everything else that
+     * shapes it — they change what the prompt should say, so they cannot be
+     * a Deliver-only afterthought. LTX-2.5 only: MiniMax has neither input. */
+    engine === "ltx25" ? h("div.cr-settings-grid",
+      field("cr-track", "Audio to follow", trackPicker(p, draw),
+        p.render?.ltxAudio?.item
+          ? `The render is generated AGAINST "${p.render.ltxAudio.item.name}" — lips and motion follow it. If it carries words, put them in the prompt above. Trim and vocal knobs: Deliver ▸ Audio.`
+          : "A song or a recording the video must follow — the model writes picture against it instead of inventing the sound."),
+      field("cr-voice", "Voice (clone)", voicePicker(p, draw),
+        p.render?.ltxVoice?.item
+          ? `Dialogue is spoken in "${p.render.ltxVoice.item.name}"'s voice. It needs lines — → Into the prompt above gives it some.`
+          : "~5 s of any voice — an mp3 is enough — and whatever the prompt says is spoken comes out in that voice (LTXVReferenceAudio)."),
+    ) : null,
 
     tooLong ? h("div.cr-length-warning", { role: "status" },
       h("div", h("b", `H3 supports up to ${H3_DURATION.max} seconds per clip.`), h("p", "Longer clips repeat. Use 15 seconds or assemble a longer film in Edit clips.")),

@@ -1256,11 +1256,22 @@ export function validate(project) {
    * sound. */
   {
     const condItem = project.render?.ltxAudio?.item;
-    if (condItem && activeEngine(project) !== "ltx25") {
+    const voiceItem = project.render?.ltxVoice?.item;
+    const onLtx = activeEngine(project) === "ltx25";
+    if (condItem && !onLtx) {
       add("warn", `A conditioning track ("${condItem.name}") is set under Deliver ▸ Audio, and audio conditioning only applies on the LTX-2.5 engine — the ${project.mode === "r2v" ? "Ref2V graph (always MiniMax)" : "MiniMax graph"} ignores it. Switch the engine, or clear the track.`,
         project.mode !== "r2v" ? { action: { kind: "engine", engine: "ltx25", label: "Switch to LTX-2.5" } } : {});
     } else if (condItem && project.film?.enabled) {
       add("warn", "Film mode renders its clips one by one, and each one is conditioned by the SAME stretch of the track (from the offset) — eight clips of the same eight bars, not a piece scored end to end. Render one clip, or lay the music under the finished cut on the Edit page instead.");
+    }
+    if (voiceItem && !onLtx) {
+      add("warn", `A voice reference ("${voiceItem.name}") is set, and voice cloning only applies on the LTX-2.5 engine — the ${project.mode === "r2v" ? "Ref2V graph (always MiniMax)" : "MiniMax graph"} ignores it. Switch the engine, or clear the voice.`,
+        project.mode !== "r2v" ? { action: { kind: "engine", engine: "ltx25", label: "Switch to LTX-2.5" } } : {});
+    } else if (voiceItem && !shots.some(s => (s.dialogue || []).some(d => (d.text || "").trim()))) {
+      /* The reference fixes WHO speaks; the prompt decides WHETHER anyone
+       * does. A voice with no lines is the silent-passenger shape again —
+       * paid for on every render, audible on none. */
+      add("warn", `A voice reference ("${voiceItem.name}") is set, but no shot has dialogue — nothing is spoken, so there is no line for the cloned voice to carry. Add lines (Create ▸ Voice-over → Into the prompt, or the Sound page).`);
     }
   }
 

@@ -3,9 +3,8 @@
 
 import {
   h, mount, toast, field, select, segmented, checkbox, textarea,
-  download, copyText, modal, timecode, clamp, group, more, row, uid, $,
+  download, copyText, modal, timecode, clamp, group, more, row, $,
 } from "../util.js";
-import { putBlob } from "../media.js";
 import { VOICE_ENGINES, VOICE_LANGS } from "../voice.js";
 import {
   getProject, update, dimensions, frameCount, DURATION_FRAMES, RESOLUTIONS, MODES, selectedShot,
@@ -16,12 +15,13 @@ import { runFilm, assembleFilm } from "../filmrun.js";
 import { variantsFor, variantFor } from "../vocab.js";
 import { setEngine as switchEngine } from "../state.js";
 import { validate, compilePrompt } from "../prompt.js";
-import { buildWorkflow, estimateSeconds, estimateVram, vramLevers, humanTime, randomSeed, LTX_MAX_ANCHORS, UPSCALE_TARGETS, UPSCALE_TARGET_LABELS, upscaleSettings, upscalePlan, ltxAudioSettings } from "../workflow.js";
+import { buildWorkflow, estimateSeconds, estimateVram, vramLevers, humanTime, randomSeed, LTX_MAX_ANCHORS, UPSCALE_TARGETS, UPSCALE_TARGET_LABELS, upscaleSettings, upscalePlan, ltxAudioSettings, ltxVoiceSettings } from "../workflow.js";
 import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js";
 import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending, applyLive } from "../render.js";
 import * as downloads from "../downloads.js";
 import { variablesFor, variableById, valuesFor, labelOf, runSweep, sweepCost } from "../experiments.js";
 import { linesBlock } from "../lines.js";
+import { trackPicker, voicePicker } from "../conditioning.js";
 import { api, SERVER_BACKED } from "../api.js";
 import { addRenderClip, renderOutput } from "../edit.js";
 import { resolveButton, onResolveChange } from "../resolve.js";
@@ -264,59 +264,32 @@ function upscaleGroup(p, set) {
  * the track is chosen. */
 function audioGroup(p, set) {
   const la = ltxAudioSettings(p);
+  const lv = ltxVoiceSettings(p);
   const nodes = getHealth()?.nodes || {};
   const known = { ...(nodes.ltx || {}), ...(nodes.optional || {}) };
   const has = (name) => (known[name] ? !!known[name].present : null);
   const setLa = (patch) => set({ ltxAudio: { ...la, ...patch } });
 
-  /* Every sound already in the project offers itself: the Edit page's audio
-   * tracks (voice-overs land there) and Ref2V's reference audios. A file
-   * from disk joins the pool the same way a dropped file does. */
-  const pool = [];
-  const seen = new Set();
-  for (const t of p.edit?.audio || []) {
-    if (t.kind === "audio" && t.mediaId && !seen.has(t.mediaId)) { seen.add(t.mediaId); pool.push({ id: t.mediaId, name: t.name || t.mediaId }); }
-  }
-  for (const m of p.refs?.audios || []) {
-    if (m?.id && !seen.has(m.id)) { seen.add(m.id); pool.push({ id: m.id, name: m.name || m.id }); }
-  }
-  if (la.item && !seen.has(la.item.id)) pool.unshift({ id: la.item.id, name: la.item.name });
-
-  const pickFile = () => {
-    const inp = h("input", { type: "file", accept: "audio/*,.wav,.mp3,.flac,.ogg,.m4a" });
-    inp.onchange = async () => {
-      const f = inp.files?.[0];
-      if (!f) return;
-      const dataUrl = await new Promise((res, rej) => {
-        const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error("could not read the file")); r.readAsDataURL(f);
-      });
-      const id = uid();
-      await putBlob(id, dataUrl);
-      // A fresh item with no comfyName — uploadPending moves the bytes on
-      // the next render, exactly like a dropped first frame.
-      setLa({ item: { id, name: f.name, kind: "audio", comfyName: "" } });
-    };
-    inp.click();
-  };
-  const onPick = (v) => {
-    if (v === "") return setLa({ item: null });
-    if (v === "__pick__") return pickFile();
-    const hit = pool.find(x => x.id === v);
-    if (hit) setLa({ item: { id: hit.id, name: hit.name, kind: "audio", comfyName: "" } });
-  };
-
   const melMissing = has("MelBandRoFormerSampler") === false;
   return group("Audio", {
     id: "d-audio", icon: "♫", accordion: false,
-    badge: la.item ? "conditioned" : "generated",
+    badge: la.item && lv.item ? "track + voice" : la.item ? "conditioned" : lv.item ? "cloned voice" : "generated",
     help: "LTX-2.5 samples audio and video in one joint latent — normally both start as noise. A conditioning track replaces the audio half with the encoded file, noise-masked so the sampler keeps it, and the video is generated against it: dialogue moves lips, beats move motion, and the delivered clip plays the track. The clip keeps the length you chose above; the track is trimmed to it from the offset. This is the main Motionstill app's Audio Conditioning card, node for node.",
   },
-    row("Track",
-      select([["", "off — the model writes the sound"], ...pool.map(x => [x.id, x.name]), ["__pick__", "a file from disk…"]],
-        la.item ? la.item.id : "", onPick),
+    row("Track", trackPicker(p, refresh),
       la.item
         ? `The render is conditioned by "${la.item.name}" — the model writes picture against this sound. A track shorter than the clip conditions the seconds it covers.`
         : "Off: LTX writes its own soundtrack from the prompt, as always. Voice-overs from the Edit page and reference audio are listed here; so is any file from disk."),
+    row("Voice", voicePicker(p, refresh),
+      lv.item
+        ? `Dialogue in the prompt is spoken in "${lv.item.name}"'s voice — five seconds of it patch the speaker identity (LTXVReferenceAudio). It needs LINES to carry: → Into the prompt below, or the Sound page.`
+        : "Off: the model invents a voice. Pick ~5 s of any voice — an mp3 is enough — and whatever the prompt says is spoken comes out in it. Composes with the track above: the track fixes the sound, this fixes the speaker."),
+    lv.item ? row("Identity",
+      h("div.flex",
+        h("input", { type: "number", min: "0.5", max: "6", step: "0.5", value: String(lv.scale ?? 2), class: "grow",
+          oninput: (e) => update((proj) => { proj.render.ltxVoice = { ...(proj.render.ltxVoice || {}), scale: Math.max(0.5, Number(e.target.value) || 2) }; }, "text") }),
+        h("span.hint.mono", "scale")),
+      "identity_guidance_scale — how hard the reference is held. The node defaults to 3; the LTX Director workflow (and the main app) run 2. Higher holds the timbre tighter and costs naturalness.") : null,
     la.item ? row("Start at",
       h("div.flex",
         h("input", { type: "number", min: "0", step: "0.5", value: String(la.startSec || 0), class: "grow",

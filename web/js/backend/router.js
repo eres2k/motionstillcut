@@ -135,6 +135,7 @@ const LTX_NODES = {
   LTXVLatentUpsampler:      "the 2× latent upscale (two-stage build)",
   LTXVAudioVAEEncode:       "audio conditioning — encodes a supplied track",
   TrimAudioDuration:        "audio conditioning — trims the track to the clip",
+  LTXVReferenceAudio:       "voice cloning — a ~5 s reference patches the speaker identity (2.5 core)",
 };
 
 const COMFY_FOLDER_SOURCES = {

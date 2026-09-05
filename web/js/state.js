@@ -352,6 +352,11 @@ export function blankProject() {
        * ({ id, name, comfyName }) like frames.first; the MiniMax graph
        * ignores all of this, and the checker says so. Deliver ▸ Audio. */
       ltxAudio: { item: null, startSec: 0, separateVocals: false, vocalsOnly: false },
+      /* LTX-2.5 only: whose voice the clip speaks with. ~5 s of any voice
+       * (an mp3 is enough) — LTXVReferenceAudio patches the model with the
+       * speaker's identity, and dialogue in the prompt is spoken in it.
+       * `scale` = identity_guidance_scale (2 per the LTX Director workflow). */
+      ltxVoice: { item: null, scale: 2 },
     },
     shots: [newShot(0)],
     sound: {
@@ -574,6 +579,7 @@ function migrate(p) {
   // The audio-conditioning sub-object, same reason as edit.export: a project
   // saved before the card existed must come back with every knob present.
   merged.render.ltxAudio = { ...base.render.ltxAudio, ...(p?.render?.ltxAudio || {}) };
+  merged.render.ltxVoice = { ...base.render.ltxVoice, ...(p?.render?.ltxVoice || {}) };
   /* Projects saved before full-reference mode used <Subject N> cite their
    * images as <Picture N>. The tag is positional either way, so the rewrite is
    * exact — and leaving them would silently break every citation the moment
@@ -913,6 +919,7 @@ export function forgetUploads(p) {
   for (const kind of ["images", "videos", "audios"]) (p?.refs?.[kind] || []).forEach(each);
   for (const shot of p?.shots || []) each(shot?.keyframe);
   each(p?.render?.ltxAudio?.item);
+  each(p?.render?.ltxVoice?.item);
   return p;
 }
 
