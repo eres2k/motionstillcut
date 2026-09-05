@@ -760,12 +760,13 @@ function referenceChips(p) {
 
 export function openTemplates() {
   const p = getProject();
+  const ctx = presetContext(p);
   const body = h("div",
     h("div.note.info", { style: { marginTop: 0 } },
       "A template replaces the shot list and sets the clip length. Everything you have typed into the current shots is lost — export the project first if you want it back."),
     h("div.hint", { style: { margin: "8px 0 4px", color: "var(--fg-bright)" } }, "Scene presets — one shot per attached picture, each citing its own; the guidance rides on every rewrite"),
     ...SCENE_PRESETS.map(t => {
-      const n = t.build(presetContext(p)).length;
+      const n = t.build(ctx).length;
       return h("div", {
         style: { padding: "8px 10px", border: "1px solid var(--line-hair)", borderRadius: "3px", marginBottom: "6px", cursor: "pointer" },
         onclick: () => {
@@ -775,7 +776,7 @@ export function openTemplates() {
           refresh();
         },
       },
-        h("div.flex", h("b", { style: { color: "var(--fg-bright)" } }, t.name), h("span.hint", `${n} shot${n === 1 ? "" : "s"} · ${presetContext(p).picCount} picture${presetContext(p).picCount === 1 ? "" : "s"}`), h("span.tag", "R2V")),
+        h("div.flex", h("b", { style: { color: "var(--fg-bright)" } }, t.name), h("span.hint", `${n} shot${n === 1 ? "" : "s"} · ${ctx.picCount} picture${ctx.picCount === 1 ? "" : "s"}`), h("span.tag", MODES[ctx.mode].short)),
         h("div.hint", { style: { marginTop: "3px" } }, t.blurb),
       );
     }),

@@ -2,9 +2,11 @@
  * length grid, with guidance every writer reads while the preset is on. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { blankProject, shotCitations, DURATION_FRAMES } from "../web/js/state.js";
+import { blankProject, shotCitations, DURATION_FRAMES, activeEngine, normaliseMedia } from "../web/js/state.js";
 import { SCENE_PRESETS, MOOD_PRESETS, QUALITY_PRESETS, applyPreset, applyMood, applyQuality, presetContext, presetDuration, presetGuidance } from "../web/js/presets.js";
 import { compilePrompt, validate } from "../web/js/prompt.js";
+import { buildWorkflow } from "../web/js/workflow.js";
+import { DEFAULT_MODELS } from "../web/js/backend/settings.js";
 
 function flat(n) {
   const p = blankProject();
@@ -12,6 +14,72 @@ function flat(n) {
   p.refs.images = Array.from({ length: n }, (_, i) => ({ id: `room${i}`, name: `room${i}.jpg`, label: `room ${i + 1}`, kind: "image", comfyName: `room${i}.jpg` }));
   return p;
 }
+
+test("every scene preset keeps a single picture in I2V with the selected LTX build", () => {
+  for (const preset of SCENE_PRESETS) {
+    const p = flat(1);
+    normaliseMedia(p);
+    const first = p.frames.first;
+    p.render.engine = "ltx25";
+    p.render.variant = "ltx_single";
+    assert.deepEqual(presetContext(p), { tags: ["<Picture 1>"], picCount: 1, mode: "i2v" });
+
+    applyPreset(p, preset.key);
+
+    assert.equal(p.mode, "i2v", preset.key);
+    assert.equal(activeEngine(p), "ltx25", preset.key);
+    assert.equal(p.render.variant, "ltx_single", preset.key);
+    assert.equal(p.frames.first, first, "the selected picture stays the first frame");
+    assert.deepEqual(p.refs.images, []);
+    assert.ok(p.shots.every(s => s.subject === "<Picture 1>"), preset.key);
+    const report = validate(p);
+    assert.equal(report.errors, 0, `${preset.key}: ${report.checks.filter(c => c.level === "err").map(c => c.msg).join("; ")}`);
+    const { prompt, meta, compiled } = buildWorkflow(p, { models: { ...DEFAULT_MODELS } });
+    assert.equal(meta.engine, "ltx25", preset.key);
+    assert.equal(compiled.dialect, "ltx25", preset.key);
+    assert.ok(Object.values(prompt).some(n => n.class_type === "LoadImage" && n.inputs.image === first.comfyName));
+    assert.ok(Object.values(prompt).some(n => n.class_type === "LTXVAddGuide" && n.inputs.frame_idx === 0));
+  }
+});
+
+test("applying or clearing a scene repairs a single picture left in Ref2V", () => {
+  for (const key of ["apartment", ""]) {
+    const p = flat(1);
+    p.render.engine = "ltx25";
+    p.render.variant = "ref_full";
+    p.creative.preset = "apartment";
+    p.shots[0].subject = "<Subject 1>";
+    applyPreset(p, key);
+    assert.equal(p.mode, "i2v");
+    assert.equal(activeEngine(p), "ltx25");
+    assert.equal(p.render.variant, "ltx_two");
+    assert.equal(p.frames.first.id, "room0");
+    assert.equal(p.shots[0].subject, "<Picture 1>");
+  }
+});
+
+test("scene previews count all attached pictures and derive their citation labels without changing the project", () => {
+  const p = flat(1);
+  normaliseMedia(p);
+  p.refs.images.push({ id: "room1", name: "room1.jpg", kind: "image" });
+  const before = structuredClone(p);
+  assert.deepEqual(presetContext(p), { tags: ["<Subject 1>", "<Subject 2>"], picCount: 2, mode: "r2v" });
+  assert.deepEqual(p, before);
+});
+
+test("a scene with a picture and audio still uses Ref2V", () => {
+  const p = flat(1);
+  normaliseMedia(p);
+  p.render.engine = "ltx25";
+  p.refs.audios.push({ id: "sound", kind: "audio", name: "sound.wav" });
+  applyPreset(p, "apartment");
+  assert.equal(p.mode, "r2v");
+  assert.equal(activeEngine(p), "minimax");
+  assert.equal(p.frames.first, null);
+  assert.equal(p.refs.images.length, 1);
+  assert.equal(p.refs.audios.length, 1);
+  assert.equal(p.shots[0].subject, "<Subject 1>");
+});
 
 test("apartment showcase: six pictures become six shots, each citing its own room, in order", () => {
   const p = flat(6);
@@ -61,6 +129,8 @@ test("no pictures yet: a per-picture preset still gives one shot to start from",
   applyPreset(p, "product");
   assert.equal(p.shots.length, 1);
   assert.equal(presetContext(p).picCount, 0);
+  assert.equal(p.mode, "t2v");
+  assert.equal(validate(p).errors, 0);
 });
 
 test("lengths snap up to the grid", () => {

@@ -9,7 +9,7 @@
  *
  * build(ctx) is pure and takes the attached tags: the Cut page's picker
  * calls it several times per paint. */
-import { newShot, newBeat, referenceInventory, DURATION_FRAMES } from "./state.js";
+import { newShot, newBeat, referenceInventory, DURATION_FRAMES, inferMode, normaliseMedia } from "./state.js";
 
 function shot(at, spec) {
   const s = newShot(at);
@@ -36,7 +36,7 @@ function spread(n, duration) {
 /** One shot per picture, in tag order, each citing its own picture. `grammar`
  *  hands back the framing for shot i of n. */
 function perPicture(ctx, per, grammar) {
-  const tags = ctx.tags.length ? ctx.tags : ["<Subject 1>"];
+  const tags = ctx.tags.length ? ctx.tags : ["the subject"];
   const n = tags.length;
   const duration = presetDuration(n, per);
   return spread(n, duration).map((at, i) => shot(at, { subject: tags[i], ...grammar(i, n) }));
@@ -49,7 +49,7 @@ export const SCENE_PRESETS = [
     soundscape: "Quiet room tone of an empty apartment: the hum of the building, a distant street through the glass, the faint tick of a radiator; no footsteps, no voices.",
     name: "Apartment showcase",
     blurb: "One room per picture, in the order the pictures are attached. Each shot cites its own room and nothing else; slow moves, no people, room tone.",
-    mode: "r2v", perShot: 2.5, perPicture: true,
+    perShot: 2.5, perPicture: true,
     guidance: "A property reel. Every shot shows exactly ONE room, the one in the picture it cites, in the order the pictures are attached; never name another room's subject in a shot. Architecture, furniture and finishes stay exactly as the picture shows them — nothing added, moved or restyled. No people, no pets, no text. Natural window light, calm continuous camera moves, no dialogue; the soundscape is quiet room tone with the building's ambience.",
     build: (ctx) => perPicture(ctx, 2.5, (i) => ({
       shotType: i % 2 ? "medium wide" : "wide", viewpoint: i % 3 === 2 ? "low-angle" : "front-facing",
@@ -63,7 +63,7 @@ export const SCENE_PRESETS = [
     soundscape: "A hushed studio bed: the soft whirr of a light, a faint air tone, one delicate contact sound as the item is revealed.",
     name: "Product showcase",
     blurb: "One picture per shot — each angle or item gets its own close-up with a small orbit, on a clean set.",
-    mode: "r2v", perShot: 2, perPicture: true,
+    perShot: 2, perPicture: true,
     guidance: "A product reel. Every shot presents the one item or angle in the picture it cites, exactly as shown — form, colour, material, branding untouched. Clean studio set, controlled soft key light with a subtle rim, shallow depth, slow deliberate moves that reveal surface and edge; no hands unless the picture shows them, no text. The soundscape is a quiet studio bed.",
     build: (ctx) => perPicture(ctx, 2, (i) => ({
       shotType: i % 2 ? "close-up" : "medium close-up", viewpoint: i % 2 ? "three-quarter" : "front-facing",
@@ -77,10 +77,10 @@ export const SCENE_PRESETS = [
     soundscape: "The ambience of the place they stand in — light wind or room tone, their footsteps and the movement of clothing as they turn.",
     name: "Character introduction",
     blurb: "The pictures are one person or one creature. Wide to close in three shots; identity fully preserved.",
-    mode: "r2v", perShot: 3.5, perPicture: false,
+    perShot: 3.5, perPicture: false,
     guidance: "A character introduction. All the pictures show the SAME subject; every shot is of that subject and preserves face, build, hair, wardrobe and colours exactly. Wide establishes the place, medium the posture and movement, close-up the face — one clear action across the three, no other people in frame.",
     build: (ctx) => {
-      const tag = ctx.tags[0] || "<Subject 1>";
+      const tag = ctx.tags[0] || "the subject";
       const duration = presetDuration(3, 3.5, 10);
       const [a, b, c] = spread(3, duration);
       return [
@@ -96,7 +96,7 @@ export const SCENE_PRESETS = [
     soundscape: "The place's own ambience — wind, distant water or traffic, birds where there would be birds; no music, no voices.",
     name: "Location montage",
     blurb: "One place per picture: wide, slow, atmospheric. Travel, architecture, landscape.",
-    mode: "r2v", perShot: 3, perPicture: true,
+    perShot: 3, perPicture: true,
     guidance: "A location montage. Every shot is the one place in the picture it cites, in order, held wide and unhurried; the geography, light and weather of each picture are kept. No people unless the picture has them, no text. Slow drifts and pans; the soundscape is the place's own ambience.",
     build: (ctx) => perPicture(ctx, 3, (i) => ({
       shotType: i % 3 === 1 ? "extreme wide" : "wide", viewpoint: i % 4 === 3 ? "high-angle" : "front-facing",
@@ -114,7 +114,7 @@ SCENE_PRESETS.push(
     category: "Products & brands",
     name: "Vehicle showcase",
     blurb: "One angle per picture: exterior sweeps, detail, interior. The car stays exactly the car.",
-    mode: "r2v", perShot: 2.5, perPicture: true,
+    perShot: 2.5, perPicture: true,
     soundscape: "Quiet: a low ambient bed, the faint tick of cooling metal, one soft door or engine note where a picture implies it.",
     guidance: "An automotive reel. Every shot is the one vehicle, from the angle the picture it cites shows; body lines, paint, wheels, badges and interior stay exactly as photographed. Low or three-quarter angles, slow arcs and trucks that let reflections travel over the paint; clean location or studio; no people unless the picture has them; no text.",
     build: (ctx) => perPicture(ctx, 2.5, (i) => ({
@@ -128,7 +128,7 @@ SCENE_PRESETS.push(
     category: "Products & brands",
     name: "Food & drink",
     blurb: "One dish or drink per picture, close and appetising: steam, pour, garnish.",
-    mode: "r2v", perShot: 2, perPicture: true,
+    perShot: 2, perPicture: true,
     soundscape: "Kitchen and table ambience: a soft sizzle or pour where the picture implies it, glass and cutlery, a warm room.",
     guidance: "A food reel. Every shot is the one dish or drink in the picture it cites, exactly as plated — ingredients, colours and the vessel unchanged. Close, top-down or low three-quarter framing, soft directional light, shallow focus; one small appetising motion per shot (steam rising, a pour, a garnish landing, a slow turn); no faces, no text.",
     build: (ctx) => perPicture(ctx, 2, (i) => ({
@@ -142,7 +142,7 @@ SCENE_PRESETS.push(
     category: "People & stories",
     name: "Fashion lookbook",
     blurb: "One look per picture: the outfit worn, walked, turned. Garments exact.",
-    mode: "r2v", perShot: 3, perPicture: true,
+    perShot: 3, perPicture: true,
     soundscape: "A soft studio or street bed, fabric moving, footsteps; no voices.",
     guidance: "A lookbook. Every shot is the one look in the picture it cites — garment cut, fabric, colour, accessories and the wearer's appearance exactly as shown. Full-length to medium framing, a slow walk, a turn or a pause that shows drape and movement; clean set or the pictured location; flattering soft key light; no text.",
     build: (ctx) => perPicture(ctx, 3, (i) => ({
@@ -156,7 +156,7 @@ SCENE_PRESETS.push(
     category: "Spaces & places",
     name: "Hotel & restaurant",
     blurb: "One space per picture: lobby, room, terrace, table. Warm, inviting, unhurried.",
-    mode: "r2v", perShot: 2.5, perPicture: true,
+    perShot: 2.5, perPicture: true,
     soundscape: "A warm hospitality ambience: soft room tone, distant conversation and cutlery, a breeze on the terrace.",
     guidance: "A hospitality reel. Every shot is the one space in the picture it cites, in order, exactly as furnished and lit; warm inviting light, slow welcoming moves — a push-in through a doorway, a drift along a table; a guest may appear only if the picture shows one; no text.",
     build: (ctx) => perPicture(ctx, 2.5, (i) => ({
@@ -170,7 +170,7 @@ SCENE_PRESETS.push(
     category: "Products & brands",
     name: "Store & product range",
     blurb: "Storefront, then the range: one picture per shot, each item or display exact.",
-    mode: "r2v", perShot: 2, perPicture: true,
+    perShot: 2, perPicture: true,
     soundscape: "A bright retail ambience: soft music-free room tone, footsteps, a door.",
     guidance: "A retail reel. Every shot is the one storefront, display or item in the picture it cites, in order, exactly as shown — signage, packaging and layout unchanged. Clean bright light, steady moves that browse rather than rush; no text overlays.",
     build: (ctx) => perPicture(ctx, 2, (i) => ({
@@ -187,7 +187,7 @@ SCENE_PRESETS.push(
   {
     key: "architecture", category: "Spaces & places", name: "Architecture & exteriors",
     blurb: "A building or exterior per picture. Measured reveals of the facade, entrance and surrounding space.",
-    mode: "r2v", perShot: 3, perPicture: true,
+    perShot: 3, perPicture: true,
     soundscape: "A light outdoor breeze, distant traffic and the quiet ambience of the pictured location; no voices or music.",
     guidance: "An architectural film. Each shot shows only the building or exterior in its own reference, in attachment order. Keep proportions, windows, materials, landscaping and surrounding buildings exact. Use restrained low-angle or wide compositions and slow straight camera moves; no invented storeys, additions, people or text overlays.",
     build: ctx => perPicture(ctx, 3, i => ({
@@ -199,7 +199,7 @@ SCENE_PRESETS.push(
   {
     key: "interior_details", category: "Spaces & places", name: "Interior details",
     blurb: "Furniture, finishes and design details. One reference per shot, with close framing and gentle movement.",
-    mode: "r2v", perShot: 2.5, perPicture: true,
+    perShot: 2.5, perPicture: true,
     soundscape: "Quiet interior ambience, soft room tone and a faint breeze through an open window; no voices.",
     guidance: "An interior design detail reel. Each shot stays inside its own reference and focuses on one existing piece of furniture, finish or architectural detail. Keep colour, material, geometry and placement unchanged. Alternate medium and close views with slow pushes or lateral moves that reveal texture; no added decoration, rearranged furniture, people or text.",
     build: ctx => perPicture(ctx, 2.5, i => ({
@@ -211,7 +211,7 @@ SCENE_PRESETS.push(
   {
     key: "jewelry", category: "Products & brands", name: "Jewellery & watches",
     blurb: "Precise close-ups of metal, stones and watch details, with subtle travelling reflections.",
-    mode: "r2v", perShot: 2.5, perPicture: true,
+    perShot: 2.5, perPicture: true,
     soundscape: "A hushed studio ambience, with a faint natural contact sound only when an item moves; no music or voices.",
     guidance: "A jewellery or watch film. Each shot presents only the piece in its own reference, preserving stone count and setting, engraving, dial markings, metal colour and proportions. Close framing, controlled reflections and small camera moves; sparkle comes from a changing reflection, never from animated glitter. No invented hands, branding or text overlays.",
     build: ctx => perPicture(ctx, 2.5, i => ({
@@ -223,7 +223,7 @@ SCENE_PRESETS.push(
   {
     key: "beauty", category: "Products & brands", name: "Beauty & skincare",
     blurb: "Bottles, packaging and visible textures. Clean beauty shots that keep the product and label intact.",
-    mode: "r2v", perShot: 2, perPicture: true,
+    perShot: 2, perPicture: true,
     soundscape: "Soft studio room tone and a subtle cap or glass contact when visible movement calls for it; no dialogue.",
     guidance: "A beauty product reel. Each shot uses only its own pictured bottle, jar, packaging or texture. Preserve labels, logos, fill levels and container shapes. Use soft directional light, a clean background and gentle close camera movement. Only show a pour or application if the reference provides that action; no invented hands, before-and-after results or text overlays.",
     build: ctx => perPicture(ctx, 2, i => ({
@@ -235,7 +235,7 @@ SCENE_PRESETS.push(
   {
     key: "craft", category: "Products & brands", name: "Craft & making",
     blurb: "Materials, hands and finished objects. A tactile workshop story, one photographed step at a time.",
-    mode: "r2v", perShot: 3, perPicture: true,
+    perShot: 3, perPicture: true,
     soundscape: "The pictured workshop's natural sounds: light tool contact, material moving and quiet room tone; no speech.",
     guidance: "A craft process reel. Each shot stays with the material, tool, hands or finished object shown in its own reference, in order. Preserve the maker's identity and the object's geometry. Give visible hands one small plausible action with the pictured tool; object-only references get a gentle camera move. No invented process steps, instant transformations or extra tools.",
     build: ctx => perPicture(ctx, 3, i => ({
@@ -247,7 +247,7 @@ SCENE_PRESETS.push(
   {
     key: "wedding", category: "People & stories", name: "Wedding & celebration",
     blurb: "People, flowers and meaningful details. Gentle movement through the moments in your pictures.",
-    mode: "r2v", perShot: 3, perPicture: true,
+    perShot: 3, perPicture: true,
     soundscape: "A soft gathering ambience, light fabric movement and the pictured venue's room tone; no invented speeches.",
     guidance: "A celebration keepsake. Each shot animates only the moment in its own reference, preserving every person's identity, clothing, flowers, decor and relationships. Subtle glances, breathing or fabric movement for people; a gentle push for detail photographs. Do not invent a kiss, a guest, a speech or an event that the picture does not show. No text overlays.",
     build: ctx => perPicture(ctx, 3, i => ({
@@ -259,7 +259,7 @@ SCENE_PRESETS.push(
   {
     key: "fitness", category: "People & stories", name: "Fitness & movement",
     blurb: "One athlete or exercise per reference, with clear framing and a short, controlled movement.",
-    mode: "r2v", perShot: 2.5, perPicture: true,
+    perShot: 2.5, perPicture: true,
     soundscape: "Natural breathing, shoes contacting the floor and the equipment sounds implied by the picture; no dialogue or music.",
     guidance: "A fitness reel. Each shot shows only the athlete, pose and equipment in its own reference. Preserve body proportions, identity, clothing and grip. Continue a small part of the pictured movement with stable anatomy and grounded contact; no added equipment, new exercise or impossible weight movement. Keep the body and relevant equipment inside the frame.",
     build: ctx => perPicture(ctx, 2.5, i => ({
@@ -271,7 +271,7 @@ SCENE_PRESETS.push(
   {
     key: "pets", category: "People & stories", name: "Pets & animals",
     blurb: "Natural animal portraits: a blink, a small head turn or a shift of attention, with markings preserved.",
-    mode: "r2v", perShot: 3, perPicture: true,
+    perShot: 3, perPicture: true,
     soundscape: "The ambience of the pictured setting, gentle breathing and subtle fur or feather movement; no human voices.",
     guidance: "An animal portrait reel. Every shot features only the animal or animals already in its own reference. Preserve species, size, coat pattern, eye colour, anatomy and surroundings. One natural action such as blinking, a slight head turn or looking toward a sound; no talking, human gestures, invented animals or sudden running. Use quiet, steady framing.",
     build: ctx => perPicture(ctx, 3, i => ({
@@ -336,18 +336,24 @@ export const presetByKey = (key) => SCENE_PRESETS.find(t => t.key === key) || nu
 
 /** What a preset builds from, for a given project. */
 export function presetContext(project) {
-  const tags = referenceInventory(project).filter(e => e.kind === "picture").map(e => e.tag);
-  return { tags, picCount: tags.length, mode: project.mode };
+  const mode = inferMode(project);
+  // Include I2V's first frame, in the same order normaliseMedia uses, without
+  // mutating the project while the pickers preview the shots.
+  const images = [...(project.frames?.first ? [project.frames.first] : []), ...(project.refs?.images || [])];
+  const refs = { ...project.refs, images };
+  const tags = referenceInventory({ ...project, mode, refs }).filter(e => e.kind === "picture").map(e => e.tag);
+  return { tags, picCount: tags.length, mode };
 }
 
 /** Apply a preset to a project draft (inside update()): shots, length, shot
- *  count, mode, and the key that keeps the guidance on every LLM call. Pass
+ *  count, and the key that keeps the guidance on every LLM call. The attached
+ *  media determines the mode, just as it does when adding a picture. Pass
  *  key "" to clear the guidance without touching the shots. */
 export function applyPreset(draft, key) {
   draft.creative = draft.creative || {};
   const preset = presetByKey(key);
+  normaliseMedia(draft);
   if (!preset) { draft.creative.preset = ""; return null; }
-  if (preset.mode) draft.mode = preset.mode;
   const shots = preset.build(presetContext(draft));
   draft.shots = shots;
   draft.render.duration = presetDuration(shots.length, preset.perShot, preset.perPicture ? 5 : 10);
