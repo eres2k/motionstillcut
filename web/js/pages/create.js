@@ -22,6 +22,7 @@ import {
   clearShotWriting,
  onProjectSwap, activeEngine, setEngine, durationFrames, shotCitations } from "../state.js";
 import { ingest, getBlob, delBlob, posterFor, kindOf } from "../media.js";
+import { linesBlock } from "../lines.js";
 import { queueLength } from "../queue.js";
 import { polishShot } from "../llm.js";
 import { DIALS, DEFAULT_DIALS, applySteering, explainDials, DETAIL_BANDS, detailToWriting } from "../steer.js";
@@ -191,6 +192,17 @@ function materialSettings(p) {
         v => { update(d => { d.render.duration = Number(v); }, "render"); draw(); }, { ...props("cr-duration"), "aria-invalid": String(tooLong) }),
         tooLong ? "This length exceeds the model's single-clip limit." : "The duration of one generated clip. Join clips in Edit to make a longer film."),
     ),
+    /* The voice, decided while the clip is shaped — not discovered missing on
+     * Deliver. Exact words or a direction; → compiles them as spoken
+     * dialogue, ● (LTX only) records a take the render lip-syncs to. The
+     * block is shared with Deliver ▸ Audio (lines.js) and reads the same
+     * project, so nothing set here has to be set twice. */
+    h("div.cr-scene-setting", { style: { marginTop: "4px" } },
+      h("label", "Voice-over — spoken lines"),
+      linesBlock(p, draw),
+      h("p.cr-setting-help", "Your exact words, or a rough direction ✎ writes from. → puts them in the prompt so they are SPOKEN in the clip; on LTX-2.5, ● records your own take and the render lip-syncs to it (fine-tuning under Deliver ▸ Audio)."),
+    ),
+
     tooLong ? h("div.cr-length-warning", { role: "status" },
       h("div", h("b", `H3 supports up to ${H3_DURATION.max} seconds per clip.`), h("p", "Longer clips repeat. Use 15 seconds or assemble a longer film in Edit clips.")),
       h("button.btn", { type: "button", onclick: () => { update(d => { d.render.duration = H3_DURATION.max; }, "render"); draw(); } }, "Use 15 seconds")) : null,

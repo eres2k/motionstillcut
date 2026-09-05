@@ -10,7 +10,7 @@ import { VOICE_ENGINES, VOICE_LANGS } from "../voice.js";
 import {
   getProject, update, dimensions, frameCount, DURATION_FRAMES, RESOLUTIONS, MODES, selectedShot,
   H3_DURATION, LTX25_DURATION, overLength, FILM_LIMITS, filmSpan, activeEngine, durationFrames,
- onProjectSwap, LTX_DURATION_FRAMES, newDialogue } from "../state.js";
+ onProjectSwap, LTX_DURATION_FRAMES } from "../state.js";
 import { planFilm, describePlan, canChain } from "../film.js";
 import { runFilm, assembleFilm } from "../filmrun.js";
 import { variantsFor, variantFor } from "../vocab.js";
@@ -21,7 +21,7 @@ import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js"
 import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending, applyLive } from "../render.js";
 import * as downloads from "../downloads.js";
 import { variablesFor, variableById, valuesFor, labelOf, runSweep, sweepCost } from "../experiments.js";
-import { voiceoverScript } from "../llm.js";
+import { linesBlock } from "../lines.js";
 import { api, SERVER_BACKED } from "../api.js";
 import { addRenderClip, renderOutput } from "../edit.js";
 import { resolveButton, onResolveChange } from "../resolve.js";
@@ -254,144 +254,6 @@ function upscaleGroup(p, set) {
   );
 }
 
-/* ── Speak it first — record the line BEFORE the render ───────
- * The usual order is backwards for dialogue: generate, then lay a voice-over
- * on top and hope the mouth roughly moves. Audio conditioning turns it
- * around — record the line first, condition the render on it, and the model
- * animates the face TO the recording. This block is that flow: lines
- * (written by hand or by the LLM, tightened to fit the seconds), one mic
- * take read off the box like a teleprompter, and the take becomes the
- * conditioning track above.
- *
- * The take is re-encoded to WAV in the browser (WebAudio decode → 16-bit
- * PCM): MediaRecorder hands back webm/opus, which ComfyUI's LoadAudio may or
- * may not read depending on its av build — WAV always loads. */
-let acLines = "";
-let acMode = "direction";     // "direction": a rough intent the LLM writes from · "exact": these words, verbatim
-let acLineStamps = null;      // the last LLM result's [{at, text}] — lets "into the prompt" land lines on their shots
-let acRec = null, acRecSecs = 0, acRecTimer = null;
-let acBusy = false;
-
-const AC_LANG_NAMES = { de: "German", en: "English", fr: "French", es: "Spanish", it: "Italian", pt: "Portuguese" };
-
-async function dataUrlToWav(dataUrl) {
-  const buf = await (await fetch(dataUrl)).arrayBuffer();
-  const ctx = new AudioContext();
-  let audio;
-  try { audio = await ctx.decodeAudioData(buf); } finally { ctx.close(); }
-  const n = audio.length, rate = audio.sampleRate, chs = audio.numberOfChannels;
-  const mono = new Float32Array(n);
-  for (let c = 0; c < chs; c++) { const d = audio.getChannelData(c); for (let i = 0; i < n; i++) mono[i] += d[i] / chs; }
-  const out = new DataView(new ArrayBuffer(44 + n * 2));
-  const tag = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
-  tag(0, "RIFF"); out.setUint32(4, 36 + n * 2, true); tag(8, "WAVEfmt ");
-  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
-  out.setUint32(24, rate, true); out.setUint32(28, rate * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
-  tag(36, "data"); out.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) { const s = Math.max(-1, Math.min(1, mono[i])); out.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
-  const bytes = new Uint8Array(out.buffer);
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return "data:audio/wav;base64," + btoa(bin);
-}
-
-async function acRecord(p) {
-  if (acRec) { acRec.stop(); return; }
-  let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-  catch (e) { return toast("No microphone", e.message, "err"); }
-  const chunks = [];
-  const mr = new MediaRecorder(stream);
-  mr.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
-  mr.onstop = async () => {
-    clearInterval(acRecTimer); acRecTimer = null;
-    stream.getTracks().forEach(t => t.stop());
-    acRec = null;
-    try {
-      const raw = await new Promise((res, rej) => {
-        const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = () => rej(new Error("could not read the take"));
-        rd.readAsDataURL(new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
-      });
-      const wav = await dataUrlToWav(raw);
-      const id = uid();
-      await putBlob(id, wav);
-      const name = `${(acLines.trim().split(/\s+/).slice(0, 4).join(" ") || "spoken line").replace(/[^\w\s-]+/g, "").trim() || "spoken line"}.wav`;
-      update((proj) => {
-        proj.render.ltxAudio = { ...(proj.render.ltxAudio || {}), item: { id, name, kind: "audio", comfyName: "" }, startSec: 0 };
-      }, "render");
-      toast("Take is the track", `"${name}" now conditions the render — the model animates to it.`, "ok");
-    } catch (e) { toast("Take lost", e.message, "err"); }
-    refresh();
-  };
-  acRec = mr; acRecSecs = 0;
-  acRecTimer = setInterval(() => {
-    acRecSecs++;
-    const el = $("#ac-timer"); if (el) el.textContent = `■ Stop · ${acRecSecs}s`;
-    // No point recording past what the clip can hold.
-    if (acRecSecs >= ((p.render?.duration || 5) + 5)) mr.stop();
-  }, 1000);
-  mr.start();
-  refresh();
-}
-
-async function acWrite(p) {
-  acBusy = true; refresh();
-  try {
-    const direction = acMode === "direction" ? acLines.trim() : "";
-    const r = await voiceoverScript(p, {
-      seconds: p.render.duration, language: vcLang,
-      instruction: direction ? `The user's direction for the lines — follow it over everything the timeline suggests: ${direction}` : "",
-    });
-    acLines = r.script;
-    acLineStamps = r.lines?.length ? r.lines : null;
-    acMode = "exact";   // what came back is now the text — the next edit is on words, not intent
-  } catch (e) { toast("No lines", e.message, "err"); }
-  acBusy = false; refresh();
-}
-
-async function acTighten(p) {
-  if (!acLines.trim()) return toast("Nothing to tighten", "Write a draft first, or let ✎ write one.", "err");
-  acBusy = true; refresh();
-  try {
-    const keep = acMode === "exact"
-      ? "These are the user's own words: do not paraphrase distinctive wording away — trim, reorder for breath, and cut filler, nothing more."
-      : "Keep its intent and its voice.";
-    const r = await voiceoverScript(p, {
-      seconds: p.render.duration, language: vcLang,
-      instruction: `Rework this draft instead of writing fresh. ${keep} Cut it until it fits the seconds comfortably, make every sentence speakable in one breath, end on the strongest line. The draft:\n${acLines.trim()}`,
-    });
-    acLines = r.script;
-    acLineStamps = r.lines?.length ? r.lines : null;
-    acMode = "exact";
-  } catch (e) { toast("Optimizer failed", e.message, "err"); }
-  acBusy = false; refresh();
-}
-
-/* The other half of "the model must know the words": put the lines into the
- * timeline as DIALOGUE, so the compiled prompt carries them in the engine's
- * own dialect (H3's (S1) grammar, LTX's quoted prose). With a recorded take
- * this is what makes conditioning stick — audio the prompt never mentions is
- * audio the model half-fights; without a take it simply makes the model
- * speak the lines itself. Lines land on the shot their timestamp falls in. */
-function acIntoPrompt() {
-  const text = acLines.trim();
-  if (!text) return toast("No lines yet", "Write them, or let ✎ write them.", "err");
-  const langName = AC_LANG_NAMES[vcLang] || "English";
-  update((proj) => {
-    const shots = [...(proj.shots || [])].sort((a, b) => (a.at || 0) - (b.at || 0));
-    if (!shots.length) return;
-    const stamps = acLineStamps?.length ? acLineStamps : [{ at: 0, text }];
-    for (const ln of stamps) {
-      let target = shots[0];
-      for (const s of shots) if ((s.at || 0) <= (ln.at || 0)) target = s;
-      const d = newDialogue("S1");
-      d.text = ln.text; d.language = langName;
-      target.dialogue = [...(target.dialogue || []), d];
-    }
-  }, "shots");
-  toast("Lines are in the prompt", "They compile as spoken dialogue — edit speaker, delivery and language on the Sound page.", "ok");
-}
-
 /* ── Audio conditioning — LTX-2.5 only ────────────────────────
  * The main Motionstill app's Audio Conditioning card, on this timeline. LTX
  * samples audio and video in ONE latent; normally both halves start as
@@ -472,29 +334,12 @@ function audioGroup(p, set) {
       checkbox("Deliver the vocal stem, not the full track", la.vocalsOnly, (v) => setLa({ vocalsOnly: v }),
         "The clip's audio becomes the extracted vocals alone — for laying your own music under the cut afterwards.")) : null,
 
-    /* Speak it first: lines → (optionally) a mic take that becomes the
-     * track above → the lines into the prompt. Folded away because most
-     * renders never open it, and this page has been overloaded once. */
+    /* Speak it first — the shared lines block (lines.js): the same flow
+     * Create offers while the clip is shaped, kept here too because the
+     * moment before ● Render is when a missing line is noticed. Folded away
+     * because most renders never open it. */
     h("div", { style: { marginTop: "10px" } }, more("Speak it first — lines, a take, the prompt",
-      row("Lines",
-        segmented([["direction", "A direction"], ["exact", "My exact words"]], acMode, (v) => { acMode = v; refresh(); }),
-        acMode === "direction"
-          ? "Type the intent — \"warm, du-form, sell the ending\" — and ✎ writes lines from it and the timeline. What comes back flips to exact words."
-          : "This text is the text: ⚡ only trims and re-breathes it, ✎ replaces it from the timeline. Record reads it; → puts it in the prompt verbatim."),
-      textarea(acLines, (v) => { acLines = v; acLineStamps = null; }, {
-        rows: "3",
-        placeholder: acMode === "direction" ? "What should the voice say, roughly?" : "The words, exactly as they are to be spoken",
-        style: "margin-top:6px",
-      }),
-      h("div.flex", { style: { gap: "5px", marginTop: "6px", flexWrap: "wrap" } },
-        h("button.btn.sm", { onclick: () => acWrite(p), disabled: acBusy, title: "Write lines that fit the clip's seconds — from the timeline, and from the direction above if there is one" }, acBusy ? "…" : "✎ Write"),
-        h("button.btn.sm", { onclick: () => acTighten(p), disabled: acBusy, title: "Rework the draft to fit the seconds — exact words are trimmed, never paraphrased away" }, "⚡ Tighten"),
-        h("button.btn.sm" + (acRec ? ".record" : ""), { onclick: () => acRecord(p), title: "One mic take, read off this box — it becomes the conditioning track above, and the render lip-syncs to it" },
-          acRec ? h("span", { id: "ac-timer" }, `■ Stop · ${acRecSecs}s`) : "● Record it"),
-        h("button.btn.sm", { onclick: acIntoPrompt, title: "Put the lines into the timeline as dialogue, so the compiled prompt says these words are SPOKEN — with a take that is what makes the conditioning stick; without one the model speaks them itself" }, "→ Into the prompt"),
-        h("span.spacer"),
-        select(VOICE_LANGS, vcLang, (v) => { vcLang = v; }),
-      ),
+      linesBlock(p, refresh),
     )),
   );
 }
