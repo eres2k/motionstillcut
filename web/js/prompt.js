@@ -1250,6 +1250,20 @@ export function validate(project) {
     }
   }
 
+  /* — A conditioning track that cannot apply — same silent-passenger shape
+   * as the pins: Deliver ▸ Audio is an LTX card, and on the MiniMax engine
+   * the track rides along doing nothing while the model invents its own
+   * sound. */
+  {
+    const condItem = project.render?.ltxAudio?.item;
+    if (condItem && activeEngine(project) !== "ltx25") {
+      add("warn", `A conditioning track ("${condItem.name}") is set under Deliver ▸ Audio, and audio conditioning only applies on the LTX-2.5 engine — the ${project.mode === "r2v" ? "Ref2V graph (always MiniMax)" : "MiniMax graph"} ignores it. Switch the engine, or clear the track.`,
+        project.mode !== "r2v" ? { action: { kind: "engine", engine: "ltx25", label: "Switch to LTX-2.5" } } : {});
+    } else if (condItem && project.film?.enabled) {
+      add("warn", "Film mode renders its clips one by one, and each one is conditioned by the SAME stretch of the track (from the offset) — eight clips of the same eight bars, not a piece scored end to end. Render one clip, or lay the music under the finished cut on the Edit page instead.");
+    }
+  }
+
   /* — A hand-written description — */
   if (project.prompt?.manual && (project.prompt.description || "").trim()) {
     /* This is the one setting that makes every other edit look broken. With an

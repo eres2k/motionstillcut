@@ -146,10 +146,12 @@ export async function uploadPending(onStep = () => {}, ctx = null) {
     (p.refs.videos || []).forEach(m => collect(m, "videos"));
     (p.refs.audios || []).forEach(m => collect(m, "audios"));
   }
-  // Shot keyframe pins ride only in the LTX graph, so they upload only when
-  // that graph is about to be built — the MiniMax modes never need the bytes.
+  // Shot keyframe pins and the conditioning track ride only in the LTX
+  // graph, so they upload only when that graph is about to be built — the
+  // MiniMax modes never need the bytes.
   if (activeEngine(p) === "ltx25") {
     (p.shots || []).forEach(s => { if (s.keyframe) collect(s.keyframe, `kf:${s.id}`); });
+    collect(p.render?.ltxAudio?.item, "ltxAudio");
   }
   let done = 0;
   for (const { item, where } of pending) {
@@ -160,7 +162,9 @@ export async function uploadPending(onStep = () => {}, ctx = null) {
     const comfyName = r.subfolder ? `${r.subfolder}/${r.name}` : r.name;
     commit((proj) => {
       if (where === "first" && proj.frames.first?.id === item.id) proj.frames.first.comfyName = comfyName;
-      else if (where.startsWith("kf:")) {
+      else if (where === "ltxAudio") {
+        if (proj.render?.ltxAudio?.item?.id === item.id) proj.render.ltxAudio.item.comfyName = comfyName;
+      } else if (where.startsWith("kf:")) {
         const s = (proj.shots || []).find(x => x.id === where.slice(3));
         if (s?.keyframe?.id === item.id) s.keyframe.comfyName = comfyName;
       } else {

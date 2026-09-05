@@ -366,6 +366,14 @@ const LTX_NEGATIVE = "pc game, console game, video game, cartoon, childish, ugly
 // chunk — the settings the conv LTX VAE has always decoded with.
 const LTX_DECODE = { tile_size: 768, overlap: 64, temporal_size: 4096, temporal_overlap: 4 };
 
+/** Deliver ▸ Audio's settings with every knob at its default, so a project
+ *  saved before the card existed reads as "off" instead of as undefined
+ *  fields. `item` is a media item ({ id, name, comfyName }) like
+ *  frames.first — the bytes live in the pool, the graph cites the name. */
+export function ltxAudioSettings(project) {
+  return { item: null, startSec: 0, separateVocals: false, vocalsOnly: false, ...(project.render?.ltxAudio || {}) };
+}
+
 function buildLtxWorkflow(project, settings, extras = {}) {
   const models = { ...(settings?.models || {}) };
   const { width, height } = dimensions(project);
@@ -381,6 +389,19 @@ function buildLtxWorkflow(project, settings, extras = {}) {
   const promptText = compiled.text;
   const halfW = Math.floor(width / 2), halfH = Math.floor(height / 2);
   const firstFrame = project.mode === "i2v" && project.frames?.first ? project.frames.first : null;
+
+  /* Audio conditioning — the main Motionstill app's card, ported node for
+   * node. Audio and video share ONE latent here, so a supplied track is not
+   * "background music": the audio half starts as the ENCODED FILE instead of
+   * noise, a noise mask tells the sampler to keep it, and the video half is
+   * generated against it — dialogue moves lips, beats move motion. The trim
+   * runs from the chosen offset for exactly the clip's length, so the track
+   * fixes what the seconds contain, never how many there are. Pass 2 refines
+   * the pass-1 audio latent as always; the conditioning rides in through it. */
+  const audioCond = ltxAudioSettings(project);
+  const condAudio = audioCond.item && inputName(audioCond.item) ? audioCond.item : null;
+  const separateVocals = !!(condAudio && audioCond.separateVocals);
+  const vocalsOnly = !!(separateVocals && audioCond.vocalsOnly);
 
   /* The anchor list: the I2V first frame at 0, then every pinned shot at its
    * cut time. Indices snap to the VAE's temporal stride of 8 and collide
@@ -447,11 +468,39 @@ function buildLtxWorkflow(project, settings, extras = {}) {
     _meta: { title: "Empty Video Latent" },
     inputs: { width: singleStage ? width : halfW, height: singleStage ? height : halfH, length: numFrames, batch_size: 1 },
   };
-  graph["12"] = {
-    class_type: "LTXVEmptyLatentAudio",
-    _meta: { title: "Empty Audio Latent" },
-    inputs: { frames_number: numFrames, frame_rate: fps, batch_size: 1, audio_vae: ["4", 0] },
-  };
+  // Node 12 is the audio half either way: empty (the model invents the
+  // sound) or the encoded conditioning track (the model obeys it).
+  graph["12"] = condAudio
+    ? {
+        class_type: "LTXVAudioVAEEncode",
+        _meta: { title: "Encode Conditioning Audio" },
+        // With vocal separation the encoder eats the extracted stem (83), so
+        // music and room noise cannot fight the lip-sync; the full track can
+        // still be what the delivered clip plays — see the mux (34).
+        inputs: { audio: separateVocals ? ["83", 0] : ["81", 0], audio_vae: ["4", 0] },
+      }
+    : {
+        class_type: "LTXVEmptyLatentAudio",
+        _meta: { title: "Empty Audio Latent" },
+        inputs: { frames_number: numFrames, frame_rate: fps, batch_size: 1, audio_vae: ["4", 0] },
+      };
+  if (condAudio) {
+    graph["80"] = { class_type: "LoadAudio", _meta: { title: "Load Conditioning Audio" }, inputs: { audio: inputName(condAudio) } };
+    graph["81"] = {
+      class_type: "TrimAudioDuration",
+      _meta: { title: "Trim to the Clip" },
+      inputs: { audio: ["80", 0], start_index: Number(audioCond.startSec) || 0, duration: (numFrames - 1) / fps },
+    };
+    if (separateVocals) {
+      graph["82"] = { class_type: "MelBandRoFormerModelLoader", _meta: { title: "Load Vocal Separator" }, inputs: { model_name: models.mel_band_roformer } };
+      graph["83"] = { class_type: "MelBandRoFormerSampler", _meta: { title: "Extract Vocals" }, inputs: { model: ["82", 0], audio: ["81", 0] } };
+    }
+    // SolidMask at 0 through SetLatentNoiseMask: "this latent is content,
+    // keep it" — without the mask the sampler treats the encoded track as
+    // starting noise and denoises your audio away.
+    graph["84"] = { class_type: "SolidMask", _meta: { title: "Audio Preserve Mask (0)" }, inputs: { value: 0, width: 1024, height: 1024 } };
+    graph["85"] = { class_type: "SetLatentNoiseMask", _meta: { title: "Preserve Audio Latent" }, inputs: { samples: ["12", 0], mask: ["84", 0] } };
+  }
 
   /* ── The pass-1 guide chain — each anchor conditions the last one's
    * output, so one chain carries the first frame and every pin. ── */
@@ -473,7 +522,7 @@ function buildLtxWorkflow(project, settings, extras = {}) {
   graph["13"] = {
     class_type: "LTXVConcatAVLatent",
     _meta: { title: "Concat AV Latent (Pass 1)" },
-    inputs: { video_latent: videoLatent1, audio_latent: ["12", 0] },
+    inputs: { video_latent: videoLatent1, audio_latent: condAudio ? ["85", 0] : ["12", 0] },
   };
 
   /* ── Pass 1: the full 8-step schedule, cfg 1 ──────────── */
@@ -568,7 +617,10 @@ function buildLtxWorkflow(project, settings, extras = {}) {
     inputs: { ...LTX_DECODE, samples: videoForDecode, vae: ["3", 0] },
   };
   graph["33"] = { class_type: "LTXVAudioVAEDecode", _meta: { title: "Decode Audio" }, inputs: { samples: ["30", 1], audio_vae: ["4", 0] } };
-  graph["34"] = { class_type: "CreateVideo", _meta: { title: "Create Video" }, inputs: { images: ["32", 0], audio: ["33", 0], fps } };
+  // With vocal separation the decoded latent (33) carries the vocals-only
+  // stem — unless the stem itself is the deliverable, mux the full trimmed
+  // track (81) so the clip keeps the whole song.
+  graph["34"] = { class_type: "CreateVideo", _meta: { title: "Create Video" }, inputs: { images: ["32", 0], audio: separateVocals && !vocalsOnly ? ["81", 0] : ["33", 0], fps } };
   graph["35"] = {
     class_type: "SaveVideo",
     _meta: { title: "Save Video" },
@@ -605,12 +657,19 @@ function buildLtxWorkflow(project, settings, extras = {}) {
     // temporal stride. The first frame (I2V) is the anchor at 0.
     guides: usable.map(a => ({ at: a.at, frameIdx: a.idx, strength: a.strength, name: inputName(a.media) })),
     droppedPins,
+    // What drives the audio half — null when the model invents the sound.
+    audioConditioning: condAudio
+      ? { name: inputName(condAudio), startSec: Number(audioCond.startSec) || 0, separateVocals, vocalsOnly }
+      : null,
     nodeTypes: [...new Set(Object.values(graph).map(n => n.class_type))].sort(),
     promptChars: promptText.length,
-    inputs: usable.map((a, i) => ({
-      role: i === 0 && firstFrame ? "first frame" : `pin @ ${a.at}s (frame ${a.idx})`,
-      name: inputName(a.media), media: a.media,
-    })),
+    inputs: [
+      ...usable.map((a, i) => ({
+        role: i === 0 && firstFrame ? "first frame" : `pin @ ${a.at}s (frame ${a.idx})`,
+        name: inputName(a.media), media: a.media,
+      })),
+      ...(condAudio ? [{ role: "conditioning audio", name: inputName(condAudio), media: condAudio }] : []),
+    ],
   };
 
   return { prompt: graph, meta, compiled };

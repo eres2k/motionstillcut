@@ -1474,3 +1474,36 @@ body.sz-busy .sz-grid.sz-dragging > .sz-gut.sz-col ~ * { cursor: col-resize; }
 .assist-ico { font-size: 13px; line-height: 1; opacity: .9; }
 .sn-tool.assist .assist-ico { font-size: 15px; }
 @media (max-width: 900px) { .assist .assist-label { display: none; } }
+
+/* DELIVER, decluttered — the page carried a paragraph under every control,
+ * and read like its own manual. The words are all still there (they earn
+ * their keep the first time each control is questioned), but they now show
+ * only while the pointer is on the thing they explain, floating over the
+ * panel instead of pushing it apart. Status lines are exempt: anything that
+ * reports (the ETA/VRAM line, a live folder) carries .keep and stays put.
+ * Touch has no hover; the ? button on each group still opens the long form. */
+#page-deliver .i-row { position: relative; }
+#page-deliver .i-row > .i-hint { display: none; }
+#page-deliver .i-row:hover > .i-hint,
+#page-deliver .i-row:focus-within > .i-hint {
+  display: block;
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 40;
+  margin-top: 3px; padding: 7px 9px;
+  background: #1d1d1d; border: 1px solid var(--line); border-radius: 4px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .5);
+}
+/* Loose explainers inside a group (the note after a segmented row, the
+ * variant's description): hidden until the control directly above them is
+ * hovered. The reveal is in place — a floating card would cover the very
+ * control being read about. */
+#page-deliver .insp .gb .hint:not(.keep),
+#page-deliver .insp .gb .note { display: none; }
+#page-deliver .insp .gb :hover + .hint:not(.keep),
+#page-deliver .insp .gb :focus-within + .hint:not(.keep),
+#page-deliver .insp .gb :hover + .note,
+#page-deliver .insp .gb :focus-within + .note { display: block; }
+
+/* A chip row wider than the inspector column clipped at the panel edge (the
+ * five upscalers were the report). Chips wrap instead — every segmented in
+ * this inspector, so the next five-option row never rediscovers the bug. */
+#page-deliver .insp .seg:not(.stack) { flex-wrap: wrap; max-width: 100%; }

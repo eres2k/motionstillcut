@@ -52,6 +52,7 @@ const LTX_MODEL_FIELDS = [
   ["ltx25_audio_vae",    "LTX-2.5 audio VAE",              "vae",                   ""],
   ["ltx25_upscaler",     "LTX-2.5 latent upscaler ×2",     "latent_upscale_models", "The two-stage build's refine pass runs through this"],
   ["ltx25_upscale_lora", "LTX-2.5 IC-LoRA pixel upscaler ×2", "loras",             "Lightricks' official upscaler for Deliver ▸ Upscale — gated on Hugging Face (accept the licence), 327 MB, into models/loras"],
+  ["mel_band_roformer",  "Mel-Band RoFormer (vocal separator)", "diffusion_models", "Deliver ▸ Audio's \"vocals only\" toggle splits the conditioning track with this — needs the ComfyUI-MelBandRoFormer pack (Kijai); the file goes in models/diffusion_models"],
 ];
 
 async function loadFolders() {

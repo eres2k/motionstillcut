@@ -345,6 +345,13 @@ export function blankProject() {
       // itself is a browser setting (Deliver ▸ Output), not part of the project.
       watermark: "off",   // engine: off | seedvr2 | flashvsr | ltx25 | esrgan · target: 720p | 1080p | 1440p | 2160p
       outputPrefix: "",
+      /* LTX-2.5 only: a track from the pool that DRIVES the render. The
+       * audio half of the AV latent starts as the encoded file instead of
+       * noise, masked so the sampler keeps it, and the video is generated
+       * against it — lip-sync, beat-sync. `item` is a media item
+       * ({ id, name, comfyName }) like frames.first; the MiniMax graph
+       * ignores all of this, and the checker says so. Deliver ▸ Audio. */
+      ltxAudio: { item: null, startSec: 0, separateVocals: false, vocalsOnly: false },
     },
     shots: [newShot(0)],
     sound: {
@@ -564,6 +571,9 @@ function migrate(p) {
   merged.edit.export = { ...base.edit.export, ...(p?.edit?.export || {}) };
   if (!Array.isArray(merged.edit.clips)) merged.edit.clips = [];
   if (!Array.isArray(merged.edit.audio)) merged.edit.audio = [];
+  // The audio-conditioning sub-object, same reason as edit.export: a project
+  // saved before the card existed must come back with every knob present.
+  merged.render.ltxAudio = { ...base.render.ltxAudio, ...(p?.render?.ltxAudio || {}) };
   /* Projects saved before full-reference mode used <Subject N> cite their
    * images as <Picture N>. The tag is positional either way, so the rewrite is
    * exact — and leaving them would silently break every citation the moment
@@ -902,6 +912,7 @@ export function forgetUploads(p) {
   each(p?.frames?.first);
   for (const kind of ["images", "videos", "audios"]) (p?.refs?.[kind] || []).forEach(each);
   for (const shot of p?.shots || []) each(shot?.keyframe);
+  each(p?.render?.ltxAudio?.item);
   return p;
 }
 

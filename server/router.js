@@ -217,6 +217,10 @@ const OPTIONAL_NODES = {
   GetVideoComponents:  "reference clip frames + soundtrack (Ref2V)",
   LoadAudio:           "reference audio (Ref2V)",
   VAEDecodeTiled:      "tiled decode on long clips",
+  // The one custom-pack probe: Deliver ▸ Audio's vocal separation. Missing
+  // means "install ComfyUI-MelBandRoFormer", never "your ComfyUI is old" —
+  // which is why it sits here and not with the LTX group below.
+  MelBandRoFormerSampler: "vocal separation for audio conditioning (ComfyUI-MelBandRoFormer pack)",
 };
 
 /* What the EXPERIMENTAL LTX-2.5 engine additionally needs. These are not part
@@ -240,6 +244,8 @@ const LTX_NODES = {
   LTXVCropGuides:           "crops guide frames back off the latent",
   LatentUpscaleModelLoader: "loads the ×2 upscaler (two-stage build)",
   LTXVLatentUpsampler:      "the 2× latent upscale (two-stage build)",
+  LTXVAudioVAEEncode:       "audio conditioning — encodes a supplied track",
+  TrimAudioDuration:        "audio conditioning — trims the track to the clip",
 };
 
 const COMFY_FOLDER_SOURCES = {

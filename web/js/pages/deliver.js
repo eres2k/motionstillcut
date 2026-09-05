@@ -3,22 +3,25 @@
 
 import {
   h, mount, toast, field, select, segmented, checkbox, textarea,
-  download, copyText, modal, timecode, clamp, group, more, row,
+  download, copyText, modal, timecode, clamp, group, more, row, uid, $,
 } from "../util.js";
+import { putBlob } from "../media.js";
+import { VOICE_ENGINES, VOICE_LANGS } from "../voice.js";
 import {
   getProject, update, dimensions, frameCount, DURATION_FRAMES, RESOLUTIONS, MODES, selectedShot,
   H3_DURATION, LTX25_DURATION, overLength, FILM_LIMITS, filmSpan, activeEngine, durationFrames,
- onProjectSwap, LTX_DURATION_FRAMES } from "../state.js";
+ onProjectSwap, LTX_DURATION_FRAMES, newDialogue } from "../state.js";
 import { planFilm, describePlan, canChain } from "../film.js";
 import { runFilm, assembleFilm } from "../filmrun.js";
 import { variantsFor, variantFor } from "../vocab.js";
 import { setEngine as switchEngine } from "../state.js";
 import { validate, compilePrompt } from "../prompt.js";
-import { buildWorkflow, estimateSeconds, estimateVram, vramLevers, humanTime, randomSeed, LTX_MAX_ANCHORS, UPSCALE_TARGETS, UPSCALE_TARGET_LABELS, upscaleSettings, upscalePlan } from "../workflow.js";
+import { buildWorkflow, estimateSeconds, estimateVram, vramLevers, humanTime, randomSeed, LTX_MAX_ANCHORS, UPSCALE_TARGETS, UPSCALE_TARGET_LABELS, upscaleSettings, upscalePlan, ltxAudioSettings } from "../workflow.js";
 import { getSettings, getHealth, refreshVram, saveSettings } from "../config.js";
 import { renderNow, renderBatch, cancelRender, currentJob, onRenderChange, uploadPending, applyLive } from "../render.js";
 import * as downloads from "../downloads.js";
 import { variablesFor, variableById, valuesFor, labelOf, runSweep, sweepCost } from "../experiments.js";
+import { voiceoverScript } from "../llm.js";
 import { api, SERVER_BACKED } from "../api.js";
 import { addRenderClip, renderOutput } from "../edit.js";
 import { resolveButton, onResolveChange } from "../resolve.js";
@@ -131,11 +134,13 @@ function settingsPanel(p) {
         },
           segmented(variants.map(v => [v.key, v.label]), variant.key, (v) => set({ variant: v }), "stack"),
           h("div.hint", { style: { marginTop: "7px" } }, variant.note),
-          h("div.hint.mono", { style: { marginTop: "5px" } },
+          h("div.hint.mono.keep", { style: { marginTop: "5px" } },
             `${variant.steps} steps · ${variant.sampler} · ${variant.scheduler}`
             + (variant.shiftVideo != null ? ` · shift ${variant.shiftVideo}/${variant.shiftAudio}` : "")
             + (variant.trainedAt ? ` · at ${variant.trainedAt}` : "")),
         ),
+
+        ltx ? audioGroup(p, set) : null,
 
         group("Seed", {
           id: "d-seed", icon: "⚄", accordion: false,
@@ -173,7 +178,7 @@ function settingsPanel(p) {
           !ltx ? h("div", { style: { margin: "9px 0" } },
             checkbox("Tiled video decode", p.render.tiledDecode, (v) => set({ tiledDecode: v }),
               "VAEDecodeTiled — worth it on long clips, pointless on short ones"))
-            : h("div.hint", { style: { margin: "9px 0" } },
+            : row("Precision", h("span.hint.mono", "INT8-convrot · always tiled"),
                 "One quantization (the INT8-convrot pack — the only ComfyUI-loadable 2.5 build), and the video always decodes tiled: a 30 s clip through the conv VAE in one piece is an out-of-memory, and on short clips the tiling costs nothing."),
           row("Output prefix", h("input", {
             type: "text", value: p.render.outputPrefix || "",
@@ -227,7 +232,7 @@ function upscaleGroup(p, set) {
       "The decoded frames go through an upscaler before the video is muxed, so the clip is generated at the canvas size — the size the model was trained at — and delivered larger. Nothing about the render itself changes; the VRAM the sampler needs is decided by the canvas, not by this.",
     ),
   },
-    row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · ×2"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v })), engineHint),
+    row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · ×2"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v }), "wrap"), engineHint),
     up.engine === "ltx25"
       ? row("Method", segmented([["iclora", "IC-LoRA (Lightricks)"], ["refine", "Refine pass"]], up.ltxMethod, (v) => setUp({ ltxMethod: v })),
         up.ltxMethod === "refine" ? "The two-stage build's second pass; no LoRA to download." : "Lightricks' own recipe; needs the LoRA.")
@@ -246,6 +251,251 @@ function upscaleGroup(p, set) {
           ? `${width}×${height} → ${plan.width}×${plan.height}, ×${plan.factor.toFixed(2)} on the short edge.`
           : `${width}×${height} already has a short edge of ${Math.min(width, height)} — ${up.target} is no larger, so the pass is skipped.`)
       : null,
+  );
+}
+
+/* ── Speak it first — record the line BEFORE the render ───────
+ * The usual order is backwards for dialogue: generate, then lay a voice-over
+ * on top and hope the mouth roughly moves. Audio conditioning turns it
+ * around — record the line first, condition the render on it, and the model
+ * animates the face TO the recording. This block is that flow: lines
+ * (written by hand or by the LLM, tightened to fit the seconds), one mic
+ * take read off the box like a teleprompter, and the take becomes the
+ * conditioning track above.
+ *
+ * The take is re-encoded to WAV in the browser (WebAudio decode → 16-bit
+ * PCM): MediaRecorder hands back webm/opus, which ComfyUI's LoadAudio may or
+ * may not read depending on its av build — WAV always loads. */
+let acLines = "";
+let acMode = "direction";     // "direction": a rough intent the LLM writes from · "exact": these words, verbatim
+let acLineStamps = null;      // the last LLM result's [{at, text}] — lets "into the prompt" land lines on their shots
+let acRec = null, acRecSecs = 0, acRecTimer = null;
+let acBusy = false;
+
+const AC_LANG_NAMES = { de: "German", en: "English", fr: "French", es: "Spanish", it: "Italian", pt: "Portuguese" };
+
+async function dataUrlToWav(dataUrl) {
+  const buf = await (await fetch(dataUrl)).arrayBuffer();
+  const ctx = new AudioContext();
+  let audio;
+  try { audio = await ctx.decodeAudioData(buf); } finally { ctx.close(); }
+  const n = audio.length, rate = audio.sampleRate, chs = audio.numberOfChannels;
+  const mono = new Float32Array(n);
+  for (let c = 0; c < chs; c++) { const d = audio.getChannelData(c); for (let i = 0; i < n; i++) mono[i] += d[i] / chs; }
+  const out = new DataView(new ArrayBuffer(44 + n * 2));
+  const tag = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+  tag(0, "RIFF"); out.setUint32(4, 36 + n * 2, true); tag(8, "WAVEfmt ");
+  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+  out.setUint32(24, rate, true); out.setUint32(28, rate * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+  tag(36, "data"); out.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) { const s = Math.max(-1, Math.min(1, mono[i])); out.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+  const bytes = new Uint8Array(out.buffer);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return "data:audio/wav;base64," + btoa(bin);
+}
+
+async function acRecord(p) {
+  if (acRec) { acRec.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { return toast("No microphone", e.message, "err"); }
+  const chunks = [];
+  const mr = new MediaRecorder(stream);
+  mr.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
+  mr.onstop = async () => {
+    clearInterval(acRecTimer); acRecTimer = null;
+    stream.getTracks().forEach(t => t.stop());
+    acRec = null;
+    try {
+      const raw = await new Promise((res, rej) => {
+        const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = () => rej(new Error("could not read the take"));
+        rd.readAsDataURL(new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
+      });
+      const wav = await dataUrlToWav(raw);
+      const id = uid();
+      await putBlob(id, wav);
+      const name = `${(acLines.trim().split(/\s+/).slice(0, 4).join(" ") || "spoken line").replace(/[^\w\s-]+/g, "").trim() || "spoken line"}.wav`;
+      update((proj) => {
+        proj.render.ltxAudio = { ...(proj.render.ltxAudio || {}), item: { id, name, kind: "audio", comfyName: "" }, startSec: 0 };
+      }, "render");
+      toast("Take is the track", `"${name}" now conditions the render — the model animates to it.`, "ok");
+    } catch (e) { toast("Take lost", e.message, "err"); }
+    refresh();
+  };
+  acRec = mr; acRecSecs = 0;
+  acRecTimer = setInterval(() => {
+    acRecSecs++;
+    const el = $("#ac-timer"); if (el) el.textContent = `■ Stop · ${acRecSecs}s`;
+    // No point recording past what the clip can hold.
+    if (acRecSecs >= ((p.render?.duration || 5) + 5)) mr.stop();
+  }, 1000);
+  mr.start();
+  refresh();
+}
+
+async function acWrite(p) {
+  acBusy = true; refresh();
+  try {
+    const direction = acMode === "direction" ? acLines.trim() : "";
+    const r = await voiceoverScript(p, {
+      seconds: p.render.duration, language: vcLang,
+      instruction: direction ? `The user's direction for the lines — follow it over everything the timeline suggests: ${direction}` : "",
+    });
+    acLines = r.script;
+    acLineStamps = r.lines?.length ? r.lines : null;
+    acMode = "exact";   // what came back is now the text — the next edit is on words, not intent
+  } catch (e) { toast("No lines", e.message, "err"); }
+  acBusy = false; refresh();
+}
+
+async function acTighten(p) {
+  if (!acLines.trim()) return toast("Nothing to tighten", "Write a draft first, or let ✎ write one.", "err");
+  acBusy = true; refresh();
+  try {
+    const keep = acMode === "exact"
+      ? "These are the user's own words: do not paraphrase distinctive wording away — trim, reorder for breath, and cut filler, nothing more."
+      : "Keep its intent and its voice.";
+    const r = await voiceoverScript(p, {
+      seconds: p.render.duration, language: vcLang,
+      instruction: `Rework this draft instead of writing fresh. ${keep} Cut it until it fits the seconds comfortably, make every sentence speakable in one breath, end on the strongest line. The draft:\n${acLines.trim()}`,
+    });
+    acLines = r.script;
+    acLineStamps = r.lines?.length ? r.lines : null;
+    acMode = "exact";
+  } catch (e) { toast("Optimizer failed", e.message, "err"); }
+  acBusy = false; refresh();
+}
+
+/* The other half of "the model must know the words": put the lines into the
+ * timeline as DIALOGUE, so the compiled prompt carries them in the engine's
+ * own dialect (H3's (S1) grammar, LTX's quoted prose). With a recorded take
+ * this is what makes conditioning stick — audio the prompt never mentions is
+ * audio the model half-fights; without a take it simply makes the model
+ * speak the lines itself. Lines land on the shot their timestamp falls in. */
+function acIntoPrompt() {
+  const text = acLines.trim();
+  if (!text) return toast("No lines yet", "Write them, or let ✎ write them.", "err");
+  const langName = AC_LANG_NAMES[vcLang] || "English";
+  update((proj) => {
+    const shots = [...(proj.shots || [])].sort((a, b) => (a.at || 0) - (b.at || 0));
+    if (!shots.length) return;
+    const stamps = acLineStamps?.length ? acLineStamps : [{ at: 0, text }];
+    for (const ln of stamps) {
+      let target = shots[0];
+      for (const s of shots) if ((s.at || 0) <= (ln.at || 0)) target = s;
+      const d = newDialogue("S1");
+      d.text = ln.text; d.language = langName;
+      target.dialogue = [...(target.dialogue || []), d];
+    }
+  }, "shots");
+  toast("Lines are in the prompt", "They compile as spoken dialogue — edit speaker, delivery and language on the Sound page.", "ok");
+}
+
+/* ── Audio conditioning — LTX-2.5 only ────────────────────────
+ * The main Motionstill app's Audio Conditioning card, on this timeline. LTX
+ * samples audio and video in ONE latent; normally both halves start as
+ * noise. A conditioning track replaces the audio half with the encoded file
+ * and masks it off from the sampler, so the model writes VIDEO against your
+ * SOUND — dialogue moves lips, beats move motion — instead of inventing
+ * both. The graph work is in workflow.js (nodes 80–85); this is only where
+ * the track is chosen. */
+function audioGroup(p, set) {
+  const la = ltxAudioSettings(p);
+  const nodes = getHealth()?.nodes || {};
+  const known = { ...(nodes.ltx || {}), ...(nodes.optional || {}) };
+  const has = (name) => (known[name] ? !!known[name].present : null);
+  const setLa = (patch) => set({ ltxAudio: { ...la, ...patch } });
+
+  /* Every sound already in the project offers itself: the Edit page's audio
+   * tracks (voice-overs land there) and Ref2V's reference audios. A file
+   * from disk joins the pool the same way a dropped file does. */
+  const pool = [];
+  const seen = new Set();
+  for (const t of p.edit?.audio || []) {
+    if (t.kind === "audio" && t.mediaId && !seen.has(t.mediaId)) { seen.add(t.mediaId); pool.push({ id: t.mediaId, name: t.name || t.mediaId }); }
+  }
+  for (const m of p.refs?.audios || []) {
+    if (m?.id && !seen.has(m.id)) { seen.add(m.id); pool.push({ id: m.id, name: m.name || m.id }); }
+  }
+  if (la.item && !seen.has(la.item.id)) pool.unshift({ id: la.item.id, name: la.item.name });
+
+  const pickFile = () => {
+    const inp = h("input", { type: "file", accept: "audio/*,.wav,.mp3,.flac,.ogg,.m4a" });
+    inp.onchange = async () => {
+      const f = inp.files?.[0];
+      if (!f) return;
+      const dataUrl = await new Promise((res, rej) => {
+        const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error("could not read the file")); r.readAsDataURL(f);
+      });
+      const id = uid();
+      await putBlob(id, dataUrl);
+      // A fresh item with no comfyName — uploadPending moves the bytes on
+      // the next render, exactly like a dropped first frame.
+      setLa({ item: { id, name: f.name, kind: "audio", comfyName: "" } });
+    };
+    inp.click();
+  };
+  const onPick = (v) => {
+    if (v === "") return setLa({ item: null });
+    if (v === "__pick__") return pickFile();
+    const hit = pool.find(x => x.id === v);
+    if (hit) setLa({ item: { id: hit.id, name: hit.name, kind: "audio", comfyName: "" } });
+  };
+
+  const melMissing = has("MelBandRoFormerSampler") === false;
+  return group("Audio", {
+    id: "d-audio", icon: "♫", accordion: false,
+    badge: la.item ? "conditioned" : "generated",
+    help: "LTX-2.5 samples audio and video in one joint latent — normally both start as noise. A conditioning track replaces the audio half with the encoded file, noise-masked so the sampler keeps it, and the video is generated against it: dialogue moves lips, beats move motion, and the delivered clip plays the track. The clip keeps the length you chose above; the track is trimmed to it from the offset. This is the main Motionstill app's Audio Conditioning card, node for node.",
+  },
+    row("Track",
+      select([["", "off — the model writes the sound"], ...pool.map(x => [x.id, x.name]), ["__pick__", "a file from disk…"]],
+        la.item ? la.item.id : "", onPick),
+      la.item
+        ? `The render is conditioned by "${la.item.name}" — the model writes picture against this sound. A track shorter than the clip conditions the seconds it covers.`
+        : "Off: LTX writes its own soundtrack from the prompt, as always. Voice-overs from the Edit page and reference audio are listed here; so is any file from disk."),
+    la.item ? row("Start at",
+      h("div.flex",
+        h("input", { type: "number", min: "0", step: "0.5", value: String(la.startSec || 0), class: "grow",
+          oninput: (e) => update((proj) => { proj.render.ltxAudio = { ...(proj.render.ltxAudio || {}), startSec: Math.max(0, Number(e.target.value) || 0) }; }, "text") }),
+        h("span.hint.mono", "s")),
+      "Seconds into the track where the clip's audio begins — the trim runs from here for the clip's length.") : null,
+    la.item ? h("div", { style: { margin: "9px 0 0" } },
+      checkbox("Drive with the vocals only", la.separateVocals, (v) => setLa({ separateVocals: v }),
+        "Mel-Band RoFormer splits the track and only the voice conditions the render — music and room noise cannot fight the lip-sync. The delivered clip still plays the full track.")) : null,
+    la.item && la.separateVocals && melMissing
+      ? h("div.note.warn", { style: { marginTop: "7px" } },
+          "The Mel-Band RoFormer nodes are not on this ComfyUI — install the ComfyUI-MelBandRoFormer pack (and its model file, Setup ▸ Models), or turn the toggle off.")
+      : null,
+    la.item && la.separateVocals ? h("div", { style: { margin: "7px 0 0" } },
+      checkbox("Deliver the vocal stem, not the full track", la.vocalsOnly, (v) => setLa({ vocalsOnly: v }),
+        "The clip's audio becomes the extracted vocals alone — for laying your own music under the cut afterwards.")) : null,
+
+    /* Speak it first: lines → (optionally) a mic take that becomes the
+     * track above → the lines into the prompt. Folded away because most
+     * renders never open it, and this page has been overloaded once. */
+    h("div", { style: { marginTop: "10px" } }, more("Speak it first — lines, a take, the prompt",
+      row("Lines",
+        segmented([["direction", "A direction"], ["exact", "My exact words"]], acMode, (v) => { acMode = v; refresh(); }),
+        acMode === "direction"
+          ? "Type the intent — \"warm, du-form, sell the ending\" — and ✎ writes lines from it and the timeline. What comes back flips to exact words."
+          : "This text is the text: ⚡ only trims and re-breathes it, ✎ replaces it from the timeline. Record reads it; → puts it in the prompt verbatim."),
+      textarea(acLines, (v) => { acLines = v; acLineStamps = null; }, {
+        rows: "3",
+        placeholder: acMode === "direction" ? "What should the voice say, roughly?" : "The words, exactly as they are to be spoken",
+        style: "margin-top:6px",
+      }),
+      h("div.flex", { style: { gap: "5px", marginTop: "6px", flexWrap: "wrap" } },
+        h("button.btn.sm", { onclick: () => acWrite(p), disabled: acBusy, title: "Write lines that fit the clip's seconds — from the timeline, and from the direction above if there is one" }, acBusy ? "…" : "✎ Write"),
+        h("button.btn.sm", { onclick: () => acTighten(p), disabled: acBusy, title: "Rework the draft to fit the seconds — exact words are trimmed, never paraphrased away" }, "⚡ Tighten"),
+        h("button.btn.sm" + (acRec ? ".record" : ""), { onclick: () => acRecord(p), title: "One mic take, read off this box — it becomes the conditioning track above, and the render lip-syncs to it" },
+          acRec ? h("span", { id: "ac-timer" }, `■ Stop · ${acRecSecs}s`) : "● Record it"),
+        h("button.btn.sm", { onclick: acIntoPrompt, title: "Put the lines into the timeline as dialogue, so the compiled prompt says these words are SPOKEN — with a take that is what makes the conditioning stick; without one the model speaks them itself" }, "→ Into the prompt"),
+        h("span.spacer"),
+        select(VOICE_LANGS, vcLang, (v) => { vcLang = v; }),
+      ),
+    )),
   );
 }
 
@@ -842,19 +1092,19 @@ const gb = (n) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10);
  *  not fit at all. */
 function fitLine(p, eta, fit) {
   const time = `Rough estimate: ${humanTime(eta)}`;
-  if (!fit) return h("div.hint", { style: { marginTop: "8px" } }, `${time} on a 24 GB card.`);
+  if (!fit) return h("div.hint.keep", { style: { marginTop: "8px" } }, `${time} on a 24 GB card.`);
   const tokens = `≈${Math.round(fit.tokens / 1000)}k tokens through the DiT`;
   if (fit.verdict === "unknown") {
-    return h("div.hint", { style: { marginTop: "8px" } }, `${time} · about ${gb(fit.needGB)} GB of VRAM at peak (${tokens}) — ComfyUI is offline, so the card size is unknown.`);
+    return h("div.hint.keep", { style: { marginTop: "8px" } }, `${time} · about ${gb(fit.needGB)} GB of VRAM at peak (${tokens}) — ComfyUI is offline, so the card size is unknown.`);
   }
   const need = `needs about ${gb(fit.needGB)} of the card's ${gb(fit.cardGB)} GB`;
-  if (fit.verdict === "ok") return h("div.hint", { style: { marginTop: "8px" } }, `${time} · ${need} (${tokens}).`);
+  if (fit.verdict === "ok") return h("div.hint.keep", { style: { marginTop: "8px" } }, `${time} · ${need} (${tokens}).`);
   if (fit.verdict === "tight") {
-    return h("div.hint.warn", { style: { marginTop: "8px" } },
+    return h("div.hint.warn.keep", { style: { marginTop: "8px" } },
       `${time} · ${need} (${tokens}). Fits, but the DiT cannot stay resident, so it will page weights every step and run slower.`);
   }
   const levers = vramLevers(p, fit);
-  return h("div.hint.bad", { style: { marginTop: "8px" } },
+  return h("div.hint.bad.keep", { style: { marginTop: "8px" } },
     `${time} · ${need} (${tokens}) — this will not fit.${levers.length ? ` What would bring it back: ${levers.join(", ")}.` : ""}`);
 }
 
@@ -1108,9 +1358,194 @@ async function doBatch(p) {
   }
 }
 
+/* ── The voice cloner ─────────────────────────────────────────
+ * Both TTS services clone from a clip in their voices/ folder — the file
+ * stem is the voice id, a same-stem .txt its transcript — and the server has
+ * known how to put one there since day one (server/voice.js). Until now the
+ * only way in was scp; this panel is the way in from the app. Five to thirty
+ * seconds of clean speech, a name, and it is a voice every voice-over picker
+ * on the Edit page offers. It lives on Deliver because delivery is when the
+ * scratch VO gets replaced by the real one. */
+
+let vcRec = null;            // the active MediaRecorder, null between takes
+let vcRecSecs = 0;
+let vcRecTimer = null;
+let vcClip = null;           // { data, name, seconds } — what will be cloned
+let vcName = "";
+let vcTranscript = "";
+let vcEngines = { qwen: true, voxcpm: true };
+let vcLang = "de";
+let vcBusy = false;
+let vcAudition = "";         // "engine/id" while a test line is being spoken
+let vcVoices = {};           // engine → { voices, default } | "loading" | { error }
+
+const VC_LINES = {
+  de: "Das ist meine geklonte Stimme — fünf Sekunden Referenz reichen dafür.",
+  en: "This is my cloned voice — five seconds of reference were enough for it.",
+};
+
+function vcLoadVoices(engine) {
+  if (vcVoices[engine]) return;
+  vcVoices[engine] = "loading";
+  api.voices(engine)
+    .then((r) => { vcVoices[engine] = r || { voices: [] }; refresh(); })
+    .catch((e) => { vcVoices[engine] = { error: e.message }; refresh(); });
+}
+
+async function vcRecord() {
+  if (vcRec) { vcRec.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { return toast("No microphone", e.message, "err"); }
+  const chunks = [];
+  const mr = new MediaRecorder(stream);
+  mr.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
+  mr.onstop = () => {
+    clearInterval(vcRecTimer); vcRecTimer = null;
+    stream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(chunks, { type: mr.mimeType || "audio/webm" });
+    const rd = new FileReader();
+    rd.onload = () => { vcClip = { data: rd.result, name: "recording", seconds: vcRecSecs }; vcRec = null; refresh(); };
+    rd.readAsDataURL(blob);
+  };
+  vcRec = mr; vcRecSecs = 0;
+  // The services trim at 30 s anyway (server/voice.js ffmpeg -t 30), so
+  // stopping there loses nothing and saves someone reading a whole page.
+  vcRecTimer = setInterval(() => {
+    vcRecSecs++;
+    const el = $("#vc-timer"); if (el) el.textContent = `● ${vcRecSecs}s`;
+    if (vcRecSecs >= 30) mr.stop();
+  }, 1000);
+  mr.start();
+  refresh();
+}
+
+function vcPickFile() {
+  const inp = h("input", { type: "file", accept: "audio/*,video/*,.wav,.mp3,.flac,.ogg,.m4a,.mp4,.mov,.webm" });
+  inp.onchange = () => {
+    const f = inp.files?.[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { vcClip = { data: rd.result, name: f.name }; refresh(); };
+    rd.readAsDataURL(f);
+  };
+  inp.click();
+}
+
+async function vcSave() {
+  const engines = Object.keys(vcEngines).filter(k => vcEngines[k]);
+  if (!vcClip) return toast("No clip yet", "Record or pick five to thirty seconds of clean speech first.", "err");
+  if (!vcName.trim()) return toast("Name the voice", "The name becomes the voice id every picker shows.", "err");
+  if (!engines.length) return toast("Pick an engine", "Qwen3-TTS, VoxCPM2, or both.", "err");
+  vcBusy = true; refresh();
+  try {
+    const r = await api.addVoice({ engine: engines[0], engines, name: vcName.trim(), data: vcClip.data, transcript: vcTranscript.trim() });
+    toast("Voice cloned", `"${r.id}" is saved — every voice-over picker offers it now.`, "ok");
+    vcClip = null; vcName = ""; vcTranscript = "";
+    for (const e of engines) delete vcVoices[e];   // refetch with the new voice in it
+  } catch (e) { toast("Cloning failed", e.message, "err"); }
+  vcBusy = false; refresh();
+}
+
+async function vcSpeak(engine, id) {
+  vcAudition = `${engine}/${id}`; refresh();
+  try {
+    const r = await api.speak({ engine, text: VC_LINES[vcLang] || VC_LINES.en, voice: id, language: vcLang });
+    new Audio(r.audio).play();
+  } catch (e) { toast("Could not speak", e.message, "err"); }
+  vcAudition = ""; refresh();
+}
+
+async function vcRemove(engine, id, label) {
+  const go = await modal({
+    title: `Remove "${id}"?`,
+    body: h("div.hint", `Deletes the reference clip (and its transcript) from ${label}'s voices folder. The voice stops appearing in every picker; re-cloning it needs the original clip again.`),
+    actions: [
+      { label: "Keep it", onClick: (done) => done(false) },
+      { label: "Remove", kind: "primary", onClick: (done) => done(true) },
+    ],
+  });
+  if (!go) return;
+  try {
+    await api.removeVoice(engine, id);
+    delete vcVoices[engine];
+    refresh();
+  } catch (e) { toast("Not removed", e.message, "err"); }
+}
+
+function vcVoiceRows(engine, label) {
+  const state = vcVoices[engine];
+  if (state === "loading" || !state) return h("div.hint", "Looking…");
+  if (state.error) return h("div.hint.warn", `${label} is not answering — ${state.error}`);
+  const voices = (state.voices || []).filter(v => v && v !== "default");
+  if (!voices.length) return h("div.hint", "No cloned voices yet.");
+  return h("div", { style: { display: "flex", flexWrap: "wrap", gap: "5px" } },
+    ...voices.map((v) => {
+      const id = typeof v === "string" ? v : v.id || v.name;
+      return h("span.badge", { style: { gap: "4px" } },
+        h("span", id),
+        h("button.btn.sm.ghost", {
+          title: "Hear a test line in this voice",
+          disabled: vcAudition === `${engine}/${id}`,
+          onclick: () => vcSpeak(engine, id),
+        }, vcAudition === `${engine}/${id}` ? "…" : "▶"),
+        h("button.btn.sm.ghost", { title: "Remove this voice", onclick: () => vcRemove(engine, id, label) }, "✕"),
+      );
+    }));
+}
+
+function voicePanel() {
+  const body = !SERVER_BACKED
+    ? h("div.note.info", { style: { margin: "10px" } },
+        "Cloning needs the local server (npm start) — it is what reaches the TTS services and writes the reference clip into their voices folder. The public build has no way in.")
+    : h("div", { style: { padding: "10px" } },
+        /* The clip. One row: record (turns into stop), pick a file, and what
+         * is currently held. */
+        row("Clip",
+          h("div.flex", { style: { gap: "5px" } },
+            h("button.btn.sm" + (vcRec ? ".record" : ""), { onclick: vcRecord },
+              vcRec ? h("span", { id: "vc-timer" }, `● ${vcRecSecs}s`) : "● Record"),
+            h("button.btn.sm", { onclick: vcPickFile }, "Pick a file…"),
+            vcClip ? h("span.hint.mono.grow", { style: { alignSelf: "center", overflow: "hidden", textOverflow: "ellipsis" } },
+              `${vcClip.name}${vcClip.seconds ? ` · ${vcClip.seconds}s` : ""}`) : null,
+            vcClip ? h("button.btn.sm.ghost", { title: "Drop the clip", onclick: () => { vcClip = null; refresh(); } }, "✕") : null),
+          "Five to thirty seconds of ONE person speaking, no music, no room. A video works too — the server pulls the sound out. Longer than 30 s is trimmed."),
+        vcClip ? h("audio", { src: vcClip.data, controls: "", style: { width: "100%", height: "28px", margin: "2px 0 8px" } }) : null,
+        row("Name",
+          h("input", { type: "text", value: vcName, placeholder: "anna",
+            oninput: (e) => { vcName = e.target.value; } }),
+          "Becomes the voice id — letters, digits, _ and -. The same name overwrites the old clip, which is how a voice gets re-recorded."),
+        row("Transcript",
+          textarea(vcTranscript, (v) => { vcTranscript = v; }, { rows: "2", placeholder: "What the clip says, word for word (optional)" }),
+          "Saved beside the clip. Optional, but the clone tracks the reference noticeably better when the service knows what was said."),
+        row("Into",
+          h("div.flex", { style: { gap: "12px" } },
+            ...VOICE_ENGINES.map(([id, label]) =>
+              checkbox(label.split(" · ")[0], !!vcEngines[id], (v) => { vcEngines[id] = v; refresh(); }, label))),
+          "Both by default — the clip is converted to each service's rate and dropped in its voices folder, so the voice exists wherever the voice-over picker points."),
+        h("div.flex", { style: { gap: "6px", marginTop: "4px" } },
+          h("button.btn.sm.primary", { onclick: vcSave, disabled: vcBusy }, vcBusy ? "Cloning…" : "＋ Clone the voice"),
+          h("span.spacer"),
+          select(VOICE_LANGS, vcLang, (v) => { vcLang = v; }),
+        ),
+        /* What each service already holds — ▶ speaks a test line, ✕ removes. */
+        ...VOICE_ENGINES.map(([id, label]) => {
+          if (SERVER_BACKED) vcLoadVoices(id);
+          return h("div", { style: { marginTop: "9px" } },
+            h("div.hint.mono", { style: { marginBottom: "4px" } }, label),
+            vcVoiceRows(id, label));
+        }),
+      );
+  return h("div.panel",
+    h("div.hd", h("span.title", "Voice cloner"), h("span.spacer"),
+      h("span.hint", { title: "A cloned voice is a reference clip in the TTS service's voices folder — the Edit page's voice-over speaks with it, and Deliver is where the scratch VO becomes the real one." }, "?")),
+    h("div.bd", { style: { padding: "0" } }, body),
+  );
+}
+
 function draw() {
   const p = getProject();
-  mount(root, h("div.cols", settingsPanel(p), renderPanel(p), h("div.rows", filmPanel(p), queuePanel(p), workflowPanel(p))));
+  mount(root, h("div.cols", settingsPanel(p), renderPanel(p), h("div.rows", filmPanel(p), voicePanel(), queuePanel(p), workflowPanel(p))));
 }
 
 export function render(el) {

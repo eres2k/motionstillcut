@@ -115,6 +115,7 @@ const OPTIONAL_NODES = {
   LTXICLoRALoaderModelOnly: "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
   LTXAddVideoICLoRAGuide:   "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
   LTXVTiledVAEDecode:       "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
+  MelBandRoFormerSampler:   "vocal separation for audio conditioning — the ComfyUI-MelBandRoFormer pack (Deliver ▸ Audio)",
 };
 
 /* What the EXPERIMENTAL LTX-2.5 engine additionally needs — its own group in
@@ -132,6 +133,8 @@ const LTX_NODES = {
   LTXVCropGuides:           "crops guide frames back off the latent",
   LatentUpscaleModelLoader: "loads the ×2 upscaler (two-stage build)",
   LTXVLatentUpsampler:      "the 2× latent upscale (two-stage build)",
+  LTXVAudioVAEEncode:       "audio conditioning — encodes a supplied track",
+  TrimAudioDuration:        "audio conditioning — trims the track to the clip",
 };
 
 const COMFY_FOLDER_SOURCES = {

@@ -48,6 +48,11 @@ export const DEFAULT_MODELS = {
   // the clip itself as the reference. Gated on Hugging Face (accept the
   // licence), 327 MB, into models/loras. Deliver ▸ Upscale ▸ LTX-2.5.
   ltx25_upscale_lora: "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+  // Vocal separator for Deliver ▸ Audio's "vocals only" toggle — splits the
+  // conditioning track so only the voice drives the lip-sync. Needs the
+  // ComfyUI-MelBandRoFormer pack (Kijai); the file goes in
+  // models/diffusion_models (huggingface.co/Kijai/MelBandRoFormer_comfy).
+  mel_band_roformer: "MelBandRoformer_fp16.safetensors",
 };
 
 export const DEFAULT_SETTINGS = {
