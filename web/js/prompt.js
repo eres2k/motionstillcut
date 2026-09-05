@@ -273,6 +273,16 @@ function phrase(text) {
   return t;
 }
 
+/** The first sentence of a longer text — a vision caption is 2–4 sentences,
+ *  and the places that quote one inline (subject_definitions, the reference
+ *  roster in the project brief) want the identifying line, not the essay. */
+export function firstSentence(text) {
+  const s = String(text || "").trim();
+  if (!s) return "";
+  const m = /^.*?[.!?](?=\s|$)/.exec(s);
+  return (m ? m[0] : s).trim();
+}
+
 function sentence(text) {
   let t = String(text || "").trim();
   if (!t) return "";
@@ -567,6 +577,66 @@ export function alignmentLine(project) {
   return "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.";
 }
 
+/* ── Scoping citations back to their shots ──────────────────
+ * The rewriter is told twice that a shot names only the subjects it is of,
+ * and a small local model still comes back citing every tag in every shot —
+ * the apartment reel that re-described all six rooms inside each of its six
+ * shots, which asks the render model to show six rooms at once. The draft
+ * the rewriter was handed is ground truth for which shot owns which tag, so
+ * the repair is mechanical: in each [Shot N] section of the answer, a tag
+ * the draft places only in OTHER shots is removed together with its
+ * appositive ("<Subject 2>, a bright open-plan living room with…"), up to
+ * the next tag or the end of the sentence. A tag the draft places in no
+ * shot at all is left alone everywhere — there is nothing to scope it to. */
+const SHOT_MARKER_SPLIT = /(\[Shot \d+\])/;
+
+/** Shot number → that shot's prose, markers excluded; text before [Shot 1]
+ *  (the ref-mode style lead) is not a shot and is not returned. */
+function shotSections(text) {
+  const map = new Map();
+  let n = 0;
+  for (const part of String(text || "").split(SHOT_MARKER_SPLIT)) {
+    const m = /^\[Shot (\d+)\]$/.exec(part);
+    if (m) { n = Number(m[1]); continue; }
+    if (n) map.set(n, (map.get(n) || "") + part);
+  }
+  return map;
+}
+
+export function scopeCitationsToDraft(description, draftText, allTags) {
+  const text = String(description || "");
+  const tags = (allTags || []).filter(Boolean);
+  if (!text.includes("[Shot") || !tags.length) return text;
+  const draft = shotSections(draftText);
+  if (draft.size < 2) return text;
+  const owners = new Map();
+  for (const tag of tags) {
+    const where = [...draft].filter(([, body]) => body.includes(tag)).map(([n]) => n);
+    if (where.length) owners.set(tag, new Set(where));
+  }
+  if (!owners.size) return text;
+  const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let shotN = 0;
+  return text.split(SHOT_MARKER_SPLIT).map((part) => {
+    const m = /^\[Shot (\d+)\]$/.exec(part);
+    if (m) { shotN = Number(m[1]); return part; }
+    if (!shotN) return part;
+    let s = part;
+    for (const [tag, where] of owners) {
+      if (where.has(shotN) || !s.includes(tag)) continue;
+      s = s.replace(new RegExp(`${esc(tag)}[^<.!?]*`, "g"), "");
+    }
+    if (s === part) return part;
+    // The seams the removal leaves behind: ", ." and ", ,", a space before
+    // punctuation, and a preposition whose object is gone ("…shot of .").
+    return s
+      .replace(/(?:,\s*)+([.,!?])/g, "$1")
+      .replace(/\s+([.,!?])/g, "$1")
+      .replace(/\s*\b(?:of|and|or|with|in|to|at|from|featuring|showing|beside|near|toward|towards)([.!?])/g, "$1")
+      .replace(/\s{2,}/g, " ");
+  }).join("");
+}
+
 export function compileSoundscape(project) {
   if (project.sound?.silent) return "N/A";
   return expandTokens((project.sound?.soundscape || "").trim()) || "N/A";
@@ -685,8 +755,11 @@ export function compileSubjectDefs(project) {
   return inv.map(e => {
     const name = (e.ref?.label || e.ref?.name || "").replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim();
     if (e.kind === "picture") {
-      // §2.1's shape: the subject, then the asset it comes from.
-      return `${e.tag} is the subject shown in ${e.source}${name ? `, ${name}` : ""}.`;
+      // §2.1's shape: the subject, then the asset it comes from — and the
+      // caption's first sentence when one exists, which is the difference
+      // between a definition and a filename.
+      const cap = firstSentence(e.ref?.caption).replace(/[.!?]$/, "");
+      return `${e.tag} is the subject shown in ${e.source}${name ? `, ${name}` : ""}${cap ? `: ${cap}` : ""}.`;
     }
     if (e.kind === "video") return `${e.tag} is a reference clip${name ? ` of ${name}` : ""}, used for its motion and structure.`;
     return `${e.tag} is ${e.fromVideo ? `the synchronized audio track of <Video ${e.index + 1}>` : `a reference audio clip${name ? ` of ${name}` : ""}`}.`;
@@ -1276,6 +1349,16 @@ export function validate(project) {
     }
     for (const m of t.matchAll(/<d>\[([A-Za-z ]+)\]/g)) {
       if (!LANGUAGES.includes(m[1])) add("warn", `"${m[1]}" is not one of H3's ${LANGUAGES.length} dialogue languages — the words may come back in another one.`);
+    }
+    /* The words are kept verbatim, so the tag is the ONLY thing telling H3
+     * which language voice to build — and a German voice-over pasted into a
+     * line still tagged [English] is the mismatch nobody sees. Umlauts and ß
+     * plus the closed-class words are enough to catch it without a detector. */
+    for (const m of t.matchAll(/<d>\[English\]([^<]*)<\/d>/g)) {
+      if (/[äöüßÄÖÜ]/.test(m[1]) || /\b(?:und|nicht|eine?n?|der|die|das|mit|für|über|ist|sind|Sie|zu)\b/.test(m[1])) {
+        add("warn", "A line tagged [English] looks German. The tag names the voice's language — set the line's language to German, the words stay verbatim either way.");
+        break;
+      }
     }
     // §4.2's approved cut verbs. Dissolves and fades are allowed only on
     // request, which the vocabulary already labels.

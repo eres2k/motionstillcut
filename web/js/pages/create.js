@@ -20,7 +20,7 @@ import {
   getProject, update, orderedShots, shotActionText, newShot, newBeat,
   dimensions, MODES, referenceInventory, normaliseMedia, H3_DURATION, overLength,
   clearShotWriting,
- onProjectSwap, activeEngine, setEngine, durationFrames } from "../state.js";
+ onProjectSwap, activeEngine, setEngine, durationFrames, shotCitations } from "../state.js";
 import { ingest, getBlob, delBlob, posterFor, kindOf } from "../media.js";
 import { queueLength } from "../queue.js";
 import { polishShot } from "../llm.js";
@@ -41,7 +41,7 @@ let root = null;
 let unsub = null;
 let busy = false;
 let previz = null;
-let previzBg = null;
+let previzBg = new Map();        // media id → data URL, one entry per picture
 let takeState = { running: false, step: "", jobs: [] };
 
 /* The pair of takes belongs to the project that rendered them. Create prefers
@@ -573,14 +573,28 @@ function dialRail(p) {
 
 function previzPane(p) {
   const pane = h("div.cr-previz");
-  const plate = p.mode === "i2v" ? p.frames?.first : (p.refs?.images || [])[0];
-  if (plate && previzBg?.id !== plate.id) {
-    getBlob(plate.id).then((data) => { if (data) { previzBg = { id: plate.id, data }; draw(); } });
+  /* Every picture a shot could cite, so a per-picture preset previews each
+   * shot over its own room rather than the first room every time. */
+  const wanted = [p.mode === "i2v" ? p.frames?.first : null, ...(p.refs?.images || [])].filter(Boolean);
+  for (const m of wanted) {
+    if (previzBg.has(m.id)) continue;
+    previzBg.set(m.id, null);            // in flight — never fetched twice
+    getBlob(m.id).then((data) => {
+      if (!data) { previzBg.delete(m.id); return; }
+      previzBg.set(m.id, data);
+      draw();
+    });
   }
+  const lead = p.mode === "i2v" ? p.frames?.first : (p.refs?.images || [])[0];
   if (previz) previz.destroy();
   previz = createPreviz(p, {
     startAt: 0,
-    backgroundFor: () => (plate && previzBg?.id === plate.id ? previzBg.data : null),
+    backgroundFor: (shot) => {
+      for (const e of shotCitations(p, shot)) {
+        if (e.kind === "picture" && previzBg.get(e.ref?.id)) return previzBg.get(e.ref.id);
+      }
+      return lead ? previzBg.get(lead.id) || null : null;
+    },
   });
   pane.appendChild(previz.el);
   previz.play();

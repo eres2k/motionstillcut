@@ -149,14 +149,29 @@ function applyFraming({ shotId, live, framing, fx, fy, shotType, move }) {
  * reference image for Ref2V, and otherwise the grid — which is honest, since
  * T2V has no picture until it renders. */
 function ensurePrevizBackgrounds(p) {
-  const wanted = p.mode === "i2v" ? p.frames.first : (p.refs.images || [])[0];
-  if (!wanted) { previzBg = new Map(); return; }
-  if (previzBg.has(wanted.id)) return;
-  getBlob(wanted.id).then((data) => {
-    if (!data) return;
-    previzBg.set(wanted.id, data);
-    if (viewerMode === "previz") refresh();
-  });
+  /* Every picture a shot could cite, not just the first: a reel that walks
+   * through six rooms previews as six rooms, not the first room six times. */
+  const wanted = [p.mode === "i2v" ? p.frames?.first : null, ...(p.refs?.images || [])].filter(Boolean);
+  if (!wanted.length) { previzBg = new Map(); return; }
+  for (const m of wanted) {
+    if (previzBg.has(m.id)) continue;
+    previzBg.set(m.id, null);            // in flight — never fetched twice
+    getBlob(m.id).then((data) => {
+      if (!data) { previzBg.delete(m.id); return; }
+      previzBg.set(m.id, data);
+      if (viewerMode === "previz") refresh();
+    });
+  }
+}
+
+/** The plate a shot plays over: the first picture that shot cites, falling
+ *  back to the project's lead image for a shot that cites nothing. */
+function previzPlate(p, shot) {
+  for (const e of shotCitations(p, shot)) {
+    if (e.kind === "picture" && previzBg.get(e.ref?.id)) return previzBg.get(e.ref.id);
+  }
+  const lead = p.mode === "i2v" ? p.frames?.first : (p.refs?.images || [])[0];
+  return lead ? previzBg.get(lead.id) || null : null;
 }
 
 /* ── Left: shot list + the idea box ───────────────────────── */
@@ -268,14 +283,12 @@ function viewerPanel(p) {
 
   if (viewerMode === "previz") {
     ensurePrevizBackgrounds(p);
-    const plate = p.mode === "i2v" ? p.frames.first : (p.refs.images || [])[0];
-    const bg = plate ? previzBg.get(plate.id) : null;
     const wasPlaying = previz?.isPlaying;
     if (previz) previz.destroy();
     previz = createPreviz(p, {
       startAt: playhead,
       editable: true,
-      backgroundFor: () => bg || null,
+      backgroundFor: (shot) => previzPlate(p, shot),
       onFraming: applyFraming,
       onTime: (t, frame) => {
         playhead = t;

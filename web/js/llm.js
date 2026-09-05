@@ -15,8 +15,8 @@ import { presetGuidance } from "./presets.js";
 import { splitCutBeats, stripCutPrefix } from "./shotlist.js";
 import { api } from "./api.js";
 import { getBlob } from "./media.js";
-import { compilePrompt } from "./prompt.js";
-import { referenceInventory, orderedShots, orderedDialogue, shotActionText, filmSpan, activeEngine } from "./state.js";
+import { compilePrompt, scopeCitationsToDraft, firstSentence } from "./prompt.js";
+import { referenceInventory, orderedShots, orderedDialogue, shotActionText, filmSpan, activeEngine, update } from "./state.js";
 import { CLIP_MAX } from "./film.js";
 import { CAMERA_TYPES, SHOT_TYPES, VIEWPOINTS } from "./vocab.js";
 
@@ -144,7 +144,14 @@ function projectBrief(project) {
     shots.some(s => shotActionText(s))
       ? `Action beats, in order: ${shots.map((s, i) => `[Shot ${i + 1}] ${shotActionText(s) || "—"}`).join(" ")}`
       : "",
-    inv.length ? `Attached references — cite EXACTLY these tags and no others: ${inv.map(e => `${e.tag} (${e.ref?.label || e.ref?.name || e.kind})`).join(", ")}. A tag with no media behind it is silently ignored.` : "",
+    /* "cite EXACTLY these tags and no others" read, to a small model, as
+     * "cite all of them, everywhere" — the apartment reel that named every
+     * room in every shot. The exactness is about which tags EXIST, not where
+     * they go. */
+    inv.length ? `Attached references: ${inv.map(e => {
+      const cap = firstSentence(e.ref?.caption);
+      return `${e.tag} (${e.ref?.label || e.ref?.name || e.kind}${cap ? ` — ${cap}` : ""})`;
+    }).join(", ")}. These are the only tags that exist — a tag with no media behind it is silently ignored. Cite each tag only in the shot that is OF it, never in every shot.` : "",
     project.mode === "i2v" && project.frames?.first?.caption ? `The fixed first frame shows: ${project.frames.first.caption}` : "",
     /* How much to say per shot — the Detail dial. It is a target for the
      * writer, so it rides on every call that writes: breakdown, polish, enhance. */
@@ -156,11 +163,53 @@ function projectBrief(project) {
   ].filter(Boolean).join("\n");
 }
 
+/* ── 0b. Captions, filled in lazily ───────────────────────
+ * breakdown and polishShot never see pixels — their only visual grounding is
+ * the caption on each reference (tagRules). The enhancer sends the first six
+ * pictures, but the draft it rewrites reads captions too (subject
+ * definitions). So every writer starts here: any attached picture with no
+ * caption gets one, once, stored on the media item where the Media page
+ * shows and edits it. Only EMPTY captions are written — one typed by hand is
+ * the creator's — and failures skip, because the assist that asked must
+ * still run; one unreachable vision model stops the whole pass rather than
+ * failing once per picture. */
+let captionsFailedAt = 0;
+export async function ensureCaptions(project) {
+  // An unreachable vision model a moment ago is still unreachable now — a
+  // per-shot loop must not pay one failed request per shot for it.
+  if (Date.now() - captionsFailedAt < 60_000) return 0;
+  const wanted = [];
+  if (project.mode === "i2v" && project.frames?.first && !(project.frames.first.caption || "").trim()) {
+    wanted.push({ media: project.frames.first, first: true });
+  }
+  for (const m of project.refs?.images || []) {
+    if (!(m.caption || "").trim()) wanted.push({ media: m, first: false });
+  }
+  let written = 0;
+  for (const item of wanted) {
+    try {
+      const data = await getBlob(item.media.id);
+      if (!data || !String(data).startsWith("data:image/")) continue;
+      const { caption } = await captionImage(data, { purpose: item.first ? "first frame" : "reference" });
+      if (!(caption || "").trim()) continue;
+      update((draft) => {
+        const live = item.first ? draft.frames?.first : (draft.refs?.images || []).find(m => m.id === item.media.id);
+        if (live && !(live.caption || "").trim()) live.caption = caption.trim();
+      }, "media");
+      written++;
+    } catch (err) {
+      if (/unreachable|not signed in|timed out/i.test(err?.message || "")) { captionsFailedAt = Date.now(); break; }
+    }
+  }
+  return written;
+}
+
 /* ── 1. Idea → shot list ──────────────────────────────────
  * The director's-assistant verb: one line in, a timed shot list out. Past
  * H3's ~15 s training window a single-take prompt degrades, so this is how a
  * long clip stays coherent. */
 export async function breakdown(idea, project, shotCount = 0) {
+  await ensureCaptions(project);
   /* In a film the target is the whole piece, not one clip — and the shot count
    * has to scale with it, or a 90-second film comes back as six shots of
    * fifteen seconds each and every one of them is its own clip with nothing
@@ -245,6 +294,8 @@ export async function projectImages(project, { max = 6 } = {}) {
  * shape H3's own IR rewriter emits. This is the button the guide is really
  * asking for. */
 export async function enhance(project, { instruction = "", useVision = true } = {}) {
+  // Before the compile: the draft's subject_definitions read the captions.
+  await ensureCaptions(project);
   const compiled = compilePrompt(project);
   // The optimizer used to rewrite a prompt about images it had never seen.
   const images = useVision ? await projectImages(project) : [];
@@ -289,9 +340,18 @@ ${instruction ? `\nThe user also asks: ${instruction}` : ""}`,
     maxTokens: isRef ? 2600 : 1800,
   });
 
+  /* Whatever the rules said, the answer may still cite every reference in
+   * every shot. The draft is ground truth for which shot owns which tag, so
+   * foreign citations are stripped back out before the result lands. */
+  const tags = referenceInventory(project).map(e => e.tag);
+  if (project.mode === "i2v" && project.frames?.first) tags.unshift("<Picture 1>");
+  const rawDescription = data.detailed_description || data.integrated_multimodal_description || data.description || "";
+
   return {
     model, ms, sawImages: images.length,
-    description: data.detailed_description || data.integrated_multimodal_description || data.description || "",
+    /* The description alone, not compiled.text: retention_analysis carries
+     * its own "[Shot N]" spans and would mis-attribute every tag after it. */
+    description: scopeCitationsToDraft(rawDescription, compiled.description, tags),
     soundscape: data.overall_soundscape || "",
     music: data.non_diegetic_music || "",
     subjectDefs: data.subject_definitions || "",
@@ -312,6 +372,8 @@ function cleanBeats(beats) {
 }
 
 export async function polishShot(shot, index, project, instruction = "") {
+  // Cheap after the first call of a loop: every caption already written.
+  await ensureCaptions(project);
   const ordered = orderedShots(project);
   const end = index + 1 < ordered.length ? ordered[index + 1].at : project.render.duration;
   const lengthSeconds = Math.max(0, end - (shot.at || 0));
