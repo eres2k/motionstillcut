@@ -292,7 +292,7 @@ async function runRead(btn, p) {
      * already written, which on a starter is the entire starter. Without a
      * model this button only moves the user to the steering stage. */
     update((draft) => {
-      draft.creative.answers = { subject: "", setting: "", beats: [], speech: "" };
+      draft.creative.answers = { subject: "", setting: "", beats: [], speech: landedSpeech(draft) };
       draft.creative.stage = "steer";
       applySteering(draft);
     }, "creative");
@@ -304,13 +304,17 @@ async function runRead(btn, p) {
   try {
     const proposal = await readMaterial(p);
     update((draft) => {
+      /* A voice-over landed from this very page is part of the material, not
+       * a previous idea's leftover: it outranks whatever line the proposal
+       * imagined. writeAnswers carries the landed lines through the rebuild. */
+      const authored = landedSpeech(draft);
       draft.creative.proposal = proposal;
       draft.creative.answers = {
         subject: proposal.subject,
         setting: proposal.setting,
         beats: proposal.beats,
-        speech: proposal.speaks ? proposal.line : "",
-        voice: proposal.speaks ? proposal.voice : "",
+        speech: authored || (proposal.speaks ? proposal.line : ""),
+        voice: (authored && (draft.creative.answers?.voice || "").trim()) || (proposal.speaks ? proposal.voice : ""),
         extra: {},
       };
       draft.creative.dials = { ...DEFAULT_DIALS, ...proposal.dials };
@@ -349,7 +353,14 @@ async function runRead(btn, p) {
  */
 function writeAnswers(draft, { fresh = false } = {}) {
   const a = draft.creative.answers || {};
-  if (fresh) for (const shot of (draft.shots || [])) clearShotWriting(shot);
+  /* A voice-over the creator landed from the Material stage (lines.js tags
+   * its dialogue `source: "lines"`) is material, not an interview answer —
+   * a fresh read replaces the interview's writing, never the voice-over. */
+  if (fresh) for (const shot of (draft.shots || [])) {
+    const landed = (shot.dialogue || []).filter(d => d.source === "lines" && (d.text || "").trim());
+    clearShotWriting(shot);
+    if (landed.length) shot.dialogue = landed;
+  }
   const shots = orderedShots(draft);
   const first = shots[0] || newShot(0);
   for (const shot of (draft.shots?.length ? draft.shots : [first])) {
@@ -358,22 +369,44 @@ function writeAnswers(draft, { fresh = false } = {}) {
   }
   if (!draft.shots?.length) draft.shots = [first];
   if (a.speech?.trim()) {
+    const landed = orderedShots(draft).flatMap(s => (s.dialogue || []).filter(d => d.source === "lines" && (d.text || "").trim()));
+    if (landed.length && squashText(landed.map(d => d.text).join(" ")) === squashText(a.speech)) {
+      /* The voice-over block already landed exactly these words, placed on
+       * their shots with their own timing and language. Rewriting them into
+       * one English line on shot 1 would only lose that — leave them be. */
+      return;
+    }
     const target = draft.shots[0];
     /* Who is speaking is what H3 builds the voice from; a line with no
      * identity compiles to a bare "(S1) says" and the model guesses a
      * voice. The interview proposes one; failing that, the subject is who
      * is on screen, which is at least a person rather than nobody. */
     const voice = (a.voice || "").trim() || (a.subject || "").trim();
-    const prev = target.dialogue?.[0] || {};
+    const prev = target.dialogue?.[0] || landed[0] || {};
+    /* The answer replaces whatever the interview wrote before — including a
+     * spread voice-over the creator has now edited away from; a stale
+     * fragment left on a later shot would speak twice. */
+    for (const shot of draft.shots) shot.dialogue = (shot.dialogue || []).filter(d => d.source !== "lines" && d.source !== "interview");
     target.dialogue = [{
-      id: prev.id || `d-${Math.random().toString(36).slice(2, 8)}`,
-      speaker: "S1", language: "English", text: a.speech.trim(), voiceover: /off-screen|narrat|voiceover/i.test(voice), note: "",
+      id: prev.id || `d-${Math.random().toString(36).slice(2, 8)}`, source: "interview",
+      speaker: "S1", language: prev.language || "English", text: a.speech.trim(), voiceover: /off-screen|narrat|voiceover/i.test(voice), note: "",
       identity: voice, delivery: prev.delivery || "",
     }];
   } else {
-    for (const shot of draft.shots) shot.dialogue = [];
+    /* No speech answered: the interview's own line goes, and so does anything
+     * untagged it wrote in earlier sessions — but a landed voice-over is the
+     * creator's, cleared only by the explicit "No one speaks" gesture. */
+    for (const shot of draft.shots) shot.dialogue = (shot.dialogue || []).filter(d => d.source === "lines");
   }
 }
+
+const squashText = (t) => String(t || "").replace(/\s+/g, " ").trim();
+
+/** The voice-over lines the Material stage landed on the shots, in order. */
+const landedSpeech = (p) =>
+  orderedShots(p)
+    .flatMap(s => (s.dialogue || []).filter(d => d.source === "lines").map(d => (d.text || "").trim()))
+    .filter(Boolean).join(" ");
 
 /* ── Stage 2 · Steer ──────────────────────────────────────── */
 function strength(p) {
@@ -445,17 +478,32 @@ function questionCards(p) {
         ),
       )));
     } else if (q.kind === "speech") {
-      const speaking = !!(a.speech || "").trim();
+      /* The voice-over landed on Material is speech too: the card must say
+       * "Someone does" when the compiled prompt already has someone speaking,
+       * whichever block put the words there. */
+      const landed = landedSpeech(p);
+      const speaking = !!(a.speech || "").trim() || !!landed;
       cards.push(card(q, h("div",
         h("div.seg", { style: { marginBottom: speaking ? "8px" : "0" } },
-          h("button", { class: speaking ? "" : "on", onclick: () => { setAnswer("speech", ""); draw(); } }, "No one speaks"),
-          h("button", { class: speaking ? "on" : "", onclick: () => { setAnswer("speech", a.speech || proposal?.line || "…"); draw(); } }, "Someone does"),
+          h("button", { class: speaking ? "" : "on", onclick: () => {
+            /* The one gesture that means nobody speaks — it clears the landed
+             * voice-over too, which writeAnswers otherwise protects. */
+            update((draft) => {
+              draft.creative.answers = { ...(draft.creative.answers || {}), speech: "" };
+              for (const shot of draft.shots || []) shot.dialogue = [];
+              applySteering(draft);
+            }, "speech");
+            draw();
+          } }, "No one speaks"),
+          h("button", { class: speaking ? "on" : "", onclick: () => { setAnswer("speech", a.speech || landed || proposal?.line || "…"); draw(); } }, "Someone does"),
         ),
         speaking ? h("input", {
-          type: "text", value: a.speech, placeholder: "the exact words",
+          type: "text", value: (a.speech || "").trim() ? a.speech : landed, placeholder: "the exact words",
           oninput: (e) => setAnswer("speech", e.target.value),
           onchange: () => draw(),
         }) : null,
+        speaking && !(a.speech || "").trim() && landed ? h("div.hint", { style: { marginTop: "4px" } },
+          "These lines came from Material ▸ Voice-over, placed on their shots. Editing here rewrites them as one line on shot 1.") : null,
         speaking ? h("input", {
           type: "text", value: a.voice || "", style: { marginTop: "6px" },
           placeholder: "who is speaking, and how do they sound — \"a woman in her forties, low and unhurried\"",

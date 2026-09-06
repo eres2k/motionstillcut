@@ -34,6 +34,31 @@ test("one long line in shot 1 is dealt across the shots by their seconds", () =>
   assert.ok(speechSeconds(per[0]) <= 5 + 2.5, `shot 1 no longer overflows: ${per[0]}`);
 });
 
+test("a dealt line keeps its language and its provenance", () => {
+  // The voice-over block tags its lines `source: "lines"`; Create's interview
+  // recognises them by it. The deal must not strip the tag — or the language.
+  const p = talkingHead();
+  p.shots.forEach(s => { s.dialogue = []; });
+  p.shots[0].dialogue = [{ id: "v1", speaker: "S1", language: "German", text: LINE, voiceover: false, source: "lines" }];
+  assert.equal(spreadDialogue(p, { always: true }), true);
+  const dealt = p.shots.flatMap(s => s.dialogue || []);
+  assert.ok(dealt.length > 1, "the line was dealt");
+  assert.ok(dealt.every(l => l.source === "lines"), JSON.stringify(dealt.map(l => l.source)));
+  assert.ok(dealt.every(l => l.language === "German"));
+});
+
+test("several lines on one shot are never dealt — the deal would drop all but the first", () => {
+  const p = blankProject();
+  p.render.duration = 10;
+  const s2 = newShot(); s2.at = 5; s2.beats = [newBeat("x")]; p.shots.push(s2);
+  p.shots[0].dialogue = [
+    { id: "a", speaker: "S1", language: "German", text: LINE, source: "lines" },
+    { id: "b", speaker: "S1", language: "German", text: "Und das war der Tag.", source: "lines" },
+  ];
+  assert.equal(spreadDialogue(p, { always: true }), false);
+  assert.equal(p.shots[0].dialogue.length, 2, "both lines still there");
+});
+
 test("speech the creator spread by hand is left alone", () => {
   const p = blankProject();
   p.render.duration = 10;

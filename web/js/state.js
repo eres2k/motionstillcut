@@ -279,9 +279,12 @@ export function newDialogue(speaker = "S1") {
    * line the end of the video truncates. Both have their own tag in H3's
    * grammar — <scenetrans> and <cutoff> — and neither could be expressed at
    * all before, because a line belongs to exactly one shot. */
+  /* `source` is provenance: "lines" for the voice-over block, "interview" for
+   * Create's speech answer, "" for a line written by hand. Create's writers
+   * manage only their own lines by it, so they stop wiping each other's. */
   return {
     id: uid(), speaker, identity: "", delivery: "", language: "English",
-    text: "", voiceover: false, continues: false, cutoff: false, note: "",
+    text: "", voiceover: false, continues: false, cutoff: false, note: "", source: "",
   };
 }
 

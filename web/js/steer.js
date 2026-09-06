@@ -377,7 +377,12 @@ export function spreadDialogue(draft, { always = false, span = null } = {}) {
   const withLines = shots.filter(s => (s.dialogue || []).some(l => (l.text || "").trim()));
   if (withLines.length !== 1) return false;
   const src = withLines[0];
-  const line = src.dialogue.find(l => (l.text || "").trim());
+  const spoken = src.dialogue.filter(l => (l.text || "").trim());
+  /* Only a lone line is dealt. With several on one shot — a voice-over landed
+   * line by line, or two speakers — the deal below would keep the first and
+   * silently drop the rest, since each target shot is written wholesale. */
+  if (spoken.length !== 1) return false;
+  const line = spoken[0];
   if (line.voiceover || line.continues) return false;
   const duration = span ?? (draft.render?.duration || 5);
   const secondsOf = (i) => Math.max(0, ((i + 1 < shots.length ? shots[i + 1].at : duration) - (shots[i].at || 0)));
@@ -414,7 +419,9 @@ export function spreadDialogue(draft, { always = false, span = null } = {}) {
     if (moveOn || mustLeaveSome) gi++;
     groups[gi].push(sentences[si]);
   }
-  const base = { speaker: line.speaker || "S1", language: line.language || "English", voiceover: false, note: "", identity: line.identity || "", voice: line.voice || "", delivery: line.delivery || "" };
+  // `source` rides along: a dealt voice-over is still the voice-over block's
+  // line, and Create's writeAnswers must go on recognising it as such.
+  const base = { speaker: line.speaker || "S1", language: line.language || "English", voiceover: false, note: "", identity: line.identity || "", voice: line.voice || "", delivery: line.delivery || "", source: line.source || "" };
   targets.forEach((shot, i) => {
     const text = groups[i].join(" ");
     // By id into the real array: orderedShots hands back shot 1 as a copy.

@@ -137,12 +137,20 @@ function intoPrompt() {
   update((proj) => {
     const shots = [...(proj.shots || [])].sort((a, b) => (a.at || 0) - (b.at || 0));
     if (!shots.length) return;
+    /* Landing again replaces the last landing, not the creator's other lines —
+     * otherwise every → stacks another copy of the voice-over into the prompt. */
+    for (const s of shots) s.dialogue = (s.dialogue || []).filter(d => d.source !== "lines");
     const use = stamps?.length ? stamps : [{ at: 0, text }];
+    /* The mirror is the landed lines verbatim — the interview compares the two
+     * to know the answer is already on the shots, so they must be identical. */
+    proj.creative.answers = { ...(proj.creative.answers || {}), speech: use.map(l => l.text).join(" ") };
     for (const ln of use) {
       let target = shots[0];
       for (const s of shots) if ((s.at || 0) <= (ln.at || 0)) target = s;
       const d = newDialogue("S1");
-      d.text = ln.text; d.language = langName;
+      /* `source` is provenance: Create's interview (writeAnswers) manages only
+       * its own line, and this tag is how it knows these are not it. */
+      d.text = ln.text; d.language = langName; d.source = "lines";
       target.dialogue = [...(target.dialogue || []), d];
     }
   }, "shots");
