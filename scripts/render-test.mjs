@@ -91,9 +91,46 @@ export async function create(idea, opts = {}) {
 
 export const scenes = (path) => execFileSync("python3", [join(HERE, "scenes.py"), path]).toString().trim();
 
-export async function render(project, label, { promptOverride = null, out = "render-tests" } = {}) {
+/* Checkpoint overrides (added 21 Sep 2026 for the dev-weights rerun). The
+ * app's builder is the distilled pipeline — baked sigma ladder, cfg 1 — so a
+ * dev run patches the BUILT graph rather than forking the builder: the prompt
+ * chain, guides and AV wiring stay byte-identical to what the corpus ran.
+ *   dit      swap the transformer file (node 1)
+ *   cfg      set both CFGGuiders (15 pass 1, 26 refine if present)
+ *   steps    replace the ManualSigmas ladder with core LTXVScheduler at N
+ *            steps (its defaults: shift 0.95→2.05, stretch, terminal 0.1,
+ *            resolution-aware via the pass-1 video latent) — the ladder is a
+ *            property of the distill, dev needs a real schedule
+ *   sampler  KSamplerSelect name for pass 1 (dev convention: euler)
+ *   tsize    decode in temporal chunks of N latent frames instead of the
+ *            whole clip at once — the builder's default (4096) peaks at
+ *            50+ GB host RAM on long clips and has OOM-killed this box;
+ *            256 with overlap 16 decoded identically at ~19 GB (18 Sep)
+ *   noaudio  mux no audio track. Dev at cfg 1 can emit an audio latent the
+ *            AAC encoder rejects (avcodec_send_frame EINVAL — NaN samples,
+ *            most likely); seam scoring is video-only, so save the video
+ *   neg      replace the negative prompt. The app's negative is inert
+ *            boilerplate because the distill samples at cfg 1; at real CFG
+ *            the negative is live and the Full workflow ships its own       */
+export function patchGraph(wf, { dit = null, cfg = null, steps = null, sampler = null, tsize = null, noaudio = false, neg = null, flatshift = false } = {}) {
+  if (dit) wf.prompt["1"].inputs.unet_name = dit;
+  if (cfg != null) for (const id of ["15", "26"]) if (wf.prompt[id]) wf.prompt[id].inputs.cfg = cfg;
+  if (steps) wf.prompt["14"] = { class_type: "LTXVScheduler", _meta: { title: `LTXVScheduler (${steps} steps)` },
+    // flatshift: leave the latent unwired so the shift uses the fixed 4096-token
+    // default — at 768p×20 s the token-derived shift is enormous and may be
+    // starving the denoise (the black-render suspect of 21 Sep).
+    inputs: { steps, max_shift: 2.05, base_shift: 0.95, stretch: true, terminal: 0.1, ...(flatshift ? {} : { latent: ["11", 0] }) } };
+  if (sampler) wf.prompt["17"].inputs.sampler_name = sampler;
+  if (tsize) Object.assign(wf.prompt["32"].inputs, { temporal_size: tsize, temporal_overlap: 16 });
+  if (noaudio) delete wf.prompt["34"].inputs.audio;
+  if (neg) wf.prompt["6"].inputs.text = neg;
+  return wf;
+}
+
+export async function render(project, label, { promptOverride = null, out = "render-tests", mods = null } = {}) {
   mkdirSync(out, { recursive: true });
   const wf = buildWorkflow(project, { models: DEFAULT_MODELS, comfy: { outputPrefix: "render-test" } });
+  if (mods) patchGraph(wf, mods);
   if (promptOverride) wf.prompt["5"].inputs.text = promptOverride;
   wf.prompt["35"].inputs.filename_prefix = `render-test/${label}`;
   const text = wf.prompt["5"].inputs.text;
@@ -125,15 +162,18 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (a.startsWith("--")) args[a.slice(2)] = process.argv[i + 1]?.startsWith("--") || process.argv[i + 1] == null ? true : process.argv[++i];
   }
   const opts = { duration: Number(args.duration) || 20, resolution: args.resolution || "832x480", variant: args.variant || "ltx_single", seed: args.seed != null ? Number(args.seed) : 4242 };
+  const mods = (args.dit || args.cfg || args.steps || args.sampler || args.tsize || args.noaudio || args.neg)
+    ? { dit: args.dit || null, cfg: args.cfg != null ? Number(args.cfg) : null, steps: args.steps != null ? Number(args.steps) : null, sampler: args.sampler || null, tsize: args.tsize != null ? Number(args.tsize) : null, noaudio: !!args.noaudio, neg: args.neg || null, flatshift: !!args.flatshift }
+    : null;
   const label = args.label || `t${Date.now().toString(36)}`;
   if (args.prompt) {
-    await render(makeProject(opts), label, { promptOverride: readFileSync(args.prompt, "utf8"), out: args.out });
+    await render(makeProject(opts), label, { promptOverride: readFileSync(args.prompt, "utf8"), out: args.out, mods });
   } else if (args.idea) {
     const { project, proposal } = await create(args.idea, opts);
     const text = compilePrompt(project).text;
     console.log(`beats: ${JSON.stringify(proposal.beats)}\nshots:\n  ${orderedShots(project).map(s => `${s.at}s ${s.shotType}/${s.viewpoint} cam=${s.camera.type}/${s.camera.speed} lines=${(s.dialogue || []).map(d => d.text).join("|")}`).join("\n  ")}\nprompt:\n${text}\nchecks:\n  ${validate(project).checks.map(c => `${c.level}: ${c.msg}`).join("\n  ")}`);
-    if (!args.dry) await render(project, label, { out: args.out });
+    if (!args.dry) await render(project, label, { out: args.out, mods });
   } else {
-    console.log("usage: render-test.mjs --idea '…' | --prompt file [--dry] [--duration N] [--resolution WxH] [--variant ltx_single|ltx_two] [--seed N] [--label NAME] [--out DIR]");
+    console.log("usage: render-test.mjs --idea '…' | --prompt file [--dry] [--duration N] [--resolution WxH] [--variant ltx_single|ltx_two] [--seed N] [--label NAME] [--out DIR]\n       dev-weights overrides: [--dit FILE] [--cfg N] [--steps N] [--sampler NAME] [--tsize N]");
   }
 }
