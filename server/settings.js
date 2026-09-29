@@ -44,7 +44,7 @@ export const DEFAULT_MODELS = {
   video_vae:      "minimax_h3_video_vae_fp16.safetensors",
   audio_vae:      "minimax_h3_audio_vae_fp32.safetensors",
   turbo_lora_8:   "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
-  turbo_lora_4:   "minimax_h3_fl2v_turbo_4step_v1.1_768p_comfyui_bf16.safetensors",
+  turbo_lora_4:   "minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors",
   ref_turbo_lora: "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
 
   /* The experimental second engine — LTX-2.5's split, Comfy-aligned pack

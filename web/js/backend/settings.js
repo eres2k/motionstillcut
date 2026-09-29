@@ -32,7 +32,7 @@ export const DEFAULT_MODELS = {
   video_vae:      "minimax_h3_video_vae_fp16.safetensors",
   audio_vae:      "minimax_h3_audio_vae_fp32.safetensors",
   turbo_lora_8:   "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
-  turbo_lora_4:   "minimax_h3_fl2v_turbo_4step_v1.1_768p_comfyui_bf16.safetensors",
+  turbo_lora_4:   "minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors",
   ref_turbo_lora: "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
 
   /* The experimental second engine — LTX-2.5's split, Comfy-aligned pack
@@ -48,6 +48,14 @@ export const DEFAULT_MODELS = {
   // the clip itself as the reference. Gated on Hugging Face (accept the
   // licence), 327 MB, into models/loras. Deliver ▸ Upscale ▸ LTX-2.5.
   ltx25_upscale_lora: "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+  // The Refine Details IC-LoRA (2026-09-28), behind Deliver ▸ Upscale ▸ LTX
+  // Native. Where the Pixel Spatial Upscaler above regenerates a whole clip
+  // at ×2 — and so is bounded by what fits in one latent — this one is
+  // trained on 1024×576 tiles and is driven by LTXVTiledFusionSampler, which
+  // fuses overlapping tiles after every step on ONE canvas. That is what
+  // makes 4K and 8K reachable: peak VRAM tracks the tile, not the canvas.
+  // Gated on Hugging Face (accept the licence), 1.31 GB, into models/loras.
+  ltx25_refine_lora:  "ltx-2.5-22b-ic-lora-refine-details-1.0.safetensors",
   // Vocal separator for Deliver ▸ Audio's "vocals only" toggle — splits the
   // conditioning track so only the voice drives the lip-sync. Needs the
   // ComfyUI-MelBandRoFormer pack (Kijai); the file goes in

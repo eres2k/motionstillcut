@@ -115,6 +115,8 @@ const OPTIONAL_NODES = {
   LTXICLoRALoaderModelOnly: "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
   LTXAddVideoICLoRAGuide:   "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
   LTXVTiledVAEDecode:       "LTX-2.5 IC-LoRA upscale — the ComfyUI-LTXVideo pack (Deliver ▸ Upscale)",
+  LTXVTiledFusionSampler:   "LTX Native upscale — ComfyUI-LTXVideo 2026-09-29 or newer (Deliver ▸ Upscale)",
+  LTXVGetTilingSizes:       "LTX Native upscale — ComfyUI-LTXVideo 2026-09-29 or newer (Deliver ▸ Upscale)",
   MelBandRoFormerSampler:   "vocal separation for audio conditioning — the ComfyUI-MelBandRoFormer pack (Deliver ▸ Audio)",
 };
 

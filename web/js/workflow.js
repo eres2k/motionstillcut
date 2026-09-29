@@ -755,9 +755,39 @@ function buildLtxWorkflow(project, settings, extras = {}) {
  * The target names a short edge, so a 16:9 canvas lands on the familiar
  * 1920×1080 / 3840×2160 and a 4:3 one on its own honest size. A target no
  * larger than the canvas is a no-op and the pass is skipped. */
-export const UPSCALE_TARGETS = { "720p": 720, "1080p": 1080, "1440p": 1440, "2160p": 2160 };
-export const UPSCALE_TARGET_LABELS = { "720p": "720p", "1080p": "1080p · Full HD", "1440p": "1440p · QHD", "2160p": "2160p · 4K UHD" };
-export const UPSCALE_ENGINES = ["off", "seedvr2", "flashvsr", "ltx25", "esrgan"];
+export const UPSCALE_TARGETS = { "720p": 720, "1080p": 1080, "1440p": 1440, "2160p": 2160, "4320p": 4320 };
+export const UPSCALE_TARGET_LABELS = { "720p": "720p", "1080p": "1080p · Full HD", "1440p": "1440p · QHD", "2160p": "2160p · 4K UHD", "4320p": "4320p · 8K UHD" };
+export const UPSCALE_ENGINES = ["off", "seedvr2", "flashvsr", "ltx25", "ltxnative", "esrgan"];
+
+/* ── LTX Native Resolution (Tiled Fusion) ────────────────────
+ * The second LTX upscaler, and a different shape from "ltx25" above.
+ *
+ * "ltx25" is the Pixel Spatial Upscaler: one latent, regenerated at ×2. Its
+ * ceiling is whatever fits in a single latent — past roughly 31k video
+ * tokens the distilled model returns solid black, which is why 4K was never
+ * on that menu.
+ *
+ * "ltxnative" is LTXVTiledFusionSampler with the Refine Details IC-LoRA. One
+ * canvas and one noise field, but the model runs on overlapping 1024×576-ish
+ * crops at EVERY denoise step and the stepped tiles are Gaussian-blended
+ * back, so the tiles share a trajectory (no seams, no per-tile flicker) while
+ * peak VRAM tracks the TILE. The canvas can therefore be 4K or 8K.
+ *
+ * Cut names targets by short edge; the LTX sizing node names them by long
+ * edge. This is that mapping. 720p and 1440p have no LTX preset of their own,
+ * so they round to the nearest one and the final resize lands them exactly. */
+const LTX_NATIVE_OUTPUT = { "720p": "FullHD", "1080p": "FullHD", "1440p": "4K", "2160p": "4K", "4320p": "8K" };
+/** Spatial tile long-edge presets, as the sizing node spells them. qHD is the
+ *  default: 960×544 on 16:9 is the closest of the three to the 1024×576
+ *  window the LoRA was trained on, and the card is explicit that the closer
+ *  the tile is to that bucket the better it works. */
+const LTX_NATIVE_TILES = ["qHD", "HD", "FullHD"];
+/** Look-and-style only. Every tile receives the whole prompt, so a named
+ *  subject can be stamped into tiles that do not contain it. */
+const LTX_NATIVE_PROMPT =
+  "sharp photographic detail, crisp natural texture, fine surface detail, clean edges, natural film grain, high resolution footage";
+const LTX_NATIVE_NEGATIVE =
+  "blurry, soft, plastic, smeared detail, oversharpened halos, warped faces";
 /** SeedVR2 diffuses no larger than this short edge; a resize finishes the rest. */
 export const SEEDVR2_DIFFUSE_CAP = 1080;
 
@@ -768,6 +798,10 @@ export function upscaleSettings(project) {
     target: UPSCALE_TARGETS[u.target] ? u.target : "1080p",
     ltxMethod: u.ltxMethod === "refine" ? "refine" : "iclora",
     ltxFidelity: ["faithful", "balanced", "creative"].includes(u.ltxFidelity) ? u.ltxFidelity : "balanced",
+    // LTX Native only
+    ltxTile: LTX_NATIVE_TILES.includes(u.ltxTile) ? u.ltxTile : "qHD",
+    ltxLadder: u.ltxLadder === true,
+    ltxPrompt: typeof u.ltxPrompt === "string" ? u.ltxPrompt : "",
   };
 }
 
@@ -793,6 +827,28 @@ function upscaleSeconds(project) {
   if (!plan) return 0;
   const frames = frameCount(project);
   const { width, height } = dimensions(project);
+  /* LTX Native prices differently from every other engine here: the fused
+   * sampler runs the model once per TILE per STEP, so wall-clock follows the
+   * tile grid, not one pass over the frame. Anchored on the Refine Details
+   * card's own measurement — 121 frames, 1080p → 4K, 1024×576 tiles, 8 steps,
+   * ~22 min on an RTX PRO 6000 — with headroom for this box. */
+  if (plan.engine === "ltxnative") {
+    const u = upscaleSettings(project);
+    const TILE_PX = { qHD: 960, HD: 1280, FullHD: 1920 };
+    const TARGET_PX = { FullHD: 1920, "4K": 3840, "8K": 7680 };
+    const tilePx = TILE_PX[u.ltxTile] || 960;
+    const targetPx = TARGET_PX[LTX_NATIVE_OUTPUT[plan.target] || "4K"];
+    const stride = Math.max(1, Math.round(tilePx * 0.5));
+    // Canvas and tile share the source aspect, so the row count equals the
+    // column count and squaring one axis is exact.
+    const tiles = Math.max(1, Math.ceil((targetPx - tilePx) / stride) + 1) ** 2;
+    const perCall = 1800 / (49 * 8 * 121);
+    return Math.round(45 + (u.ltxLadder
+      // Stage 1 is one untiled Full HD pass (≈4 qHD tiles' worth of work)
+      // over 8 steps; stage 2 is 3 fused steps over the output grid.
+      ? perCall * 8 * frames * 4 + perCall * tiles * 3 * frames
+      : perCall * tiles * 8 * frames));
+  }
   // Per 1080p-class DIFFUSED frame on a 5090: SeedVR2 7B fp8 runs ~0.35 fps,
   // FlashVSR tiny ×2 ~0.8 fps, the LTX refine is three steps at 2× canvas,
   // RealESRGAN ×4 ~1.7 fps at 4K (~0.1 s at 1080p).
@@ -932,6 +988,131 @@ function appendUpscale(graph, { decode, createVideo, project, models, seed, prom
     graph["118"] = { class_type: "LTXVSeparateAVLatent", _meta: { title: "Separate AV (refine)" }, inputs: { av_latent: ["117", 0] } };
     graph["119"] = { class_type: "VAEDecodeTiled", _meta: { title: "Decode Video (refine, tiled)" }, inputs: { ...LTX_DECODE, samples: ["118", 0], vae: L.vae } };
     finish("119", `Fit → ${plan.target}`);
+  } else if (plan.engine === "ltxnative") {
+    /* LTX Native Resolution — Lightricks' Tiled Fusion.
+     *
+     * Deliberately does NOT reuse the render's `ltx` handle the way the
+     * ltx25 branch does: L.model carries the render's own LoRA chain (the
+     * distill LoRA, an NSFW LoRA, whatever the project set), and this pass
+     * wants the bare distilled transformer with one IC-LoRA on it. The files
+     * are the same paths either way, so ComfyUI's loader cache makes the
+     * second CLIPLoader/UNETLoader a lookup, not a second 20 GB read.
+     *
+     * Node ids 150–169 sit clear of the refine pass's 100–124 and the shared
+     * 200–203 finish, so an LTX render plus this pass never collide.
+     */
+    const fps = project.render?.fps || 24;
+    const numFrames = frameCount(project);
+    const { width, height } = dimensions(project);
+    // Same 8k+1 rule as the refine pass: the LTX VAE works on that grid, and
+    // the Refine Details card is explicit that the frame count must be 8n+1.
+    const keep = numFrames % 8 === 1 ? numFrames : Math.floor((numFrames - 1) / 8) * 8 + 1;
+    const u = upscaleSettings(project);
+    const outputSize = LTX_NATIVE_OUTPUT[plan.target] || "4K";
+    const look = (u.ltxPrompt || "").trim() || LTX_NATIVE_PROMPT;
+
+    let frames = from;
+    if (keep !== numFrames) {
+      graph["150"] = { class_type: "ImageFromBatch", _meta: { title: `Trim to ${keep} frames (8k+1)` },
+        inputs: { image: from, batch_index: 0, length: keep } };
+      frames = ["150", 0];
+    }
+
+    graph["151"] = { class_type: "UNETLoader", _meta: { title: "LTX-2.5 Transformer (native)" },
+      inputs: { unet_name: models.ltx25_dit, weight_dtype: "default" } };
+    graph["152"] = { class_type: "CLIPLoader", _meta: { title: "LTX-2.5 Text Encoder (Gemma 4)" },
+      inputs: { clip_name: models.ltx25_text_encoder, type: "ltxv", device: "default" } };
+    graph["153"] = { class_type: "VAELoader", _meta: { title: "LTX-2.5 Video VAE (native)" },
+      inputs: { vae_name: models.ltx25_video_vae } };
+    // Output 1 is reference_downscale_factor from the LoRA's metadata — 1
+    // for Refine Details, because its guide is the clip at FULL output size.
+    graph["154"] = { class_type: "LTXICLoRALoaderModelOnly", _meta: { title: "IC-LoRA: Refine Details" },
+      inputs: { model: ["151", 0], lora_name: models.ltx25_refine_lora, strength_model: 1 } };
+    graph["155"] = { class_type: "CLIPTextEncode", _meta: { title: "Look & style (positive)" },
+      inputs: { text: look, clip: ["152", 0] } };
+    graph["156"] = { class_type: "CLIPTextEncode", _meta: { title: "Negative (native)" },
+      inputs: { text: LTX_NATIVE_NEGATIVE, clip: ["152", 0] } };
+    graph["157"] = { class_type: "LTXVConditioning", _meta: { title: "LTXVConditioning (native)" },
+      inputs: { positive: ["155", 0], negative: ["156", 0], frame_rate: fps } };
+    // The canvas, the tile and the 8n+1 temporal window all come from the
+    // sizing node rather than from arithmetic here, so the graph stays legal
+    // for any aspect ratio the project happens to be on.
+    graph["158"] = { class_type: "LTXVGetTilingSizes", _meta: { title: "Get Tiling Sizes" },
+      inputs: { width, height, frame_count: keep, tile_size: u.ltxTile,
+        initial_canvas_size: "FullHD", output_size: outputSize, image: frames } };
+    const S = (i) => ["158", i];
+    const ladder = u.ltxLadder;
+    const canvasW = ladder ? S(0) : S(4);
+    const canvasH = ladder ? S(1) : S(5);
+
+    graph["159"] = { class_type: "ImageScale", _meta: { title: ladder ? "Lanczos → stage-1 canvas" : `Lanczos → ${outputSize}` },
+      inputs: { image: frames, upscale_method: "lanczos", width: canvasW, height: canvasH, crop: "disabled" } };
+    graph["160"] = { class_type: "EmptyLTXVLatentVideo", _meta: { title: "Canvas latent (native)" },
+      inputs: { width: canvasW, height: canvasH, length: keep, batch_size: 1 } };
+    // use_tiled_encode must stay false — a spatially tiled guide encode
+    // imprints a grid into the conditioning. use_streaming on gives each
+    // temporal window its own fresh encode plus the plan the sampler reads.
+    const guide = { frame_idx: 0, strength: 1, crop: "disabled", use_tiled_encode: false,
+      tile_size: 256, tile_overlap: 64, use_streaming: true };
+    graph["161"] = { class_type: "LTXAddVideoICLoRAGuide", _meta: { title: "Guide: the clip at canvas size" },
+      inputs: { ...guide, positive: ["157", 0], negative: ["157", 1], vae: ["153", 0],
+        latent: ["160", 0], image: ["159", 0], latent_downscale_factor: ["154", 1], tile_frames: S(7) } };
+    graph["162"] = { class_type: "KSamplerSelect", _meta: { title: "Sampler (native)" },
+      // euler: fusion owns the sigma loop, so history methods (dpmpp_2m, lms)
+      // lose their multi-step memory and ancestral ones seam between tiles.
+      inputs: { sampler_name: "euler" } };
+    graph["163"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (8 steps)" },
+      inputs: { sigmas: LTX_SIGMAS_PASS1 } };
+    graph["164"] = { class_type: "LTXVTiledFusionSampler",
+      _meta: { title: ladder ? "Tiled Fusion — stage 1 (untiled)" : `Tiled Fusion (${u.ltxTile} tiles)` },
+      inputs: { model: ["154", 0], positive: ["161", 0], negative: ["161", 1], latents: ["161", 2],
+        sigmas: ["163", 0], sampler: ["162", 0], seed, cfg: 1,
+        tile_width: ladder ? canvasW : S(2), tile_height: ladder ? canvasH : S(3),
+        overlap_frac: S(6), blend_var: 0.05, grid_cycle: 1, tile_frames: S(7),
+        vae: ["153", 0], canvas_device: "auto" } };
+    let sampled = ["164", 0];
+
+    if (ladder) {
+      graph["165"] = { class_type: "LatentUpscaleModelLoader", _meta: { title: "Load Latent Upscale Model" },
+        inputs: { model_name: models.ltx25_upscaler } };
+      graph["166"] = { class_type: "LTXVLatentUpsampler", _meta: { title: "Latent ×2" },
+        inputs: { samples: ["164", 0], upscale_model: ["165", 0], vae: ["153", 0] } };
+      let up = ["166", 0];
+      if (outputSize === "8K") {
+        graph["167"] = { class_type: "LTXVLatentUpsampler", _meta: { title: "Latent ×2 (→ 8K)" },
+          inputs: { samples: ["166", 0], upscale_model: ["165", 0], vae: ["153", 0] } };
+        up = ["167", 0];
+      }
+      // Stage 2's guide is the ORIGINAL frames at output size, not stage 1's
+      // output: the detail has to come from the source, and stage 1 is
+      // already carried in the latent.
+      graph["168"] = { class_type: "ImageScale", _meta: { title: `Lanczos original → ${outputSize}` },
+        inputs: { image: frames, upscale_method: "lanczos", width: S(4), height: S(5), crop: "disabled" } };
+      graph["169"] = { class_type: "LTXAddVideoICLoRAGuide", _meta: { title: "Guide: original at output size" },
+        inputs: { ...guide, positive: ["157", 0], negative: ["157", 1], vae: ["153", 0],
+          latent: up, image: ["168", 0], latent_downscale_factor: ["154", 1], tile_frames: S(7) } };
+      graph["170"] = { class_type: "ManualSigmas", _meta: { title: "ManualSigmas (3 steps)" },
+        inputs: { sigmas: "0.909375, 0.725, 0.421875, 0.0" } };
+      graph["171"] = { class_type: "LTXVTiledFusionSampler", _meta: { title: `Tiled Fusion — stage 2 (${u.ltxTile} tiles)` },
+        inputs: { model: ["154", 0], positive: ["169", 0], negative: ["169", 1], latents: ["169", 2],
+          sigmas: ["170", 0], sampler: ["162", 0], seed, cfg: 1,
+          tile_width: S(2), tile_height: S(3),
+          overlap_frac: S(6), blend_var: 0.05, grid_cycle: 1, tile_frames: S(7),
+          vae: ["153", 0], canvas_device: "auto" } };
+      sampled = ["171", 0];
+    }
+
+    // The guide node's appended reference frames are cropped by the fusion
+    // sampler itself, so no LTXVCropGuides. Decode chunking tightens as the
+    // canvas grows: the decoded batch is the whole clip in host RAM, and one
+    // 8K frame is ~100 MB in fp16.
+    const temporal = outputSize === "8K" ? 64 : outputSize === "4K" ? 128 : 256;
+    graph["172"] = { class_type: "VAEDecodeTiled", _meta: { title: `Decode (tiled, ${temporal}f chunks)` },
+      inputs: { samples: sampled, vae: ["153", 0], tile_size: 1024, overlap: 128,
+        temporal_size: temporal, temporal_overlap: 32 } };
+    finish("172", `Fit → ${plan.target}`);
+    graph[createVideo].inputs.images = ["202", 0];
+    return plan;
   } else if (plan.engine === "flashvsr") {
     const frames = frameCount(project);
     graph["201"] = { class_type: "FlashVSRNode", _meta: { title: `FlashVSR ×${plan.factor > 2 ? 4 : 2}` },

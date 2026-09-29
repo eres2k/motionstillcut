@@ -2,3 +2,7 @@ data/
 node_modules/
 .netlify/
 render-tests/
+
+# Local Nexus push producer credential and retry queue
+.nexus-push.json
+**/nexus-push-outbox.json

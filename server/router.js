@@ -26,10 +26,22 @@ import * as projects from "./projects.js";
 import { ffmpegAvailable, lastFrame, assemble, filmPath, exportEdit, probeSource } from "./film.js";
 import { voiceHealth, listVoices, speak, addReferenceVoice, removeReferenceVoice, ENGINES as VOICE_ENGINES } from "./voice.js";
 import { resolveStatus, sendToResolve } from "./resolve.js";
+import { createPushClient } from "./nexus-push-client.cjs";
 
 export const CUT_VERSION = "1.0.0";
 
 const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
+const nexusPush = createPushClient({ project: 'motionstillcut', configFile: join(SERVER_DIR, '..', '.nexus-push.json'), outboxFile: join(SERVER_DIR, '..', 'data', 'nexus-push-outbox.json') });
+async function notifyExport(operation, name, run) {
+  try {
+    const result = await run();
+    nexusPush.publish({ title: `${operation} finished`, body: `${String(name || 'Your film').slice(0, 120)} is ready in MotionStill Cut.`, level: 'success' });
+    return result;
+  } catch (error) {
+    nexusPush.publish({ title: `${operation} failed`, body: 'Open MotionStill Cut for the export details.', level: 'error' });
+    throw error;
+  }
+}
 
 /** Is this instance persisting anything? One place decides. */
 export const savingEnabled = () => loadSettings().local?.saving !== false;
@@ -221,6 +233,15 @@ const OPTIONAL_NODES = {
   // means "install ComfyUI-MelBandRoFormer", never "your ComfyUI is old" —
   // which is why it sits here and not with the LTX group below.
   MelBandRoFormerSampler: "vocal separation for audio conditioning (ComfyUI-MelBandRoFormer pack)",
+  // The two LTX upscalers' nodes (ComfyUI-LTXVideo pack). Optional, not LTX:
+  // a ComfyUI that renders LTX perfectly can lack the pack entirely, and
+  // ltxMissing paints a red note on the render page — which would be a false
+  // alarm for someone who never opens Deliver ▸ Upscale. The Upscale card
+  // reads these through the same has() lookup and names what it needs.
+  LTXICLoRALoaderModelOnly: "LTX upscalers — loads an IC-LoRA and reads its reference downscale factor",
+  LTXAddVideoICLoRAGuide:   "LTX upscalers — attaches the source clip as the IC-LoRA reference",
+  LTXVTiledFusionSampler:   "LTX Native upscale — fuses overlapping tiles every denoise step",
+  LTXVGetTilingSizes:       "LTX Native upscale — picks a model-legal canvas, tile and 8n+1 window",
 };
 
 /* What the EXPERIMENTAL LTX-2.5 engine additionally needs. These are not part
@@ -1164,12 +1185,12 @@ export function createCutHandler({ auth = null, login = null } = {}) {
           if (!(await ffmpegAvailable())) {
             return sendJson(res, 503, { ok: false, code: "no-ffmpeg", error: "ffmpeg is not installed on the Cut server — the clips are rendered, but nothing here can join them." });
           }
-          const r = await assemble({
+          const r = await notifyExport('Assembly', body.name, () => assemble({
             clips: Array.isArray(body.clips) ? body.clips : [],
             name: body.name,
             audio: body.audio === "mute" ? "mute" : "keep",
             id: body.id || null,
-          });
+          }));
           return sendJson(res, 200, { ok: true, ...r });
         }
 
@@ -1191,7 +1212,7 @@ export function createCutHandler({ auth = null, login = null } = {}) {
           if (!(await ffmpegAvailable())) {
             return sendJson(res, 503, { ok: false, code: "no-ffmpeg", error: "ffmpeg is not installed on the Cut server — the clips are all there, but nothing here can cut them together." });
           }
-          const r = await exportEdit({
+          const r = await notifyExport('Export', body.name, () => exportEdit({
             id: body.id || null,
             name: body.name,
             fps: Number(body.fps) || 24,
@@ -1199,7 +1220,7 @@ export function createCutHandler({ auth = null, login = null } = {}) {
             height: Number(body.height) || 0,
             clips: Array.isArray(body.clips) ? body.clips : [],
             audio: Array.isArray(body.audio) ? body.audio : [],
-          });
+          }));
           return sendJson(res, 200, { ok: true, ...r });
         }
 

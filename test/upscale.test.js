@@ -106,7 +106,12 @@ test("the LTX-2.5 graph gets the same pass after its tiled decode", () => {
 test("old projects without the field default to off; the ETA grows with the pass", () => {
   const p = project();
   delete p.render.upscale;
-  assert.deepEqual(upscaleSettings(p), { engine: "off", target: "1080p", ltxMethod: "iclora", ltxFidelity: "balanced" });
+  assert.deepEqual(upscaleSettings(p), {
+    engine: "off", target: "1080p", ltxMethod: "iclora", ltxFidelity: "balanced",
+    // LTX Native's own knobs, defaulted the same way: a project saved before
+    // the engine existed reads as qHD / single-pass / card's own look prompt.
+    ltxTile: "qHD", ltxLadder: false, ltxPrompt: "",
+  });
   const base = estimateSeconds(project());
   const esr = estimateSeconds(project({ engine: "esrgan" }));
   const seed = estimateSeconds(project({ engine: "seedvr2" }));
@@ -226,4 +231,85 @@ test("the IC-LoRA costs more time than the refine pass", () => {
   const ic = estimateSeconds(project({ engine: "ltx25" }));
   const p = project({ engine: "ltx25" }); p.render.upscale.ltxMethod = "refine";
   assert.ok(ic > estimateSeconds(p));
+});
+
+/* ── LTX Native Resolution (Tiled Fusion) ──────────────────────
+ * The distinguishing property versus the ×2 IC-LoRA above: the canvas is
+ * whatever the target says, and the model never sees more than one tile at a
+ * time — which is why 4K and 8K are reachable here and are not there. */
+
+test("LTX Native to 4K: fused sampler on the Refine Details LoRA, sizes wired from the node", () => {
+  const { prompt } = buildWorkflow(project({ engine: "ltxnative", target: "2160p" }), settings);
+  const [[loraId, lora]] = byType(prompt, "LTXICLoRALoaderModelOnly");
+  assert.equal(lora.inputs.lora_name, DEFAULT_MODELS.ltx25_refine_lora);
+  assert.equal(lora.inputs.strength_model, 1);
+
+  const [[sizesId, sizes]] = byType(prompt, "LTXVGetTilingSizes");
+  assert.equal(sizes.inputs.output_size, "4K", "2160p short edge is the 4K long-edge preset");
+  assert.equal(sizes.inputs.tile_size, "qHD", "the tile nearest the LoRA's 1024x576 training window");
+  assert.equal(sizes.inputs.frame_count, 121, "124-frame H3 clip trimmed to LTX's 8k+1 grid");
+
+  const [[, guide]] = byType(prompt, "LTXAddVideoICLoRAGuide");
+  assert.equal(guide.inputs.use_tiled_encode, false, "a tiled guide encode imprints a grid into the conditioning");
+  assert.equal(guide.inputs.use_streaming, true);
+  assert.deepEqual(guide.inputs.latent_downscale_factor, [loraId, 1], "read from the LoRA's own metadata");
+  assert.deepEqual(guide.inputs.tile_frames, [sizesId, 7]);
+
+  const [[, fused]] = byType(prompt, "LTXVTiledFusionSampler");
+  assert.equal(fused.inputs.cfg, 1);
+  assert.equal(fused.inputs.blend_var, 0.05);
+  assert.deepEqual(fused.inputs.overlap_frac, [sizesId, 6], "never below 0.5 — a periodic grid appears");
+  assert.deepEqual(fused.inputs.tile_width, [sizesId, 2]);
+  assert.deepEqual(fused.inputs.latents, [Object.entries(prompt).find(([, n]) => n.class_type === "LTXAddVideoICLoRAGuide")[0], 2],
+    "the latent MUST come from the guide node — it carries the noise mask");
+
+  const [[, sampler]] = byType(prompt, "KSamplerSelect").filter(([, n]) => n.inputs.sampler_name === "euler");
+  assert.equal(sampler.inputs.sampler_name, "euler", "fusion owns the sigma loop; history samplers lose their memory");
+
+  // No LTXVCropGuides: the fusion sampler crops the appended guide frames.
+  assert.equal(byType(prompt, "LTXVCropGuides").length, 0);
+});
+
+test("LTX Native ladder to 8K: two fused passes, latent x4, stage 2 guided by the original", () => {
+  const p = project({ engine: "ltxnative", target: "4320p" });
+  p.render.upscale.ltxLadder = true;
+  const { prompt } = buildWorkflow(p, settings);
+
+  const fused = byType(prompt, "LTXVTiledFusionSampler");
+  assert.equal(fused.length, 2, "stage 1 composes, stage 2 refines");
+  const ups = byType(prompt, "LTXVLatentUpsampler");
+  assert.equal(ups.length, 2, "x2 then x2 again for 8K");
+
+  const [[sizesId]] = byType(prompt, "LTXVGetTilingSizes");
+  const [, stage1] = fused[0];
+  assert.deepEqual(stage1.inputs.tile_width, [sizesId, 0], "stage 1 is untiled: tile = the whole stage-1 canvas");
+  const [, stage2] = fused[1];
+  assert.deepEqual(stage2.inputs.tile_width, [sizesId, 2], "stage 2 uses real spatial tiles");
+
+  // Stage 2's guide must be the ORIGINAL frames scaled to output, not stage 1.
+  const guides = byType(prompt, "LTXAddVideoICLoRAGuide");
+  assert.equal(guides.length, 2);
+  const stage2Guide = guides[1][1];
+  const scaleId = stage2Guide.inputs.image[0];
+  assert.deepEqual(prompt[scaleId].inputs.width, [sizesId, 4], "guide resized to the output canvas");
+});
+
+test("LTX Native decode tightens its temporal chunk as the canvas grows", () => {
+  const chunk = (target) => {
+    const { prompt } = buildWorkflow(project({ engine: "ltxnative", target }), settings);
+    return byType(prompt, "VAEDecodeTiled").at(-1)[1].inputs.temporal_size;
+  };
+  assert.equal(chunk("1080p"), 256);
+  assert.equal(chunk("2160p"), 128);
+  assert.equal(chunk("4320p"), 64, "one 8K frame is ~100 MB in fp16 — the decoded batch is the whole clip");
+});
+
+test("LTX Native costs more than the x2 IC-LoRA, and the ladder undercuts a direct 8K refine", () => {
+  const direct = estimateSeconds(project({ engine: "ltxnative", target: "4320p" }));
+  const p = project({ engine: "ltxnative", target: "4320p" });
+  p.render.upscale.ltxLadder = true;
+  const ladder = estimateSeconds(p);
+  assert.ok(ladder < direct, `ladder ${ladder} should undercut direct ${direct}`);
+  const hd = estimateSeconds(project({ engine: "ltxnative", target: "1080p" }));
+  assert.ok(hd < direct, `1080p ${hd} < 8K ${direct}`);
 });

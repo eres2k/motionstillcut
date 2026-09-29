@@ -321,7 +321,7 @@ export const VARIANTS = {
     key: "turbo4", label: "Turbo 4-step (768p)", family: "fl2va",
     lora: "turbo_lora_4", steps: 4, shiftVideo: 6, shiftAudio: 3,
     sampler: "euler", scheduler: "beta", trainedAt: "768p (1344×768)",
-    note: "v1.1 distill trained on the 1344×768 canvas — note shift_video 6, half of every other path.",
+    note: "v1.2 distill trained on the 1344×768 canvas — note shift_video 6, half of every other path.",
   },
   ref_full: {
     key: "ref_full", label: "Full (25-step)", family: "ref2va",

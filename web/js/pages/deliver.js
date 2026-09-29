@@ -220,6 +220,10 @@ function upscaleGroup(p, set) {
             : has("LTXAddVideoICLoRAGuide") === false
               ? "Lightricks' upscaler needs the ComfyUI-LTXVideo pack's IC-LoRA nodes, which this ComfyUI does not have — install the pack, or pick the refine pass below."
               : "Lightricks' own Pixel Spatial Upscaler: the clip, Lanczos-doubled, is the starting latent and the in-context reference; the distilled model regenerates it at ×2 over its full eight steps, the reference is cropped off, the frames decode tiled. It synthesises detail rather than sharpening — right for generated footage, wrong for anything that must stay factual. Needs the LoRA (Setup ▸ LTX-2.5 files; gated on Hugging Face).")
+    : up.engine === "ltxnative"
+      ? (has("LTXVTiledFusionSampler") === false || has("LTXVGetTilingSizes") === false
+          ? "Tiled Fusion is not on this ComfyUI — update the ComfyUI-LTXVideo pack (2026-09-29 or newer), then reload Setup."
+          : `Lightricks' Refine Details IC-LoRA driven by the tiled fusion sampler. One latent canvas and one noise field, but the model runs on overlapping ${up.ltxTile} tiles at every denoise step and the stepped tiles are blended back — so the tiles share a trajectory (no seams, no per-tile flicker) while peak VRAM follows the TILE, not the canvas. That is what puts 4K and 8K on this menu at all: the ×2 IC-LoRA above regenerates one latent and goes black past ~31k video tokens. It rebuilds fine detail rather than sharpening, so it suits generated footage and is wrong for anything that must stay factual. Needs the 1.31 GB Refine Details LoRA (Setup ▸ LTX-2.5 files; gated on Hugging Face).`)
     : up.engine === "esrgan"
       ? (has("ImageUpscaleWithModel") === false
           ? "The stock upscale nodes are missing — this ComfyUI is very old."
@@ -232,7 +236,26 @@ function upscaleGroup(p, set) {
       "The decoded frames go through an upscaler before the video is muxed, so the clip is generated at the canvas size — the size the model was trained at — and delivered larger. Nothing about the render itself changes; the VRAM the sampler needs is decided by the canvas, not by this.",
     ),
   },
-    row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · ×2"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v }), "wrap"), engineHint),
+    row("Upscaler", segmented([["off", "Off"], ["seedvr2", "SeedVR2 · best"], ["flashvsr", "FlashVSR · balanced"], ["ltx25", "LTX-2.5 · ×2"], ["ltxnative", "LTX Native · 4K/8K"], ["esrgan", "ESRGAN · fast"]], up.engine, (v) => setUp({ engine: v }), "wrap"), engineHint),
+    // Tile and ladder only mean anything for the fused sampler.
+    up.engine === "ltxnative"
+      ? row("Tile", segmented([["qHD", "qHD · 960"], ["HD", "HD · 1280"], ["FullHD", "Full HD · 1920"]], up.ltxTile, (v) => setUp({ ltxTile: v })),
+        up.ltxTile === "qHD"
+          ? "960×544 on 16:9 — the closest of the three to the 1024×576 window the LoRA was trained on, and the default for that reason. A Full HD canvas is a 3×3 grid of them, 4K is 7×7."
+          : up.ltxTile === "HD"
+            ? "1280×736: a quarter as many tiles as qHD, so roughly twice as fast, but each tile sees content at 1.25× the trained scale and detail suffers a little."
+            : "The tile is the whole Full HD canvas — no spatial tiling at all. Only sensible for a Full HD output, or as stage 1 of the ladder below.")
+      : null,
+    up.engine === "ltxnative"
+      ? row("Ladder", segmented([[false, "Single refine"], [true, "Two stage"]], up.ltxLadder, (v) => setUp({ ltxLadder: v === true || v === "true" })),
+        up.ltxLadder
+          ? "Compose untiled at Full HD over eight steps, take the latent ×2 (×4 for 8K), then three fused steps at the output canvas with the original as the guide. Far cheaper than refining 8K directly, and composition holds because stage 1 sees the whole frame."
+          : "One fused pass straight at the output canvas over the full eight steps. What the LoRA card calls the sweet spot for 1080p → 4K; at 8K it is very slow and the ladder is the better trade.")
+      : null,
+    up.engine === "ltxnative"
+      ? row("Look", textarea(up.ltxPrompt, (v) => setUp({ ltxPrompt: v }), { rows: "2", placeholder: "sharp photographic detail, crisp natural texture, fine surface detail, clean edges, natural film grain, high resolution footage" }),
+        "Describe the RENDERING, not the scene: lighting, palette, film stock, sharpness, grain. Every tile receives the whole prompt, so a subject named here can be painted into tiles that do not contain it. Blank uses the LoRA card's own wording.")
+      : null,
     up.engine === "ltx25"
       ? row("Method", segmented([["iclora", "IC-LoRA (Lightricks)"], ["refine", "Refine pass"]], up.ltxMethod, (v) => setUp({ ltxMethod: v })),
         up.ltxMethod === "refine" ? "The two-stage build's second pass; no LoRA to download." : "Lightricks' own recipe; needs the LoRA.")
