@@ -31,8 +31,6 @@ const MODEL_FIELDS = [
   ["turbo_lora_8",     "Turbo LoRA · 8-step", "loras",            "fl2va distill, shifts 12/3"],
   ["turbo_lora_4",     "Turbo LoRA · 4-step 768p", "loras",       "fl2va distill trained at 1344×768, shift_video 6"],
   ["ref_turbo_lora",   "Ref2V Turbo LoRA · 4-step", "loras",      "ref2va distill — never load it onto the fl2va DiT"],
-  ["dit_fl2va_nvfp4",  "FL2VA DiT · NVFP4",   "diffusion_models", "Experimental conversion"],
-  ["dit_ref2va_nvfp4", "Ref2VA DiT · NVFP4",  "diffusion_models", "Experimental conversion"],
 ];
 
 /* Post-render upscalers — Deliver ▸ Upscale. */

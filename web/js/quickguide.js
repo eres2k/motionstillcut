@@ -435,7 +435,7 @@ const SECTIONS = [
       {
         n: "⌸", title: "What this machine remembers",
         body: [
-          "The render settings you chose last are what your next project starts from — canvas, precision, checkpoint variant (kept once per family), tiled decode. They describe the machine, not the clip. The seed and the clip length are deliberately NOT remembered; those belong to a take.",
+          "The render settings you chose last are what your next project starts from — canvas, checkpoint variant (kept once per family), tiled decode. They describe the machine, not the clip. The seed and the clip length are deliberately NOT remembered; those belong to a take.",
         ],
       },
       {

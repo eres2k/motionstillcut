@@ -60,7 +60,10 @@ const familyOf = (mode, engine = "minimax") =>
 function read() {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) || "{}");
-    return v && typeof v === "object" ? v : {};
+    if (!v || typeof v !== "object") return {};
+    // INT8 is the only DiT build left — a remembered "nvfp4" now means int8.
+    if (v.precision !== undefined) v.precision = "int8";
+    return v;
   } catch { return {}; }
 }
 function write(v) {
