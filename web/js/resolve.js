@@ -104,11 +104,8 @@ export function resolveSettings() {
   }
   return group("DaVinci Resolve", { id: "setup-resolve", accordion: false, open: true },
     !SERVER_BACKED ? h("div.note.info", "Connect Resolve from the local Cut app with server saving enabled.") : h("div",
-      row("MCP endpoint", h("input", { type: "url", value: s.url || "http://127.0.0.1:8765/mcp", "aria-label": "Resolve MCP endpoint",
-        onchange: e => save({ url: e.target.value.trim() }) }), "The HTTP endpoint on the same host as Resolve. Its server and Resolve must both be running."),
-      row("Access token", h("input", { type: "password", autocomplete: "new-password", value: "", "aria-label": "Resolve MCP access token", placeholder: s.hasApiKey ? "Token saved — enter to replace" : "Optional",
-        onchange: e => { if (e.target.value) { save({ apiKey: e.target.value }); e.target.value = ""; } } })),
-      s.hasApiKey ? h("button.btn.sm.ghost", { onclick: () => save({ apiKey: "" }) }, "Clear access token") : null,
+      h("div.hint", "Uses the MCP server built into DaVinci Resolve Studio 21.1 or newer, on the same machine as this Cut server. Resolve must be running with a project open."),
+      row("Resolve MCP server", h("input", { value: s.command || "", readonly: true, "aria-label": "Resolve MCP server path" }), "Set CUT_RESOLVE_MCP in the Cut server's environment to use another path."),
       row("ComfyUI output folder", h("input", { value: s.comfyOutputDir || "", placeholder: "/opt/ComfyUI/output", "aria-label": "Local ComfyUI output folder",
         onchange: e => save({ comfyOutputDir: e.target.value.trim() }) }), "Optional local folder to avoid downloading rendered clips. Leave empty when ComfyUI is on another host."),
       checkbox("Prepare media for Resolve on Linux", !!s.prepareAudio, v => save({ prepareAudio: v })),
