@@ -69,8 +69,6 @@ export const DEFAULT_MODELS = {
 
 export const DEFAULT_SETTINGS = {
   resolve: {
-    url: "http://127.0.0.1:8765/mcp",
-    apiKey: "",
     comfyOutputDir: existsSync("/opt/ComfyUI/output") ? "/opt/ComfyUI/output" : "",
     prepareAudio: process.platform === "linux",
   },
@@ -170,8 +168,6 @@ function stripTrailingSlash(url) {
  * colliding with COMFYUI_HOST / LMSTUDIO_BASE. */
 function envPatch() {
   const p = {};
-  if (process.env.CUT_RESOLVE_URL) p.resolve = { url: process.env.CUT_RESOLVE_URL };
-  if (process.env.CUT_RESOLVE_KEY) p.resolve = { ...(p.resolve || {}), apiKey: process.env.CUT_RESOLVE_KEY };
   const comfy = process.env.CUT_COMFY_URL
     || (process.env.COMFYUI_HOST || process.env.COMFYUI_PORT
         ? `http://${process.env.COMFYUI_HOST || "127.0.0.1"}:${process.env.COMFYUI_PORT || 8188}`
@@ -192,6 +188,18 @@ function envPatch() {
     p.local = { saving: !/^(0|false|off|no)$/i.test(process.env.CUT_SAVING.trim()) };
   }
   return p;
+}
+
+/* DaVinci Resolve Studio 21.1+ ships its own MCP server. The command is not a
+ * Setup-page setting on purpose: a browser that can save settings must not be
+ * able to choose which program this server starts. */
+const RESOLVE_MCP = {
+  linux: "/opt/resolve/bin/ResolveMCP",
+  darwin: "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Applications/ResolveMCP",
+  win32: "C:\\Program Files\\Blackmagic Design\\DaVinci Resolve\\ResolveMCP.exe",
+};
+export function resolveMcpCommand() {
+  return process.env.CUT_RESOLVE_MCP || RESOLVE_MCP[process.platform] || RESOLVE_MCP.linux;
 }
 
 let _cache = null;
@@ -234,7 +242,7 @@ export function publicSettings() {
   return {
     ...s,
     llm: { ...s.llm, apiKey: undefined, hasApiKey: !!s.llm.apiKey },
-    resolve: { ...s.resolve, apiKey: undefined, hasApiKey: !!s.resolve.apiKey },
+    resolve: { comfyOutputDir: s.resolve.comfyOutputDir, prepareAudio: s.resolve.prepareAudio, command: resolveMcpCommand() },
     dataFile: SETTINGS_FILE,
   };
 }
