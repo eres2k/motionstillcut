@@ -173,8 +173,6 @@ function settingsPanel(p) {
           p.mode === "r2v" ? row("Reference size",
             segmented([["match", "match"], ["max", "max"]], p.render.refImageSize, (v) => set({ refImageSize: v })),
             "\"max\" holds identity better and costs real time — reference tokens ride through every step.") : null,
-          !ltx ? row("Precision", segmented([["int8", "INT8"], ["nvfp4", "NVFP4"]], p.render.precision, (v) => set({ precision: v })),
-            "NVFP4 is the experimental conversion — same graph, different file.") : null,
           !ltx ? h("div", { style: { margin: "9px 0" } },
             checkbox("Tiled video decode", p.render.tiledDecode, (v) => set({ tiledDecode: v }),
               "VAEDecodeTiled — worth it on long clips, pointless on short ones"))
@@ -959,7 +957,7 @@ async function okForVram(p, { verb = "Render" } = {}) {
     title: `${verb} anyway?`,
     body: h("div",
       h("div.note.bad", "This render probably will not fit on the card."),
-      h("div.hint", `Needs about ${gb(fit.needGB)} GB of VRAM at peak — ≈${Math.round(fit.tokens / 1000)}k tokens through the DiT on the ${fit.precision === "nvfp4" ? "NVFP4" : "int8"} build — and ComfyUI reports a ${gb(fit.cardGB)} GB card.`),
+      h("div.hint", `Needs about ${gb(fit.needGB)} GB of VRAM at peak — ≈${Math.round(fit.tokens / 1000)}k tokens through the DiT on the int8 build — and ComfyUI reports a ${gb(fit.cardGB)} GB card.`),
       h("div.hint", "ComfyUI would spend the load time, then stop on the first sampling step with an out-of-memory error."),
       levers.length ? h("div.hint", { style: { marginTop: "8px" } }, `What would bring it back: ${levers.join(", ")}.`) : null,
       h("div.hint.faint", { style: { marginTop: "8px" } }, "The estimate is rough. If you know this machine fits it, go ahead."),
@@ -1075,7 +1073,7 @@ function showJobPrompt(job) {
               engine: s.engine || "minimax",
               variant: s.variant || proj.render.variant,
               seed: s.seed ?? proj.render.seed,
-              precision: s.precision || proj.render.precision,
+              // Precision is not restored: INT8 is the only DiT build left.
               refImageSize: s.refImageSize || proj.render.refImageSize,
               tiledDecode: !!s.tiledDecode,
             });

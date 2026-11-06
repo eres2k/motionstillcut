@@ -335,7 +335,7 @@ export function blankProject() {
       engine: "minimax",      // minimax | ltx25 (experimental)
       variant: "turbo",       // full | turbo | turbo4 (fl2va) · full | ref4 (ref2va) · ltx_two | ltx_single (ltx25)
       seed: -1,
-      precision: "int8",      // int8 | nvfp4 (MiniMax DiT only — LTX-2.5 has one loadable build)
+      precision: "int8",      // always int8 — the one MiniMax DiT build (see ditFile in workflow.js)
       // Tiled decode is the one accelerator here, because VAEDecodeTiled is a
       // stock node. Sol-Attn, chunked feed-forward and the free-memory nodes
       // all live in custom packs, and this project stays on stock ComfyUI.
@@ -583,6 +583,8 @@ function migrate(p) {
   // saved before the card existed must come back with every knob present.
   merged.render.ltxAudio = { ...base.render.ltxAudio, ...(p?.render?.ltxAudio || {}) };
   merged.render.ltxVoice = { ...base.render.ltxVoice, ...(p?.render?.ltxVoice || {}) };
+  // The NVFP4 DiT builds are gone; a project saved with them renders INT8.
+  merged.render.precision = "int8";
   /* Projects saved before full-reference mode used <Subject N> cite their
    * images as <Picture N>. The tag is positional either way, so the rewrite is
    * exact — and leaving them would silently break every citation the moment

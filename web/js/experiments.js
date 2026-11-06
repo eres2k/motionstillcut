@@ -139,12 +139,6 @@ export const SWEEP_VARIABLES = [
     set: (draft, v) => { draft.render.refImageSize = v; },
   },
   {
-    id: "render.precision", label: "Precision", scope: "clip", engines: ["minimax"],
-    values: () => [["int8", "INT8"], ["nvfp4", "NVFP4"]], defaults: ["int8", "nvfp4"],
-    get: (p) => p.render.precision,
-    set: (draft, v) => { draft.render.precision = v; },
-  },
-  {
     id: "seed", label: "Seed (the same prompt, different draws)", scope: "clip",
     values: () => [], defaults: null, freeform: true,
     get: (p) => p.render.seed,

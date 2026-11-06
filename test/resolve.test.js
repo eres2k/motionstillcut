@@ -1,69 +1,67 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
-import { mkdtempSync, writeFileSync, symlinkSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, symlinkSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { McpClient } from "../server/mcp.js";
-import { localOutput, validateTransfer } from "../server/resolve.js";
+import { McpClient, scriptError } from "../server/mcp.js";
+import { localOutput, validateTransfer, scriptWithArgs } from "../server/resolve.js";
 import { resolveXml } from "../server/resolve-xml.js";
 
-async function mockMcp(t, handler) {
-  const server = createServer(async (req, res) => {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
-    handler(req, res, body);
-  });
-  await new Promise(r => server.listen(0, "127.0.0.1", r));
-  t.after(() => { server.closeAllConnections(); server.close(); });
-  return new McpClient(`http://127.0.0.1:${server.address().port}/mcp`, { timeout: 1000 });
+const FIXTURE = new URL("./resolve-mcp.fixture.mjs", import.meta.url).pathname;
+
+/* A stand-in ResolveMCP on stdio. Returns the client and a reader for every
+ * request the fixture saw (across all of its processes). */
+function mockMcp(t, mode = "ok") {
+  const dir = mkdtempSync(join(tmpdir(), "cut-resolve-mcp-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const log = join(dir, "requests.jsonl");
+  const env = { FIXTURE_MODE: mode, FIXTURE_LOG: log };
+  const requests = () => existsSync(log) ? readFileSync(log, "utf8").trim().split("\n").map(JSON.parse) : [];
+  Object.assign(process.env, env);
+  t.after(() => { delete process.env.FIXTURE_MODE; delete process.env.FIXTURE_LOG; });
+  return { mcp: new McpClient(FIXTURE, { timeout: 1000 }), requests, env };
 }
-const json = (res, body, result) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ jsonrpc: "2.0", id: body.id, result })); };
 
-test("MCP negotiates sessions, discovers paginated tools and consumes SSE without waiting for stream closure", async t => {
-  const methods = [], sessionErrors = [];
-  const mcp = await mockMcp(t, (req, res, body) => {
-    methods.push(body.method || req.method);
-    if (body.method === "initialize") {
-      res.setHeader("Mcp-Session-Id", "test-session");
-      return json(res, body, { protocolVersion: "2025-11-25", serverInfo: { name: "test" } });
-    }
-    if (req.headers["mcp-session-id"] !== "test-session") sessionErrors.push(body.method);
-    if (body.method === "notifications/initialized" || req.method === "DELETE") { res.writeHead(202); return res.end(); }
-    if (body.method === "tools/list") return json(res, body, body.params.cursor
-      ? { tools: [{ name: "import_timeline" }] } : { tools: [{ name: "resolve_status" }], nextCursor: "page-2" });
-    res.writeHead(200, { "Content-Type": "text/event-stream" });
-    res.write(': keepalive\r\ndata: {"jsonrpc":"2.0","method":"notifications/progress"}\r\n\r\n');
-    const response = JSON.stringify({ jsonrpc: "2.0", id: body.id, result: { content: [{ type: "text", text: '{"ok":true,"project":"Test"}' }] } });
-    // Split an SSE event across chunks and leave the stream open.
-    res.write(`event: message\r\ndata: ${response.slice(0, 25)}`);
-    setTimeout(() => res.write(`${response.slice(25)}\r\n\r\n`), 5);
-  });
-  await mcp.connect();
-  assert.deepEqual((await mcp.listTools()).map(t => t.name), ["resolve_status", "import_timeline"]);
-  assert.equal((await mcp.call("resolve_status")).project, "Test");
+test("MCP speaks stdio, accepts ResolveMCP's protocol version and discovers paginated tools", async t => {
+  const { mcp, requests } = mockMcp(t);
+  const info = await mcp.connect();
+  assert.equal(info.serverInfo.name, "davinci_resolve");
+  assert.deepEqual((await mcp.listTools()).map(t => t.name), ["get_resolve_status", "launch_resolve", "run_script"]);
+  assert.equal((await mcp.call("get_resolve_status")).running, true);
   await mcp.close();
-  assert.deepEqual(sessionErrors, []);
-  assert.deepEqual(methods, ["initialize", "notifications/initialized", "tools/list", "tools/list", "tools/call", "DELETE"]);
+  assert.equal(mcp.child.exitCode, 0);
+  assert.deepEqual(requests().map(r => r.method), ["initialize", "notifications/initialized", "tools/list", "tools/list", "tools/call"]);
 });
 
-test("MCP rejects tool errors inside successful HTTP responses and never retries a mutation", async t => {
-  let calls = 0;
-  const mcp = await mockMcp(t, (req, res, body) => {
-    calls++;
-    json(res, body, { content: [{ type: "text", text: '{"ok":false,"error":"No project is open"}' }] });
-  });
-  await assert.rejects(mcp.call("import_timeline"), /No project is open/);
-  assert.equal(calls, 1);
+test("MCP turns script tracebacks into errors and never retries a mutation", async t => {
+  const { mcp, requests } = mockMcp(t);
+  await mcp.connect();
+  await assert.rejects(mcp.call("run_script", { script: "raise" }), /^Error: No project is open$/);
+  await mcp.close();
+  assert.equal(requests().filter(r => r.method === "tools/call").length, 1);
+  assert.equal(scriptError("plain failure"), "plain failure");
 });
 
-test("MCP times out even when the server sends headers then hangs", async t => {
-  let calls = 0;
-  const mcp = await mockMcp(t, (req, res) => { calls++; res.writeHead(200, { "Content-Type": "application/json" }); res.flushHeaders(); });
-  await assert.rejects(mcp.call("import_timeline", {}, { timeout: 40 }), /check its timeline before retrying/i);
-  assert.equal(calls, 1);
+test("MCP times out a call that never answers", async t => {
+  const { mcp, requests } = mockMcp(t, "hang");
+  await mcp.connect();
+  await assert.rejects(mcp.call("run_script", { script: "x" }, { timeout: 40 }), /check its timeline before retrying/i);
+  await mcp.close();
+  assert.equal(requests().filter(r => r.method === "tools/call").length, 1);
+});
+
+test("MCP explains a missing ResolveMCP binary", async () => {
+  const mcp = new McpClient("/nonexistent/ResolveMCP");
+  await assert.rejects(mcp.connect(), /not found at \/nonexistent\/ResolveMCP.*21\.1/);
+  await mcp.close();
+});
+
+test("script arguments survive quotes, backslashes, replacement patterns and non-ASCII names", () => {
+  const args = { name: 'A $& $1 "q" \\ ü 😀', clips: [{ label: "line\u2028sep", mute: true }] };
+  const script = scriptWithArgs("x\nresult = main(json.loads(ARGS))\n", args);
+  const literal = /^result = main\(json\.loads\((".*")\)\)$/m.exec(script)[1];
+  assert.deepEqual(JSON.parse(JSON.parse(literal)), args);
 });
 
 test("local media lookup rejects traversal and symlinks outside the configured output folder", t => {
@@ -101,7 +99,7 @@ test("FCPXML preserves source trims, timeline order, mute, audio offset and gain
   assert.match(result, /sequence[^>]*duration="120\/24s"/);
 });
 
-test("a full transfer prepares WAV audio, retains clip names and reuses its receipt on retry", async t => {
+test("a full transfer prepares WAV audio, passes clip names and mutes, and reuses its receipt on retry", async t => {
   try { execFileSync("ffmpeg", ["-version"], { stdio: "ignore" }); }
   catch { return t.skip("ffmpeg is not installed"); }
   const dir = mkdtempSync(join(tmpdir(), "cut-resolve-transfer-"));
@@ -109,18 +107,8 @@ test("a full transfer prepares WAV audio, retains clip names and reuses its rece
   const video = join(dir, "sample.mp4"), audio = join(dir, "voice.wav");
   execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "color=s=320x180:r=24:d=1", "-c:v", "libx264", video]);
   execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "sine=duration=1", audio]);
-  let imports = 0, importedFile;
-  const mcp = await mockMcp(t, (req, res, body) => {
-    if (body.method === "initialize") return json(res, body, { protocolVersion: "2025-11-25", serverInfo: { name: "fixture" } });
-    if (body.method === "notifications/initialized") { res.writeHead(202); return res.end(); }
-    if (body.method === "tools/list") return json(res, body, { tools: [{ name: "resolve_status" }, { name: "import_timeline", inputSchema: { properties: Object.fromEntries(["file_path", "expected_project", "expected_clips", "request_id"].map(p => [p, {}])) } }] });
-    if (body.params.name === "resolve_status") return json(res, body, { structuredContent: { ok: true, project: "Test" } });
-    imports++;
-    importedFile = body.params.arguments.file_path;
-    json(res, body, { structuredContent: { ok: true, project: "Test", timeline: "Transferred" } });
-  });
-  // Isolate settings and media from the user's data. The mock server must
-  // remain responsive while the child prepares the real media with ffmpeg.
+  const { requests, env } = mockMcp(t);
+  // Isolate settings and media from the user's data.
   const { spawn } = await import("node:child_process");
   const script = `
     import { readFileSync } from 'node:fs';
@@ -129,23 +117,28 @@ test("a full transfer prepares WAV audio, retains clip names and reuses its rece
     putMedia('video', 'data:video/mp4;base64,' + readFileSync(${JSON.stringify(video)}).toString('base64'));
     putMedia('voice', 'data:audio/wav;base64,' + readFileSync(${JSON.stringify(audio)}).toString('base64'));
     const body = {requestId:'test-retry',name:'Test',fps:24,width:0,height:0,clips:[
-      {source:{mediaId:'video'},name:'Opening',in:0,out:.5},
+      {source:{mediaId:'video'},name:'Opening',in:0,out:.5,mute:true},
       {source:{mediaId:'video'},name:'Second angle',in:.5,out:1}],audio:[{mediaId:'voice',at:.25,gain:.5}]};
     console.log(JSON.stringify(await sendToResolve(body)));
     console.log(JSON.stringify(await sendToResolve(body)));
   `;
   const child = spawn(process.execPath, ["--input-type=module", "-e", script], {
-    cwd: new URL("../", import.meta.url), env: { ...process.env, CUT_DATA: dir, CUT_RESOLVE_URL: mcp.url },
+    cwd: new URL("../", import.meta.url), env: { ...process.env, ...env, CUT_DATA: dir, CUT_RESOLVE_MCP: FIXTURE },
   });
   let stdout = "", stderr = "";
   child.stdout.on("data", b => { stdout += b; }); child.stderr.on("data", b => { stderr += b; });
   const code = await new Promise(r => child.on("close", r));
   assert.equal(code, 0, stderr);
-  assert.equal(imports, 1);
+  const imports = requests().filter(r => r.importArgs).map(r => r.importArgs);
+  assert.equal(imports.length, 1);
   const results = stdout.trim().split("\n").map(JSON.parse);
   assert.deepEqual(results[0], results[1]);
-  const { readFileSync } = await import("node:fs");
-  const xml = readFileSync(importedFile, "utf8");
+  assert.equal(results[0].timeline, "Transferred");
+  assert.deepEqual(imports[0].clips, [{ label: "Opening", mute: true }, { label: "Second angle", mute: false }]);
+  assert.equal(imports[0].expected_project, "Test");
+  assert.equal(imports[0].request_id, "test-retry");
+  const xml = readFileSync(imports[0].file, "utf8");
   assert.match(xml, /name="Second angle"/);
+  assert.match(xml, /srcEnable="video"/);
   assert.match(xml, /source-2-resolve.wav/);
 });

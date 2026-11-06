@@ -27,7 +27,6 @@ test("the render that died on the 5090 is called out before it is queued", () =>
   assert.equal(fit.verdict, "no");
   assert.ok(fit.tokens > 200_000 && fit.tokens < 300_000, `tokens ${fit.tokens}`);
   assert.ok(fit.needGB > CARD);
-  assert.equal(fit.precision, "int8");
 });
 
 test("a plain 5 s clip at 480p is fine", () => {
@@ -51,13 +50,16 @@ test("every lever moves the estimate the right way", () => {
   const smaller = estimateVram(refProject({ resolution: "832x480", duration: 30, refImageSize: "max" }), { cardGB: CARD });
   const match = estimateVram(refProject({ resolution: "1344x768", duration: 30, refImageSize: "match" }), { cardGB: CARD });
   const fewer = estimateVram(refProject({ resolution: "1344x768", duration: 30, refImageSize: "max", refs: 2 }), { cardGB: CARD });
-  const nvfp4 = estimateVram(refProject({ resolution: "1344x768", duration: 30, refImageSize: "max", precision: "nvfp4" }), { cardGB: CARD });
-  for (const [name, fit] of Object.entries({ shorter, smaller, match, fewer, nvfp4 })) {
+  for (const [name, fit] of Object.entries({ shorter, smaller, match, fewer })) {
     assert.ok(fit.needGB < base.needGB, `${name} should need less than ${base.needGB} but needs ${fit.needGB}`);
   }
-  // NVFP4 writes bf16 where int8 writes int32: activations halve, and the DiT is 12 GB instead of 20.
-  assert.ok(Math.abs(nvfp4.activationsGB * 2 - base.activationsGB) < 0.01);
-  assert.ok(nvfp4.comfortableGB < base.comfortableGB - 7);
+});
+
+test("a project still saved with the retired NVFP4 precision is estimated as the INT8 build it renders on", () => {
+  const args = { resolution: "1344x768", duration: 30, refImageSize: "max" };
+  const int8 = estimateVram(refProject(args), { cardGB: CARD });
+  const old = estimateVram(refProject({ ...args, precision: "nvfp4" }), { cardGB: CARD });
+  assert.deepEqual(old, int8);
 });
 
 test("references at max cost far more than at match, and known sizes are honoured", () => {
@@ -82,7 +84,7 @@ test("no model for LTX-2.5, and no verdict without a card size", () => {
 test("the levers list names only what the project has not pulled yet", () => {
   const heavy = refProject({ resolution: "1344x768", duration: 30, refImageSize: "max" });
   assert.deepEqual(vramLevers(heavy, estimateVram(heavy, { cardGB: CARD })),
-    ["a shorter clip", "a lower resolution", "references at “match”", "fewer reference pictures", "the NVFP4 build"]);
-  const light = refProject({ refs: 2, precision: "nvfp4" });
+    ["a shorter clip", "a lower resolution", "references at “match”", "fewer reference pictures"]);
+  const light = refProject({ refs: 2 });
   assert.deepEqual(vramLevers(light, estimateVram(light, { cardGB: CARD })), []);
 });

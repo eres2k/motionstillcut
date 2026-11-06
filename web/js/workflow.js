@@ -45,11 +45,11 @@ function decodeTemporalSize(numFrames) {
   return numFrames >= 600 ? 64 : numFrames >= 360 ? 96 : 128;
 }
 
+/* INT8 is the only MiniMax DiT build. render.precision is deliberately not
+ * read: the NVFP4 files are gone, and a project, job or remembered pref that
+ * still says "nvfp4" must render on INT8 rather than ask for a missing file. */
 function ditFile(project, models) {
-  const ref = project.mode === "r2v";
-  const nvfp4 = project.render?.precision === "nvfp4";
-  if (ref) return nvfp4 ? models.dit_ref2va_nvfp4 : models.dit_ref2va;
-  return nvfp4 ? models.dit_fl2va_nvfp4 : models.dit_fl2va;
+  return project.mode === "r2v" ? models.dit_ref2va : models.dit_fl2va;
 }
 
 /** A filename ComfyUI will find in its input folder. Uploaded media carries
@@ -1170,8 +1170,7 @@ export function humanTime(seconds) {
  * 1344x768 with six references at "max" (~235k tokens) asked for a single
  * 18.8 GiB tensor on a 32 GB card. The int8 build's matmuls write int32 —
  * four bytes per value — so every per-layer activation is twice its bf16
- * size; the NVFP4 build's kernels write bf16 directly, which is why it
- * halves the activation cost as well as the weights.
+ * size.
  *
  * Tokens: H3's VAE is 16x spatial and 4x temporal, the DiT patches 2x2, so a
  * latent frame is (w/32)·(h/32) tokens; the first latent frame holds one
@@ -1181,9 +1180,9 @@ export function humanTime(seconds) {
  * deliberately rough (it says ≈), but they are on the right side of the
  * failures we have seen. */
 export const VRAM_MODEL = {
-  activationKBPerToken: { int8: 160, nvfp4: 80 }, // peak per-layer working set
-  ditGB: { int8: 20, nvfp4: 12 },                  // the whole DiT, resident
-  minWeightsGB: { int8: 2.5, nvfp4: 1.5 },         // what the dynamic loader must keep on the card
+  activationKBPerToken: 160,                       // peak per-layer working set
+  ditGB: 20,                                       // the whole DiT, resident
+  minWeightsGB: 2.5,                               // what the dynamic loader must keep on the card
   overheadGB: 3,                                   // CUDA context, VAE/TE pins, other tenants
   extraTokensPerFrame: 50,                         // audio + text conditioning
   maxRefShortEdge: 2048,
@@ -1231,13 +1230,12 @@ export function estimateVram(project, { cardGB = null } = {}) {
   const extra = numFrames * VRAM_MODEL.extraTokensPerFrame;
   const tokens = video + refs + extra;
 
-  const precision = project.render?.precision === "nvfp4" ? "nvfp4" : "int8";
-  const activationsGB = (tokens * VRAM_MODEL.activationKBPerToken[precision]) / (1024 * 1024);
-  const needGB = activationsGB + VRAM_MODEL.minWeightsGB[precision] + VRAM_MODEL.overheadGB;
-  const comfortableGB = activationsGB + VRAM_MODEL.ditGB[precision] + VRAM_MODEL.overheadGB;
+  const activationsGB = (tokens * VRAM_MODEL.activationKBPerToken) / (1024 * 1024);
+  const needGB = activationsGB + VRAM_MODEL.minWeightsGB + VRAM_MODEL.overheadGB;
+  const comfortableGB = activationsGB + VRAM_MODEL.ditGB + VRAM_MODEL.overheadGB;
   const card = +cardGB || null;
   const verdict = !card ? "unknown" : needGB > card ? "no" : comfortableGB > card ? "tight" : "ok";
-  return { tokens, video, refs, extra, latentFrames, numFrames, precision, activationsGB, needGB, comfortableGB, cardGB: card, verdict };
+  return { tokens, video, refs, extra, latentFrames, numFrames, activationsGB, needGB, comfortableGB, cardGB: card, verdict };
 }
 
 /** The levers that would bring a render back under the card, in the order
@@ -1250,6 +1248,5 @@ export function vramLevers(project, fit) {
   if (width * height > 832 * 480) out.push("a lower resolution");
   if (project.mode === "r2v" && project.render?.refImageSize === "max") out.push("references at “match”");
   if (project.mode === "r2v" && (project.refs?.images || []).length > 3) out.push("fewer reference pictures");
-  if (fit.precision !== "nvfp4") out.push("the NVFP4 build");
   return out;
 }

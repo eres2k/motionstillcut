@@ -1,92 +1,92 @@
-/* Streamable HTTP MCP client. A connection belongs to one operation, so a
- * restarted server never leaves the next operation with a stale session.
- * Mutating tool calls are never automatically retried. */
+/* Stdio MCP client for DaVinci Resolve's built-in server (ResolveMCP, Resolve
+ * Studio 21.1+). A process belongs to one operation, so a restarted Resolve
+ * never leaves the next operation with a stale connection. Mutating tool
+ * calls are never automatically retried. */
+import { spawn } from "node:child_process";
+
+const VERSIONS = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"];
+const MAX_LINE = 8 * 1024 * 1024;
+
 export class McpClient {
-  constructor(url, { token = "", timeout = 15000 } = {}) {
-    const endpoint = new URL(url);
-    if (!["http:", "https:"].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
-      throw new Error("Use an HTTP or HTTPS MCP endpoint without embedded credentials.");
-    }
-    this.url = endpoint.href;
-    this.token = token;
+  constructor(command, { args = [], timeout = 15000 } = {}) {
+    if (typeof command !== "string" || !command) throw new Error("No Resolve MCP command is configured.");
+    this.command = command;
+    this.args = args;
     this.timeout = timeout;
-    this.version = "2025-11-25";
-    this.session = null;
     this.id = 0;
+    this.pending = new Map();
+    this.child = null;
+    this.exited = null;
   }
 
-  headers() {
-    return {
-      "Content-Type": "application/json", Accept: "application/json, text/event-stream",
-      "MCP-Protocol-Version": this.version,
-      ...(this.session ? { "Mcp-Session-Id": this.session } : {}),
-      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-    };
+  start() {
+    const child = spawn(this.command, this.args, { stdio: ["pipe", "pipe", "pipe"] });
+    this.child = child;
+    let buffer = "", stderr = "";
+    const failAll = err => { for (const p of this.pending.values()) p.reject(err); this.pending.clear(); };
+    child.on("error", err => {
+      this.exited = err.code === "ENOENT"
+        ? new Error(`Resolve's MCP server was not found at ${this.command}. Install DaVinci Resolve Studio 21.1 or newer.`)
+        : new Error(`Could not start Resolve's MCP server: ${err.message}`);
+      failAll(this.exited);
+    });
+    child.on("exit", code => {
+      this.exited ||= new Error(`Resolve's MCP server stopped (exit ${code}).${stderr.trim() ? ` ${stderr.trim().slice(-300)}` : ""}`);
+      failAll(this.exited);
+    });
+    child.stdin.on("error", () => { /* reported through exit */ });
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", s => { stderr = (stderr + s).slice(-2000); });
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", chunk => {
+      buffer += chunk;
+      if (buffer.length > MAX_LINE) { failAll(new Error("Resolve MCP response is too large.")); child.kill(); return; }
+      let newline;
+      while ((newline = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (!line) continue;
+        let message;
+        try { message = JSON.parse(line); } catch { continue; }
+        const waiter = this.pending.get(message.id);
+        if (!waiter || !("result" in message || "error" in message)) continue;
+        this.pending.delete(message.id);
+        waiter.resolve(message);
+      }
+    });
   }
 
   async request(method, params = {}, { notification = false, timeout = this.timeout } = {}) {
+    if (!this.child) this.start();
+    if (this.exited) throw this.exited;
     const id = notification ? undefined : ++this.id;
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), timeout);
+    const body = JSON.stringify({ jsonrpc: "2.0", ...(notification ? {} : { id }), method, params });
+    if (notification) { this.child.stdin.write(`${body}\n`); return null; }
+    let timer;
+    const answer = new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+      timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(method === "tools/call"
+          ? "Resolve did not answer in time. Close any dialog in Resolve, then check its timeline before retrying."
+          : "Resolve's MCP server did not answer. Check that DaVinci Resolve Studio is running."));
+      }, timeout);
+    });
+    this.child.stdin.write(`${body}\n`);
     try {
-      const response = await fetch(this.url, {
-        method: "POST", headers: this.headers(), signal: ctl.signal, redirect: "error",
-        body: JSON.stringify({ jsonrpc: "2.0", ...(notification ? {} : { id }), method, params }),
-      });
-      if (!response.ok) {
-        await response.body?.cancel();
-        throw new Error(response.status === 401 || response.status === 403
-          ? "Resolve MCP refused the connection. Check its access token in Setup."
-          : `Resolve MCP returned HTTP ${response.status}. Check the endpoint (normally /mcp).`);
-      }
-      if (method === "initialize") this.session = response.headers.get("mcp-session-id");
-      if (notification) { await response.body?.cancel(); return null; }
-      let message;
-      if (response.headers.get("content-type")?.includes("text/event-stream")) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "", size = 0;
-        try {
-          while (!message) {
-            const { value, done } = await reader.read();
-            buffer += decoder.decode(value, { stream: !done });
-            size += value?.byteLength || 0;
-            if (size > 8 * 1024 * 1024) throw new Error("Resolve MCP response is too large.");
-            let boundary;
-            while ((boundary = /\r?\n\r?\n/.exec(buffer))) {
-              const event = buffer.slice(0, boundary.index);
-              buffer = buffer.slice(boundary.index + boundary[0].length);
-              const data = event.split(/\r?\n/).filter(l => l.startsWith("data:")).map(l => l.slice(5).replace(/^ /, "")).join("\n");
-              if (!data) continue;
-              const candidate = JSON.parse(data);
-              if (candidate.id === id && ("result" in candidate || "error" in candidate)) { message = candidate; break; }
-            }
-            if (done) break;
-          }
-        } finally { await reader.cancel().catch(() => {}); }
-      } else {
-        message = await response.json();
-      }
-      if (!message || message.id !== id) throw new Error("Resolve MCP returned no matching response.");
+      const message = await answer;
       if (message.error) throw new Error(`Resolve MCP: ${message.error.message || "request failed"}`);
       return message.result;
-    } catch (err) {
-      if (ctl.signal.aborted) throw new Error(method === "tools/call"
-        ? "Resolve did not answer in time. Close any dialog in Resolve, then check its timeline before retrying."
-        : "Resolve MCP timed out. Check that the server is running.");
-      if (err instanceof TypeError) throw new Error("Cannot reach Resolve MCP. Start its HTTP server and check the endpoint in Setup.");
-      throw err;
     } finally { clearTimeout(timer); }
   }
 
   async connect() {
     const info = await this.request("initialize", {
-      protocolVersion: this.version, capabilities: {}, clientInfo: { name: "motionstillcut", version: "1.0.0" },
+      protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "motionstillcut", version: "1.0.0" },
     });
-    if (!["2025-03-26", "2025-06-18", "2025-11-25"].includes(info?.protocolVersion)) {
+    if (!VERSIONS.includes(info?.protocolVersion)) {
       throw new Error(`Resolve MCP negotiated an unsupported protocol: ${info?.protocolVersion || "none"}.`);
     }
-    this.version = info.protocolVersion;
     await this.request("notifications/initialized", {}, { notification: true });
     this.info = info.serverInfo;
     return info;
@@ -107,24 +107,37 @@ export class McpClient {
     return tools;
   }
 
+  /** ResolveMCP reports script failures as {"error": "<traceback>"} inside a
+   *  successful result, so those count as failures too. */
   async call(name, args = {}, options = {}) {
     const result = await this.request("tools/call", { name, arguments: args }, options);
     const text = (result?.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
     let data = result?.structuredContent;
     if (!data && text) { try { data = JSON.parse(text); } catch { /* text-only tool */ } }
-    if (result?.isError || data?.ok === false || data?.success === false) {
-      throw new Error(String(data?.error || text || `${name} failed in Resolve`).slice(0, 1500));
+    if (result?.isError || data?.error || data?.ok === false || data?.success === false) {
+      throw new Error(scriptError(String(data?.error || text || `${name} failed in Resolve`)));
     }
     return data || { text };
   }
 
   async close() {
-    if (!this.session) return;
-    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 2000);
-    try {
-      const r = await fetch(this.url, { method: "DELETE", headers: this.headers(), signal: ctl.signal, redirect: "error" });
-      await r.body?.cancel();
-    } catch { /* session expiry is harmless */ }
-    finally { clearTimeout(timer); this.session = null; }
+    const child = this.child;
+    if (!child || child.exitCode !== null || this.exited) return;
+    const gone = new Promise(r => child.once("exit", r));
+    child.stdin.end();
+    const timer = setTimeout(() => child.kill(), 2000);
+    await gone;
+    clearTimeout(timer);
   }
+}
+
+/** A Python traceback's last line, without the exception class, is the message
+ *  a person needs; anything else is passed through trimmed. */
+export function scriptError(text) {
+  const lines = text.trim().split("\n");
+  if (/^Traceback /.test(lines[0])) {
+    const last = lines.at(-1).replace(/^[A-Za-z_][\w.]*(Error|Exception): /, "");
+    return last.slice(0, 1500);
+  }
+  return text.slice(0, 1500);
 }

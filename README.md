@@ -182,20 +182,16 @@ Studio (shortcut **7**). Finished renders on Deliver offer **Add to edit** and
 **Send to Resolve**. The Edit page sends the assembled timeline, including
 source trims, clip names, muted clip audio and positioned audio tracks.
 
-With local server saving enabled, set **Setup → DaVinci Resolve → MCP endpoint**
-to `http://127.0.0.1:8765/mcp`, then **Test Resolve connection**. Start Resolve
-and open the destination project. The MCP server must be on the same host as
-Cut, with `resolve_status` and the checked `import_timeline` tool from the
-local `~/ai/resolve-mcp` integration. The latter accepts `file_path`, `name`,
-`expected_project`, `expected_clips` and `request_id`.
-
-On this installation the MCP HTTP service starts at login:
-
-```sh
-systemctl --user status resolve-mcp.service
-# Or run the server manually:
-~/ai/resolve-mcp/.venv/bin/resolve-mcp --transport http --port 8765
-```
+Send to Resolve needs **DaVinci Resolve Studio 21.1 or newer** on the same
+machine as the local Cut server: it talks to Resolve's built-in MCP server
+(`ResolveMCP`) over stdio, so there is no separate service to run. Start
+Resolve, open the destination project, then use **Setup → DaVinci Resolve →
+Test Resolve connection**. The default server path is
+`/opt/resolve/bin/ResolveMCP` on Linux,
+`/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Applications/ResolveMCP`
+on macOS and `C:\Program Files\Blackmagic Design\DaVinci Resolve\ResolveMCP.exe`
+on Windows; set `CUT_RESOLVE_MCP` to override it. The path is deliberately not a
+Setup-page setting.
 
 Each send imports a new FCPXML timeline and saves the open Resolve project.
 Existing timelines are preserved; repeated names receive a numeric suffix.
@@ -205,12 +201,14 @@ preparation copies supported video streams into MOV with PCM audio, converts
 other video codecs to ProRes, and prepares separate audio as WAV. Disable it
 in Setup to use original media. ffmpeg is required for probing and preparation.
 
-MCP sessions, streaming replies, tool errors and timeouts are handled by the
-local Cut server. Transfer receipts and Resolve timeline markers guard against
-duplicate sends. Resolve must still have the same destination project open
-when the import begins. The hosted browser-only version explains how to use
-the local app instead. Optional environment overrides: `CUT_RESOLVE_URL` and
-`CUT_RESOLVE_KEY`; access tokens stay on the Cut server.
+The import runs as a script in ResolveMCP's sandboxed `run_script` tool (no
+file, network or process access; 60 s limit). It checks that the open project
+and render state have not changed, picks a unique timeline name, restores clip
+names and muted clip sound, selects the Edit page and saves. Tool errors and
+timeouts are handled by the local Cut server; a timed-out send is never
+retried automatically. Transfer receipts and Resolve timeline markers guard
+against duplicate sends. The hosted browser-only version explains how to use
+the local app instead.
 
 ## What it needs to render
 

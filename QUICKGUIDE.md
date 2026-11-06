@@ -801,7 +801,7 @@ that snapshot back in the editor in place of what you have open.
 
 Every finished render keeps the prompt and the settings that made it: the **ⓘ**
 button on a history row shows the exact text that went to the encoder, and
-restores its canvas, length, build, seed and precision in one click.
+restores its canvas, length, build and seed in one click.
 
 Build row:
 
@@ -913,7 +913,7 @@ cut**, joined afterwards (§10b).
 ### These settings stick
 
 Whatever you choose on this page becomes the default your **next** project
-starts from, in every mode — canvas, build, precision, tiled decode. They
+starts from, in every mode — canvas, build, tiled decode. They
 describe the machine you are on, not the clip you are making.
 
 **Length is not one of them, and used to be.** A clip's length belongs to the
